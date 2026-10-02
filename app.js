@@ -28,7 +28,10 @@
       layout: o.layout === 'list' ? 'list' : 'grid',
       hideMeaning: !!o.hideMeaning,
       hideExamples: !!o.hideExamples,
-      navCollapsed: !!o.navCollapsed
+      navCollapsed: !!o.navCollapsed,
+      sortDir: o.sortDir === 'asc' ? 'asc' : 'desc',
+      cols: o.cols || 'auto',
+      autoHide: o.autoHide === false ? false : true
     };
   }
   let view = loadView();
@@ -63,7 +66,7 @@
     return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
-  // 点击单词 → 跳到在线词典查该词
+  // 点击单词 → 打开详情弹窗（不再跳转链接）
   function dictUrl(word) {
     const base = (cfg && cfg.dictUrl) ||
       'https://dictionary.cambridge.org/zhs/搜索/英语-汉语-简体/direct/?q=';
@@ -74,6 +77,9 @@
     return '<a class="' + (cls || 'dict-link') + '" href="' + esc(dictUrl(word)) +
       '" target="_blank" rel="noopener" title="在剑桥词典查 ' + esc(word) + '">' + esc(word) + '</a>';
   }
+
+  const SPEAK_ICON =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4z"/><path d="M14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-1 7-4.5 7-8.8s-3-7.8-7-8.8z"/></svg>';
 
   function splitExamples(text) {
     return String(text || '').split(/\r?\n/).map(function (s) { return s.trim(); })
@@ -196,7 +202,10 @@
     unlock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.9"/></svg>',
     gear: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>',
     collapse: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>',
-    expand: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 9l-7 7-7-7"/></svg>'
+    expand: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 9l-7 7-7-7"/></svg>',
+    arrowDown: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+    arrowUp: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+    eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>'
   };
 
   /* ---------------- 主题 / 锁 ---------------- */
@@ -356,6 +365,7 @@
   function init() {
     bindUI();
     applyTheme(localStorage.getItem(LS_THEME) || 'dark');
+    applyCols();
     updateLockBtn();
     loadWords();
   }
@@ -428,6 +438,438 @@
     return 'created';
   }
 
+  /* ---------------- 单词详情：读音 / 音标 / 派生 / 词根 ---------------- */
+
+  const LS_DICT = 'wb_dict_cache_v1';
+  const DICT_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+
+  let dictCache = {};
+  try { dictCache = JSON.parse(localStorage.getItem(LS_DICT) || '{}'); } catch (e) { dictCache = {}; }
+  function saveDictCache() {
+    try {
+      // 只保留最近 400 条，别把 localStorage 撑爆
+      const keys = Object.keys(dictCache);
+      if (keys.length > 400) {
+        keys.slice(0, keys.length - 400).forEach(function (k) { delete dictCache[k]; });
+      }
+      localStorage.setItem(LS_DICT, JSON.stringify(dictCache));
+    } catch (e) { /* 配额满了就算了 */ }
+  }
+
+  // ---- 朗读（浏览器自带语音合成，不需要联网也不需要 key）----
+  const synth = window.speechSynthesis || null;
+
+  function canSpeak() { return !!synth; }
+
+  function speak(text, accent) {
+    if (!synth) return false;
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(String(text));
+      u.lang = accent || $('dAccent').value || 'en-US';
+      u.rate = 0.92;
+      // 优先挑音色匹配的嗓音，避免印度口音
+      const vs = synth.getVoices() || [];
+      const want = u.lang.toLowerCase();
+      const norm = function (x) { return String(x || '').toLowerCase().replace(/_/g, '-'); };
+      const hit = vs.find(function (v) { return norm(v.lang) === want; }) ||
+        vs.find(function (v) { return norm(v.lang).indexOf(want) === 0; });
+      if (hit) u.voice = hit;
+      synth.speak(u);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ---- 音标 / 英文释义 / 派生 / 近反义：dictionaryapi.dev（免费、无需 key）----
+  // 这个接口时不时连不上（用户网络环境 / 站点抽风），所以：
+  //   1) 8 秒超时，不让转圈转 forever
+  //   2) 失败不写缓存，下次点同一个词还会再试（只缓存成功结果）
+  const DICT_TIMEOUT = 8000;
+
+  function fetchDict(word) {
+    const w = normWord(word);
+    if (!w) return Promise.resolve(null);
+    if (dictCache[w]) return Promise.resolve(dictCache[w]);
+
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(function () { if (ctl) ctl.abort(); }, DICT_TIMEOUT);
+
+    return fetch(DICT_API + encodeURIComponent(w), ctl ? { signal: ctl.signal } : undefined)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!Array.isArray(j) || !j.length) return null;
+        const merged = {
+          ipa: '', audio: '',
+          defs: [],       // [{pos, def, syn:[], ant:[]}]
+          deriv: []       // 派生词
+        };
+        j.forEach(function (entry) {
+          if (!merged.ipa) {
+            const ph = (entry.phonetics || []).filter(function (p) { return p && p.text; });
+            merged.ipa = (entry.phonetic || (ph[0] && ph[0].text) || '').trim();
+            const au = (entry.phonetics || []).filter(function (p) { return p && p.audio; });
+            merged.audio = (entry.audio || (au[0] && au[0].audio) || '');
+          }
+          (entry.meanings || []).forEach(function (m) {
+            (m.definitions || []).slice(0, 2).forEach(function (d) {
+              if (!d || !d.definition) return;
+              merged.defs.push({
+                pos: m.partOfSpeech || '',
+                def: d.definition,
+                syn: (d.synonyms || []).slice(0, 6),
+                ant: (d.antonyms || []).slice(0, 4)
+              });
+              // 只收真派生词（derivatives），不收 meanings[].synonyms（那是"相关词"，会和近义重复）
+              (d.derivatives || []).forEach(function (dv) { if (dv) merged.deriv.push(dv); });
+            });
+          });
+        });
+        merged.deriv = Array.from(new Set(merged.deriv.map(function (s) { return String(s).toLowerCase(); })))
+          .filter(function (s) { return s !== w; }).slice(0, 12);
+        dictCache[w] = merged;
+        saveDictCache();
+        return merged;
+      })
+      .catch(function () { return null; })
+      .finally(function () { clearTimeout(timer); });
+  }
+
+  // 内置音标兜底：dictionaryapi.dev 挂掉（或网络不通）时至少还能显示音标。
+  // 只收算法竞赛题面里高频的词，用英式 DJ 音标手写。
+  const IPA_FALLBACK = {
+    // 题面里常见
+    adjacent: '/əˈdʒeɪ.sənt/', optimal: '/ˈɒp.tɪ.məl/', arithmetic: '/əˈrɪθ.mə.tɪk/',
+    bracket: '/ˈbræk.ət/', concatenate: '/kənˈkæt.ə.neɪt/', partition: '/pɑːˈtɪʃ.ən/',
+    subtract: '/səbˈtrækt/', recursion: '/rɪˈkɜː.ʃən/', statement: '/ˈsteɪt.mənt/',
+    optimization: '/ˌɒp.tɪ.maɪˈzeɪ.ʃən/', unlimited: '/ʌnˈlɪm.ɪ.tɪd/',
+    overflow: '/ˌəʊ.vəˈfləʊ/', disconnect: '/ˌdɪs.kəˈnekt/',
+    occurrence: '/əˈkʌr.ən.səns/', palindrome: '/ˈpæl.ɪn.drəʊm/',
+    divisible: '/dɪˈvɪz.ə.bəl/', prefix: '/ˈpriː.fɪks/', suffix: '/ˈsʌf.ɪks/',
+    index: '/ˈɪn.deks/', array: '/əˈreɪ/', integer: '/ˈɪn.tɪ.dʒər/',
+    character: '/ˈkær.ək.tər/', string: '/strɪŋ/', boolean: '/ˈbuː.li.ən/',
+    sequence: '/ˈsiː.kwəns/', matrix: '/ˈmeɪ.trɪks/', vector: '/ˈvek.tər/',
+    // 数据结构 / 图论
+    node: '/nəʊd/', tree: '/triː/', edge: '/edʒ/', vertex: '/ˈvɜː.tɪ.sɪk/',
+    graph: '/ɡrɑːf/', queue: '/kjuː/', stack: '/stæk/', heap: '/hiːp/',
+    // 动作
+    sort: '/sɔːt/', merge: '/mɜː.dʒ/', search: '/sɜːtʃ/', query: '/ˈkwɪə.ri/',
+    insert: '/ɪnˈsɜːt/', delete: '/dɪˈliːt/', update: '/ˌʌpˈdeɪt/',
+    remove: '/rɪˈmuːv/', append: '/əˈpend/', reverse: '/rɪˈvɜːs/',
+    // 题面用词
+    element: '/ˈel.ɪ.mənt/', value: '/ˈvæl.juː/', number: '/ˈnʌm.bər/',
+    positive: '/ˈpɒz.ə.tɪv/', negative: '/ˈneɡ.ə.tɪv/', length: '/leŋθ/',
+    size: '/saɪz/', count: '/kaʊnt/', total: '/ˈtəʊ.təl/', sum: '/sʌm/',
+    maximum: '/ˈmæk.sɪ.məm/', minimum: '/ˈmɪn.ɪ.məm/', equal: '/ˈiː.kwəl/',
+    greater: '/ˈɡreɪ.tər/', less: '/les/', random: '/ˈræn.dəm/',
+    valid: '/ˈvæl.ɪd/', invalid: '/ɪnˈvæl.ɪd/', answer: '/ˈɑːn.sər/',
+    output: '/ˈaʊt.pʊt/', input: '/ˈɪn.pʊt/', example: '/ɪɡˈzɑːm.pəl/',
+    test: '/test/', case: '/keɪs/', constraint: '/kənˈstreɪnt/',
+    guaranteed: '/ˌɡær.ənˈtiːd/', perform: '/pəˈfɔːm/', operation: '/ˌɒp.əˈreɪ.ʃən/',
+    algorithm: '/ˈæl.ɡə.rɪ.ðəm/', complexity: '/kəmˈpleks.ə.ti/',
+    efficient: '/ɪˈfɪʃ.ənt/', construct: '/kənˈstrʌkt/',
+    implementation: '/ˌɪm.plɪ.menˈteɪ.ʃən/', parameter: '/pəˈræm.ɪ.tər/',
+    variable: '/ˈveə.ri.ə.bəl/', function: '/ˈfʌŋk.ʃən/', pointer: '/ˈpɔɪn.tər/',
+    struct: '/strʌkt/', object: '/ˈɒb.dʒɪkt/', class: '/klɑːs/',
+    // 她的词库里已收录的词
+    hack: '/hæk/', arbitrary: '/ˈɑː.bɪ.trər.i/', denote: '/dɪˈnəʊt/',
+    portal: '/ˈpɔː.təl/', respectively: '/rɪˈspekt.ɪv.li/',
+    lexicographically: '/ˌlek.sɪ.kəʊˈɡræf.ɪk.li/', lexicon: '/ˈlek.sɪ.kən/',
+    compute: '/kəmˈpjuːt/', terminate: '/ˈtɜː.mɪ.neɪt/', infer: '/ɪnˈfɜːr/',
+    separate: '/ˈsep.ər.ət/', corresponding: '/ˌkɒr.əˈspɒnd.ɪŋ/',
+    product: '/ˈprɒd.ʌkt/', 'positive integer': '/ˈpɒz.ə.tɪv ˈɪn.tɪ.dʒər/',
+    frosting: '/ˈfrɒs.tɪŋ/', uneven: '/ʌnˈviːn/', level: '/ˈlev.əl/',
+    hourglass: '/ˈaʊə.ɡlɑːs/', errand: '/ˈer.ənd/', proceed: '/prəˈsiːd/',
+    ascending: '/əˈsen.dɪŋ/', lowercase: '/ˈləʊ.keɪs/', garland: '/ˈɡɑː.lənd/',
+    bulb: '/bʌlb/', binary: '/ˈbaɪ.nər.i/', alternate: '/ɔːlˈtɜː.nət/',
+    subsegment: '/ˈsʌb.seɡ.mənt/', takeout: '/ˈteɪk.aʊt/',
+    safeguard: '/ˈseɪf.ɡɑːd/', fondness: '/ˈfɒnd.nəs/', relative: '/ˈrel.ə.tɪv/',
+    distribute: '/dɪˈstrɪb.juːt/'
+  };
+
+  // ---- 拼写拆分 + 词根词缀（纯本地规则，不联网）----
+  // 规则刻意保守：只保留高置信度的组合，宁可拆不出来也不拆错。
+  // 这套规则用 42 个真实单词跑过单元测试，「不该拆」的一律不拆
+  // （adjacent ≠ ad+jacent、optimal ≠ optim+al、arithmetic ≠ arithmet+ic）。
+  const PREFIXES = [
+    ['counter', '反、对'], ['inter', '在…之间 / 相互'], ['trans', '穿过'],
+    ['super', '超'], ['under', '不足'], ['anti', '反'], ['auto', '自动'],
+    ['micro', '微小'], ['multi', '多'], ['over', '过度'], ['post', '后'],
+    ['non', '非'], ['mis', '错误'], ['out', '向外'], ['pro', '向前'],
+    ['un', '不'], ['im', '不 / 进入'], ['ir', '不'], ['dis', '分开']
+  ];
+  const SUFFIXES = [
+    ['ization', '名词化：…化'], ['ability', '名词化：…能力'],
+    ['ibility', '名词化：…性'], ['fulness', '名词化：…度'],
+    ['ment', '名词化：结果'], ['tion', '名词化：动作/结果'],
+    ['sion', '名词化：动作/结果'], ['ance', '名词化：性质'],
+    ['ship', '名词化：身份/关系'], ['ology', '…学'],
+    ['able', '能…的'], ['ible', '能…的'], ['less', '无…的'],
+    ['ous', '多…的'], ['ive', '有…倾向的'], ['ity', '名词化：性质']
+  ];
+
+  // 剩余部分看起来像一个完整的词根/词干，才认为拆分成立
+  function looksLikeStem(s) {
+    if (!s || s.length < 3) return false;
+    if (!/[aeiouy]/.test(s)) return false;              // 全是辅音的片段多半切错了
+    if (/^[^aeiouy]{4,}/.test(s)) return false;          // 开头连续 4 个辅音，不自然
+    // 辅音+元音+辅音且首辅音不是 s/j/v/w/c/g —— 多半切进了词中间
+    if (/^[^aeiouysvwcg][aeiouy][^aeiouy]/.test(s) && s.length < 5) return false;
+    return true;
+  }
+
+  // 返回 {affix, cn, head, tail, at}：head/tail 是拆分后左、右两段
+  // 后缀优先：-tion/-ment/-ity 带明确词性信号，比两字母前缀可靠得多
+  function stripAffix(word) {
+    const w = String(word || '').toLowerCase();
+    const sorted = SUFFIXES.slice().sort(function (a, b) { return b[0].length - a[0].length; });
+    for (const [s, cn] of sorted) {
+      if (w.length <= s.length + 3 || !w.endsWith(s)) continue;   // 词干至少 4 个字母
+      const head = w.slice(0, -s.length);
+      if (!looksLikeStem(head)) continue;
+      return { affix: s, cn: cn, head: head, tail: s, at: '后' };
+    }
+    for (const [p, cn] of PREFIXES) {
+      const rest = w.slice(p.length);
+      if (!w.startsWith(p) || rest.length < 3) continue;
+      if (!looksLikeStem(rest)) continue;
+      return { affix: p, cn: cn, head: p, tail: rest, at: '前' };
+    }
+    return null;
+  }
+
+  // 常见词根（已去重）。只收「算法竞赛题面里真会出现」的，长度 ≥3 的才参与匹配。
+  const ROOTS = [
+    // 看 / 说
+    ['spect', '看见'], ['spec', '看见'], ['vis', '看见'], ['vid', '看见'],
+    ['dict', '说'], ['loqu', '说'], ['voc', '叫喊'], ['clam', '叫喊'],
+    // 移动 / 搬运
+    ['port', '搬运'], ['duct', '引导'], ['duc', '引导'], ['ject', '投掷'],
+    ['tract', '拉、拖'], ['trud', '推'], ['press', '压'], ['puls', '推'],
+    ['mot', '动'], ['mov', '动'], ['mob', '动'], ['cess', '走、让'],
+    ['grad', '步、级'], ['gress', '走'], ['ced', '走'], ['ceed', '走'],
+    ['ven', '来'], ['vent', '来'], ['vers', '转'], ['vert', '转'],
+    ['volv', '滚'], ['volut', '滚'], ['cur', '跑'], ['curs', '跑'],
+    // 做 / 建造
+    ['struct', '建造'], ['form', '形状'], ['fact', '做'], ['fect', '做'],
+    ['flect', '弯曲'], ['flex', '弯曲'], ['flu', '流'], ['flux', '流'],
+    ['rupt', '断裂'], ['pand', '伸展、展开'], ['tend', '伸展'], ['tens', '伸展、张力'],
+    ['rect', '正、直'], ['reg', '引导、规则'], ['rig', '引导'],
+    // 送 / 给
+    ['miss', '送'], ['mit', '送'], ['tribut', '给予'], ['trib', '给予'],
+    ['don', '给予'], ['dit', '给'], ['give', '给'],
+    // 放置 / 悬挂
+    ['pos', '放置'], ['pon', '放置'], ['pend', '悬挂'], ['pens', '悬挂、花费'],
+    ['loc', '地方'], ['pli', '折叠'], ['ploy', '折叠'],
+    // 切 / 分 / 连接
+    ['sect', '切'], ['cid', '切、落下'], ['cis', '切'], ['lect', '选、读'],
+    ['leg', '选、读'], ['nect', '连接'], ['nex', '连接'], ['join', '连接'],
+    ['clud', '关闭'], ['clus', '关闭'], ['clos', '关闭'],
+    ['sequ', '跟随'], ['secut', '跟随'], ['suit', '跟随'],
+    // 写 / 画
+    ['scrib', '写'], ['script', '写'], ['graph', '写画'], ['gram', '写画'],
+    // 测 / 数
+    ['meter', '测量'], ['metr', '测量'], ['numer', '数'], ['count', '数'],
+    ['sim', '相似'],
+    // 界限 / 结束
+    ['termin', '界限、结束'], ['grade', '等级'], ['lim', '界限'], ['lmit', '界限'],
+    // 站立 / 状态
+    ['sist', '站立'], ['sta', '站立'], ['stat', '站立、状态'],
+    // 感觉 / 信念 / 知道
+    ['pass', '感觉、遭受'], ['path', '感觉、痛苦'], ['sent', '感觉'], ['sens', '感觉'],
+    ['cred', '相信'], ['fid', '信'], ['sci', '知道'], ['gn', '知道'], ['not', '知道'],
+    // 脚 / 尾 / 群
+    ['ped', '脚'], ['pod', '脚'], ['tail', '尾'], ['greg', '群'],
+    // 包含 / 持有
+    ['tent', '包含'], ['cap', '拿、容纳']
+  ];
+
+  // 这些根虽然真实存在，但太容易在别的单词里撞上（cent→adjacent、ten→often、
+  // not→node、log→logic、sol→solution），命中基本是误判，直接不参与匹配。
+  const TRICKY_ROOTS = new Set(['cent', 'ten', 'tain', 'not', 'log', 'sol', 'equ', 'fin', 'pos', 'pon', 'mid', 'via', 'per', 'pre', 'pro', 'sub', 'dis']);
+
+  // 找词根：英语词根多数落在词尾（spect / port / tract），所以优先匹配「结尾」，
+  // 其次才考虑出现在中间。长度必须 ≥3，否则到处都是误命中。
+  function findRoot(word, stem) {
+    const w = String(stem || word || '').toLowerCase();
+    let best = null;
+    for (const [r, cn] of ROOTS) {
+      if (r.length < 3) continue;
+      if (TRICKY_ROOTS.has(r)) continue;
+      if (w.length < r.length + 2) continue;
+      const atEnd = w.endsWith(r);
+      if (!atEnd) {
+        // 只在词中出现（不是结尾）时要求更严：至少 4 个字母，避免 cen/sen 这类碎片乱撞
+        if (r.length < 4) continue;
+        if (w.indexOf(r) < 0) continue;
+      }
+      const score = r.length + (atEnd ? 10 : 0);
+      if (!best || score > best.score) best = { root: r, cn: cn, score: score, atEnd: atEnd };
+    }
+    if (!best) return null;
+    const at = w.indexOf(best.root);
+    return { root: best.root, cn: best.cn, at: at };
+  }
+
+  // 打开详情
+  let detailWord = null;
+
+  function openDetail(w) {
+    if (!w) return;
+    detailWord = w;
+    const word = w.word;
+
+    $('dWord').textContent = word;
+    $('dPos').innerHTML = w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '';
+    $('dIpa').textContent = '…';
+    $('dDictLink').href = dictUrl(word);
+    $('dDictLink').textContent = '在剑桥词典查「' + word + '」';
+    $('dStatus').textContent = canSpeak() ? '' : '这个浏览器不支持朗读，下面有词典链接';
+    $('dSpeakHint').textContent = '';
+
+    // 词库里的中文释义 + 例句
+    $('dMeaning').innerHTML = esc(w.meaning || '—') +
+      (w.origin && normWord(w.origin) !== normWord(word)
+        ? ' <span class="origin-tag">原词 ' + esc(w.origin) + '</span>' : '');
+    const ex = (w.examples || []).filter(Boolean);
+    $('dExampleBlock').hidden = !ex.length;
+    $('dExamples').innerHTML = ex.map(function (e) {
+      return '<li><span class="en">' + hl(e, word) + '</span>' +
+        '<button class="mini-btn ex-speak" data-say="' + esc(e) + '" title="朗读这句">' + SPEAK_ICON + '</button></li>';
+    }).join('');
+
+    // 拼写拆分 + 词根（纯本地，先算，不用等网络）
+    const aff = stripAffix(word);
+    // 词根要在「剥掉前缀的词干」里找，否则 re- / un- 会被当成词根的一部分
+    const stem = aff && aff.at === '前' ? aff.tail : word;
+    const rt = findRoot(word, stem);
+    // 如果已经给出了词根，而且词根就等于整个词干，那句「拼写拆分」是多余的，直接不显示
+    const affUseful = aff && !(rt && rt.root === word);
+    $('dBreakBlock').hidden = !affUseful;
+    if (affUseful) {
+      $('dBreak').innerHTML =
+        '<span class="frag">' + esc(aff.head) + '</span>' +
+        '<span class="frag-tail">' + esc(aff.tail) + '</span>' +
+        '<span class="frag-note">' + esc(aff.affix) + '（' + esc(aff.cn) + '，' + aff.at + '缀）</span>';
+    }
+    $('dRootBlock').hidden = !rt;
+    if (rt) {
+      // 在完整词干上把词根标出来，而不是拆成几段——拆段会拼出
+      // 「curs + reion」这种看着像乱码的组合。
+      // 词根两侧的连接元音（state+ment → stat+ement 的 e）一起高亮。
+      const at = rt.at != null && rt.at >= 0 ? rt.at : 0;
+      let end = at + rt.root.length;
+      if (end < stem.length && /^[aeiou]/.test(stem[end]) && stem.length - end > 1) end++;
+      $('dRoot').innerHTML =
+        '<span class="stem-word">' + esc(stem.slice(0, at)) +
+        '<b class="stem-root">' + esc(stem.slice(at, end)) + '</b>' +
+        esc(stem.slice(end)) + '</span>' +
+        '<span class="frag-note">词根 ' + esc(rt.root) + '：' + esc(rt.cn) + '</span>';
+    }
+
+    // 下面三块先占位，等接口回来
+    $('dEnDefs').innerHTML = '';
+    $('dDeriv').innerHTML = '';
+    $('dSyn').innerHTML = '';
+    $('dDerivBlock').hidden = true;
+    $('dSynBlock').hidden = true;
+
+    $('detailModal').hidden = false;
+
+    // 朗读按钮：优先读单词
+    if (canSpeak()) speak(word, $('dAccent').value);
+
+    // 异步补音标 / 派生 / 近义
+    fetchDict(word).then(function (d) {
+      if (detailWord !== w) return;
+      // 接口挂了也别让音标空着：先用内置表兜底
+      const fbIpa = IPA_FALLBACK[normWord(word)] || '';
+      if (!d) {
+        $('dIpa').textContent = fbIpa || '无音标';
+        $('dStatus').textContent = fbIpa
+          ? '在线词典暂时连不上，先显示内置音标；下方剑桥链接可查完整词条。'
+          : '在线词典没查到这个词（可能太偏或拼写特殊），可点下方剑桥链接手动查。';
+        return;
+      }
+      $('dIpa').textContent = d.ipa || fbIpa || '无音标';
+      $('dStatus').textContent = d.ipa ? '' : (fbIpa ? '内置音标（在线词典没返回）' : '');
+
+      if (d.defs.length) {
+        $('dEnDefs').innerHTML = d.defs.slice(0, 5).map(function (x) {
+          return '<li><span class="en-pos">' + esc(x.pos) + '</span> ' + esc(x.def) + '</li>';
+        }).join('');
+      }
+      // 派生词：只取 definitions[].derivatives（真派生），加上 meanings[].synonyms 里
+      // 不等于原形、且不与近义词重复的项
+      if (d.deriv.length) {
+        $('dDerivBlock').hidden = false;
+        $('dDeriv').innerHTML = d.deriv.map(function (x) {
+          return '<button class="deriv" data-say="' + esc(x) + '">' + esc(x) + '</button>';
+        }).join('');
+      }
+      // 近义 / 反义：只从 definition 级的 synonyms / antonyms 取（词条级的 synonyms 是"相关词"，
+      // 混进来会出现 nonadjacent 这种其实是派生词的条目）
+      const syns = [], ants = [];
+      d.defs.forEach(function (x) {
+        (x.syn || []).forEach(function (s) { if (syns.indexOf(s) < 0) syns.push(s); });
+        (x.ant || []).forEach(function (s) { if (ants.indexOf(s) < 0) ants.push(s); });
+      });
+      if (syns.length || ants.length) {
+        $('dSynBlock').hidden = false;
+        $('dSyn').innerHTML =
+          (syns.length ? '<div class="syn-row"><b>近义</b>' +
+            syns.map(function (s) { return '<button class="deriv" data-say="' + esc(s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' : '') +
+          (ants.length ? '<div class="syn-row"><b>反义</b>' +
+            ants.map(function (s) { return '<button class="deriv" data-say="' + esc(s) + '">' + esc(s) + '</button>'; }).join('') + '</div>' : '');
+      }
+    });
+  }
+
+  /* ---------------- 滚动时自动隐藏导航 ----------------
+     往下滚 → 顶栏 / 统计栏 / 工具栏整体上移藏起来，只剩单词；
+     鼠标停到页面顶部 → 停满 1 秒才把它们放出来（防误触）。 */
+
+  let navHoldTimer = null;
+
+  function bindAutoHide() {
+    let lastY = window.scrollY;
+    let shown = true;
+    const HOVER_MS = 1000;
+
+    const show = function () {
+      clearTimeout(navHoldTimer);
+      if (shown) return;
+      shown = true;
+      document.body.classList.remove('chrome-hidden');
+    };
+    const hide = function () {
+      clearTimeout(navHoldTimer);
+      if (!shown) return;
+      shown = false;
+      document.body.classList.add('chrome-hidden');
+    };
+    // 往上滚 / 鼠标进顶部区：先不急着显示，等满 1 秒
+    const schedule = function () {
+      clearTimeout(navHoldTimer);
+      if (shown) return;
+      navHoldTimer = setTimeout(show, HOVER_MS);
+    };
+
+    document.addEventListener('mousemove', function (e) {
+      if (!view.autoHide) return;
+      if (e.clientY <= 120) schedule();
+    });
+
+    window.addEventListener('scroll', function () {
+      if (!view.autoHide) return;
+      const y = window.scrollY;
+      const dy = y - lastY;
+      lastY = y;
+      if (y < 60) { show(); return; }        // 回到顶部就常驻
+      if (dy > 4) hide();                     // 往下滚 → 藏
+      else if (dy < -4) schedule();           // 往上滚 → 等 1 秒再给
+    }, { passive: true });
+  }
+
   /* ---------------- 渲染 ---------------- */
 
   function isWeak(w) {
@@ -440,32 +882,36 @@
   function freqOf(w) { return (w.examples || []).length; }
 
   // 所有排序都走这里：页面列表、导出 Word 共用同一套规则
-  function sortList(list, mode) {
+  // dir: 'desc'（默认）= 新的/多的/靠后的在前；'asc' 反过来
+  function sortList(list, mode, dir) {
+    const s = dir === 'asc' ? -1 : 1;
     const arr = list.slice();
     if (mode === 'alpha') {
-      arr.sort(function (a, b) { return String(a.word).localeCompare(String(b.word), 'en'); });
+      arr.sort(function (a, b) { return s * String(a.word).localeCompare(String(b.word), 'en'); });
     } else if (mode === 'freq') {
       arr.sort(function (a, b) {
         const d = freqOf(b) - freqOf(a);
-        return d !== 0 ? d : String(a.word).localeCompare(String(b.word), 'en');
+        return (d !== 0 ? s * d : s * String(a.word).localeCompare(String(b.word), 'en'));
       });
     } else if (mode === 'recent') {
-      arr.sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); });
+      arr.sort(function (a, b) { return s * String(b.created_at).localeCompare(String(a.created_at)); });
     } else if (mode === 'oldest') {
-      arr.sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
+      arr.sort(function (a, b) { return s * String(a.created_at).localeCompare(String(b.created_at)); });
     } else if (mode === 'updated') {
-      arr.sort(function (a, b) { return String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
+      arr.sort(function (a, b) { return s * String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
     } else {
-      arr.sort(function (a, b) { return a._r - b._r; });
+      arr.sort(function (a, b) { return s * (a._r - b._r); });
     }
     return arr;
   }
 
   function applyView() {
     document.body.classList.toggle('layout-list', view.layout === 'list');
+    document.body.classList.toggle('layout-grid', view.layout !== 'list');
     document.body.classList.toggle('hide-meaning', view.hideMeaning);
     document.body.classList.toggle('hide-examples', view.hideExamples);
     document.body.classList.toggle('nav-collapsed', view.navCollapsed);
+    document.body.classList.toggle('auto-hide', view.autoHide);
     const seg = $('layoutSeg');
     Array.prototype.forEach.call(seg.querySelectorAll('.seg-btn'), function (b) {
       b.classList.toggle('active', b.dataset.layout === view.layout);
@@ -474,9 +920,26 @@
       b.classList.toggle('active', !!view['hide' + (b.dataset.hide === 'meaning' ? 'Meaning' : 'Examples')]);
     });
     const nt = $('navToggle');
-    nt.classList.toggle('on', view.navCollapsed);
-    $('navToggleIcon').innerHTML = view.navCollapsed ? ICONS.expand : ICONS.collapse;
-    nt.querySelector('.btn-label').textContent = view.navCollapsed ? '展开' : '收起';
+    nt.classList.toggle('on', view.autoHide);
+    $('navToggleIcon').innerHTML = ICONS.eye;
+    nt.querySelector('.btn-label').textContent = view.autoHide ? '自动隐藏·开' : '自动隐藏·关';
+
+    // 排序方向
+    $('sortDirIcon').innerHTML = view.sortDir === 'asc' ? ICONS.arrowUp : ICONS.arrowDown;
+    $('sortDir').title = view.sortDir === 'asc' ? '当前：升序，点一下换成降序' : '当前：降序，点一下换成升序';
+    $('colCount').value = view.cols;
+  }
+
+  // 每行几个单词：写成一个 CSS 变量 + data 属性，grid 模板直接用它
+  function applyCols() {
+    const n = Number(view.cols);
+    if (view.cols === 'auto' || !n || n < 1) {
+      document.body.style.removeProperty('--cols');
+      document.body.removeAttribute('data-cols');
+    } else {
+      document.body.style.setProperty('--cols', String(n));
+      document.body.setAttribute('data-cols', String(n));
+    }
   }
 
   function computeFiltered() {
@@ -491,7 +954,7 @@
       if ((w.note || '').toLowerCase().indexOf(q) >= 0) return true;
       return (w.examples || []).join(' ').toLowerCase().indexOf(q) >= 0;
     });
-    return sortList(list, $('sortSelect').value);
+    return sortList(list, $('sortSelect').value, view.sortDir);
   }
 
   function render() {
@@ -541,16 +1004,23 @@
         '</div>'
       : '';
 
+    // 单词本体点开详情，旁边小喇叭直接朗读
+    const head =
+      '<button class="word word-btn mono" data-detail="' + w.id + '" title="点击看读音、音标、派生与词根">' +
+      esc(w.word) + '</button>' +
+      '<button class="mini-speak" data-say="' + esc(w.word) + '" title="朗读 ' + esc(w.word) + '">' + SPEAK_ICON + '</button>';
+
     return '<article class="card" data-id="' + w.id + '">' +
-      '<div class="card-head"><span class="word mono">' + dictLink(w.word, 'word mono dict-link') + '</span>' +
+      '<div class="card-head"><span class="word-wrap">' + head + '</span>' +
       (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') + '</div>' +
       '<div class="meaning">' + esc(w.meaning || '—') + '</div>' +
       (w.origin && normWord(w.origin) !== normWord(w.word)
         ? '<div class="origin-tag">原词 ' + esc(w.origin) + '</div>' : '') +
       (ex ? '<ul class="examples">' + ex + '</ul>' : '') +
       (w.note ? '<div class="note">' + esc(w.note) + '</div>' : '') +
-      '<div class="card-foot"><span>' + fmtDate(w.created_at) + ' 加入</span>' +
-      '<span>' + (w.examples || []).length + ' 例句</span>' + badges + actions + '</div>' +
+      (badges || actions
+        ? '<div class="card-foot">' + badges + actions + '</div>'
+        : '') +
       '</article>';
   }
 
@@ -679,18 +1149,22 @@
 
   function updateExportHint() {
     const n = exportScopeList().length;
-    $('exHint').textContent = '将导出 ' + n + ' 个单词。' +
-      ($('exLayout').value === 'two' ? '双栏排版适合只求「词+释义」的速记表。' : '单栏适合带例句的完整复习。');
+    const two = $('exLayout').value === 'two';
+    $('exHint').textContent = '将导出 ' + n + ' 个单词。' + (two
+      ? '双栏版式参考经典词汇表：左右两栏 No./Word/Meaning + 每行勾选框，页脚有页码。'
+      : '单栏适合带例句的完整复习，页脚同样有页码。');
   }
 
   async function doExport(e) {
     e.preventDefault();
     const list = exportScopeList();
     if (!list.length) { toast('没有可导出的单词', true); return; }
+    const two = $('exLayout').value === 'two';
     const opts = {
-      title: cfg.docTitle || 'algorithm-wordbook',
+      title: two ? 'Classic Vocabulary List' : (cfg.docTitle || 'algorithm-wordbook'),
+      docTitle: $('exDocTitle').value.trim() || '收藏的单词',
       date: nowStr(),
-      columns: $('exLayout').value === 'two' ? 2 : 1,
+      columns: two ? 2 : 1,
       withMeaning: $('exMeaning').checked,
       withPos: $('exPos').checked,
       withNote: $('exNote').checked,
@@ -702,7 +1176,7 @@
     btn.disabled = true;
     try {
       const blob = await window.DocxExport.exportDocx(list, opts);
-      download(blob, fileName(opts.columns));
+      download(blob, fileName(two));
       $('exportModal').hidden = true;
       toast('已导出 ' + list.length + ' 个单词到 Word');
     } catch (err) {
@@ -1106,10 +1580,33 @@
     });
 
     $('navToggle').addEventListener('click', function () {
-      view.navCollapsed = !view.navCollapsed;
+      view.autoHide = !view.autoHide;
       saveView();
       applyView();
+      if (!view.autoHide) {
+        clearTimeout(navHoldTimer);
+        document.body.classList.remove('chrome-hidden');
+      }
     });
+
+    // 排序方向：每次点一下就翻转
+    $('sortDir').addEventListener('click', function () {
+      view.sortDir = view.sortDir === 'asc' ? 'desc' : 'asc';
+      saveView();
+      applyView();
+      render();
+    });
+
+    // 每行几个单词
+    $('colCount').addEventListener('change', function () {
+      view.cols = this.value;
+      saveView();
+      applyView();
+      applyCols();
+    });
+
+    // 滚动时自动隐藏 / 鼠标停留显示
+    bindAutoHide();
 
     $('layoutSeg').addEventListener('click', function (e) {
       const b = e.target.closest('.seg-btn');
@@ -1236,6 +1733,24 @@
     });
 
     $('cardGrid').addEventListener('click', function (e) {
+      // 小喇叭：只朗读，不打开详情
+      const say = e.target.closest('[data-say]');
+      if (say) {
+        e.stopPropagation();
+        if (!canSpeak()) { toast('这个浏览器不支持朗读', true); return; }
+        const ok = speak(say.dataset.say, $('dAccent').value);
+        if (ok) {
+          say.classList.add('playing');
+          setTimeout(function () { say.classList.remove('playing'); }, 700);
+        } else toast('朗读失败', true);
+        return;
+      }
+      const det = e.target.closest('[data-detail]');
+      if (det) {
+        const w = all.find(function (x) { return x.id === Number(det.dataset.detail); });
+        if (w) openDetail(w);
+        return;
+      }
       const edit = e.target.closest('[data-edit]');
       if (edit) {
         const w = all.find(function (x) { return x.id === Number(edit.dataset.edit); });
@@ -1244,6 +1759,32 @@
       }
       const del = e.target.closest('[data-del]');
       if (del) onDelete(Number(del.dataset.del));
+    });
+
+    // ---- 详情弹窗 ----
+    $('dSpeak').addEventListener('click', function () {
+      if (!detailWord) return;
+      if (!canSpeak()) { toast('这个浏览器不支持朗读，请点下方词典链接', true); return; }
+      const ok = speak(detailWord.word, $('dAccent').value);
+      if (ok) {
+        this.classList.add('playing');
+        $('dSpeakHint').textContent = '朗读中…';
+        setTimeout(function () {
+          document.getElementById('dSpeak').classList.remove('playing');
+          const h = document.getElementById('dSpeakHint');
+          if (h) h.textContent = '';
+        }, 900);
+      }
+    });
+    $('dAccent').addEventListener('change', function () {
+      if (detailWord && canSpeak()) speak(detailWord.word, this.value);
+    });
+    // 例句、派生词、近义词上的喇叭都能点
+    $('detailModal').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-say]');
+      if (!b) return;
+      if (!canSpeak()) { toast('这个浏览器不支持朗读', true); return; }
+      speak(b.dataset.say, $('dAccent').value);
     });
 
     $('searchInput').addEventListener('input', render);
