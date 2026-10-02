@@ -1,0 +1,558 @@
+{
+  "updated": "2026-10-02T12:08:11.894Z",
+  "words": [
+    {
+      "id": 1,
+      "word": "hack",
+      "pos": "v.",
+      "meaning": "破解（比赛术语：hack 他人代码）",
+      "origin": "",
+      "examples": [
+        "You can hack only if you solved all versions of this problem."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 2,
+      "word": "arbitrary",
+      "pos": "adj.",
+      "meaning": "任意的",
+      "origin": "",
+      "examples": [
+        "choose an arbitrary integer m"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 3,
+      "word": "denote",
+      "pos": "v.",
+      "meaning": "表示，代表",
+      "origin": "",
+      "examples": [
+        "Here, gcd(x,y) denotes the greatest common divisor (GCD) of integers x and y."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 4,
+      "word": "portal",
+      "pos": "n.",
+      "meaning": "大门，入口；（题中常指）传送门",
+      "origin": "",
+      "examples": [
+        "There are also two portals located at positions x and y (x<y)."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 5,
+      "word": "respectively",
+      "pos": "adv.",
+      "meaning": "分别地",
+      "origin": "",
+      "examples": [
+        "Using operation 1 on the left and right portals respectively results in the arrays [0,2,4,0,3,1] and [3,0,4,2,0,1].",
+        "In the second test case, 4 , 5 , 6 appear 1,2,3 times respectively."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 6,
+      "word": "lexicographically",
+      "pos": "adv.",
+      "meaning": "按字典序地",
+      "origin": "",
+      "examples": [
+        "Find the lexicographically smallest permutation you can obtain using these operations."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 7,
+      "word": "lexicon",
+      "pos": "n.",
+      "meaning": "词典，词汇表",
+      "origin": "",
+      "examples": [],
+      "note": "lexicographically（字典序地）的同根词",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 8,
+      "word": "index",
+      "pos": "n.",
+      "meaning": "索引，下标（复数 indices / indexes）",
+      "origin": "indice",
+      "examples": [
+        "A permutation a is lexicographically smaller than permutation b if there exists an index i such that aj=bj for all indices 1<=j<i and ai<bi."
+      ],
+      "note": "原题笔记里写成 indice，正确单数是 index，复数是 indices/indexes",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 9,
+      "word": "optimal",
+      "pos": "adj.",
+      "meaning": "最优的",
+      "origin": "",
+      "examples": [
+        "In the fourth test case, it is optimal not to do any operations."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 10,
+      "word": "compute",
+      "pos": "v.",
+      "meaning": "计算",
+      "origin": "",
+      "examples": [
+        "you must compute a value for one sequence"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 11,
+      "word": "terminate",
+      "pos": "v.",
+      "meaning": "终止，结束",
+      "origin": "",
+      "examples": [
+        "If k=0, terminate immediately and return the sequence x."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 12,
+      "word": "immediately after",
+      "pos": "phr.",
+      "meaning": "紧挨着，紧接着……之后",
+      "origin": "",
+      "examples": [
+        "Then, select any index 1<=i<=|x| and insert (xi+1) immediately after the element xi."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 13,
+      "word": "infer",
+      "pos": "v.",
+      "meaning": "推断，推测",
+      "origin": "",
+      "examples": [
+        "but it is not an easy job to infer the input from the output of the algorithm."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 14,
+      "word": "separate",
+      "pos": "adj.",
+      "meaning": "单独的，分开的",
+      "origin": "",
+      "examples": [
+        "For each test case, output the length of the shortest sequence on a separate line."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 15,
+      "word": "prefix",
+      "pos": "n.",
+      "meaning": "前缀",
+      "origin": "",
+      "examples": [
+        "x is a prefix of y, but x!=y"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 16,
+      "word": "corresponding",
+      "pos": "adj.",
+      "meaning": "对应的",
+      "origin": "",
+      "examples": [
+        "the array x has a smaller element than the corresponding element in y."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 17,
+      "word": "product",
+      "pos": "n.",
+      "meaning": "乘积；（也指）产品",
+      "origin": "",
+      "examples": [
+        "Let f(a) denote the number of subarrays of a whose product is divisible by 6."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 18,
+      "word": "divisible",
+      "pos": "adj.",
+      "meaning": "可整除的",
+      "origin": "",
+      "examples": [
+        "Let f(a) denote the number of subarrays of a whose product is divisible by 6."
+      ],
+      "note": "be divisible by ... 可被……整除",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 19,
+      "word": "palindrome",
+      "pos": "n.",
+      "meaning": "回文",
+      "origin": "",
+      "examples": [
+        "A palindrome is a string that reads the same backward as forward, for example, strings \"z\", \"aaa\", \"aba\", \"abccba\" are palindromes, but strings \"codeforces\", \"reality\", \"ab\" are not."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 20,
+      "word": "positive integer",
+      "pos": "n.",
+      "meaning": "正整数",
+      "origin": "",
+      "examples": [
+        "A positive integer x is a perfect root if there exists an integer y such that y=sqrt(x)."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 21,
+      "word": "frosting",
+      "pos": "n.",
+      "meaning": "（蛋糕上的）糖霜",
+      "origin": "",
+      "examples": [
+        "so the frosting on the cake is uneven"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 22,
+      "word": "uneven",
+      "pos": "adj.",
+      "meaning": "不平坦的，不均匀的",
+      "origin": "",
+      "examples": [
+        "so the frosting on the cake is uneven"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 23,
+      "word": "level",
+      "pos": "v./adj.",
+      "meaning": "使平整；水平的",
+      "origin": "",
+      "examples": [
+        "To quickly solve this issue, Alice will put her knife at some integer height and then sweep the frosting from left to right to make the frosting level."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:11.797682+08:00"
+    },
+    {
+      "id": 24,
+      "word": "bracket",
+      "pos": "n.",
+      "meaning": "括号",
+      "origin": "",
+      "examples": [
+        "We say that a bracket sequence a is better than a bracket sequence b if one of the following holds:"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 25,
+      "word": "arithmetic",
+      "pos": "n.",
+      "meaning": "算术",
+      "origin": "",
+      "examples": [
+        "A regular bracket sequence is a bracket sequence that can be transformed into a correct arithmetic expression by inserting the characters 1 and + between the original characters of the sequence."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 26,
+      "word": "hourglass",
+      "pos": "n.",
+      "meaning": "沙漏",
+      "origin": "",
+      "examples": [
+        "Vadim''s hourglass measures s minutes."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 27,
+      "word": "errand",
+      "pos": "n.",
+      "meaning": "差事，跑腿",
+      "origin": "errands",
+      "examples": [
+        "However, Vadim needs to leave for errands in m minutes"
+      ],
+      "note": "原句中是复数 errands，词条取原形",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 28,
+      "word": "proceed",
+      "pos": "v.",
+      "meaning": "继续进行",
+      "origin": "proceeds",
+      "examples": [
+        "After this, the game proceeds to the next turn, or ends if it is the n-th turn."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 29,
+      "word": "if and only if",
+      "pos": "phr.",
+      "meaning": "当且仅当",
+      "origin": "",
+      "examples": [
+        "we call it complete if and only if both of the following hold:"
+      ],
+      "note": "常缩写为 iff",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 30,
+      "word": "ascending",
+      "pos": "adj.",
+      "meaning": "升序的",
+      "origin": "",
+      "examples": [
+        "Stepan wants to know whether it is possible to sort the permutation in ascending order using any number of such operations."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 31,
+      "word": "lowercase",
+      "pos": "n./adj.",
+      "meaning": "小写（字母）",
+      "origin": "",
+      "examples": [
+        "You may output each letter in any case (lowercase or uppercase). For example, the strings \"yEs\", \"yes\", \"Yes\", and \"YES\" will be accepted."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 32,
+      "word": "garland",
+      "pos": "n.",
+      "meaning": "花环，彩灯串",
+      "origin": "",
+      "examples": [
+        "Masha has a New Year garland consisting of n bulbs."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 33,
+      "word": "bulb",
+      "pos": "n.",
+      "meaning": "灯泡",
+      "origin": "",
+      "examples": [
+        "Masha has a New Year garland consisting of n bulbs"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 34,
+      "word": "binary",
+      "pos": "adj.",
+      "meaning": "二进制的",
+      "origin": "",
+      "examples": [
+        "The state of the garland is given by a binary string s of length n, where ''0'' denotes an off bulb and ''1'' denotes an on bulb."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 35,
+      "word": "adjacent",
+      "pos": "adj.",
+      "meaning": "相邻的",
+      "origin": "",
+      "examples": [
+        "Masha considers the garland beautiful if the states of adjacent bulbs strictly alternate.",
+        "For each 1<=i<n, positions i and i+1 are adjacent, and positions 1 and n are also adjacent."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 36,
+      "word": "alternate",
+      "pos": "adj./v.",
+      "meaning": "交替的；交替，轮流",
+      "origin": "",
+      "examples": [
+        "Masha considers the garland beautiful if the states of adjacent bulbs strictly alternate."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 37,
+      "word": "subsegment",
+      "pos": "n.",
+      "meaning": "子段",
+      "origin": "",
+      "examples": [
+        "Yura can apply the following operation to the garland: choose a subsegment and flip the state of all bulbs in it, that is, turn all on bulbs off and all off bulbs on."
+      ],
+      "note": "subarray 是子数组，subsegment 多见于字符串/序列题",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 38,
+      "word": "takeout",
+      "pos": "n.",
+      "meaning": "外卖",
+      "origin": "",
+      "examples": [
+        "A. Marisa Steals Reimu''s Takeout"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 39,
+      "word": "safeguard",
+      "pos": "v.",
+      "meaning": "保护，保卫",
+      "origin": "",
+      "examples": [
+        "Marisa is a girl of integrity who always helps others safeguard their belongings."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 40,
+      "word": "fondness",
+      "pos": "n.",
+      "meaning": "喜爱，癖好",
+      "origin": "",
+      "examples": [
+        "Marisa has a special fondness for the number 3."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 41,
+      "word": "concatenate",
+      "pos": "v.",
+      "meaning": "连接，拼接",
+      "origin": "",
+      "examples": [
+        "Delete and Concatenate",
+        "After each operation, the remaining elements are concatenated without changing their relative order."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 42,
+      "word": "relative",
+      "pos": "adj.",
+      "meaning": "相对的",
+      "origin": "",
+      "examples": [
+        "After each operation, the remaining elements are concatenated without changing their relative order."
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 43,
+      "word": "subtract",
+      "pos": "v.",
+      "meaning": "减去",
+      "origin": "subtracted",
+      "examples": [
+        "Every time you perform an operation (regardless of the type), c is subtracted from your score."
+      ],
+      "note": "原句是 subtracted，词条取原形",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 44,
+      "word": "partition",
+      "pos": "n./v.",
+      "meaning": "划分，分区",
+      "origin": "",
+      "examples": [
+        "Given an array a, let f(a) be the number of ways to partition a into one or more subarrays such that:"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 45,
+      "word": "distribute",
+      "pos": "v.",
+      "meaning": "分配",
+      "origin": "",
+      "examples": [
+        "The cakes were distributed evenly, so each of them initially received 2^k"
+      ],
+      "note": "",
+      "created_at": "2026-10-02T17:44:32.237366+08:00"
+    },
+    {
+      "id": 46,
+      "word": "occurrence",
+      "pos": "n.",
+      "meaning": "出现次数",
+      "origin": "",
+      "examples": [
+        "Given an array a, let f(x) be the number of occurrences of x in the array a."
+      ],
+      "note": "复数形式为occurrences",
+      "created_at": "2026-10-02T19:08:38.515463+08:00"
+    }
+  ]
+}
