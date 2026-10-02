@@ -144,6 +144,19 @@ main { padding: 22px 26px 60px; }
 .card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .card-head { display: flex; align-items: flex-start; gap: 10px; }
 .word { font-size: 21px; font-weight: 700; letter-spacing: .2px; color: var(--accent); word-break: break-word; }
+/* 单词 / 原词 → 点一下跳剑桥词典 */
+.dict-link { color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; }
+.dict-link:hover { border-bottom-color: currentColor; }
+.word.dict-link { border-bottom: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
+.word.dict-link:hover { border-bottom-color: var(--accent); }
+.rec-word .dict-link { color: inherit; font: inherit; border-bottom: 1px dashed color-mix(in srgb, currentColor 45%, transparent); }
+.origin-tag {
+  margin-top: 6px; font-size: 12.5px; color: var(--muted);
+  display: inline-flex; align-items: baseline; gap: 5px;
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 8px;
+}
+.origin-tag .dict-link { font-weight: 700; color: var(--accent); }
 .pos {
   font-size: 12px; color: var(--muted); border: 1px solid var(--border);
   background: var(--panel2); border-radius: 6px; padding: 1px 7px; margin-top: 5px; flex: none;

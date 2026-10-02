@@ -52,6 +52,15 @@ DATA = [
 ]
 
 
+# 博客原文里写成屈折形式的词：入库用原形，但把「原词」记下来，网页上会单独显示
+ORIGIN = {
+    "index": "indice",
+    "errand": "errands",
+    "proceed": "proceeds",
+    "subtract": "subtracted",
+}
+
+
 def lit(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
@@ -59,12 +68,14 @@ def lit(s: str) -> str:
 rows = []
 for word, pos, meaning, examples, note in DATA:
     ex = json.dumps(examples, ensure_ascii=False)
+    origin = ORIGIN.get(word, "")
     rows.append(
-        "(%s,%s,%s,$jq$%s$jq$::jsonb,%s)" % (lit(word), lit(pos), lit(meaning), ex, lit(note))
+        "(%s,%s,%s,%s,$jq$%s$jq$::jsonb,%s)"
+        % (lit(word), lit(origin), lit(pos), lit(meaning), ex, lit(note))
     )
 
 sql = (
-    "INSERT INTO words (word, pos, meaning, examples, note) VALUES\n"
+    "INSERT INTO words (word, origin, pos, meaning, examples, note) VALUES\n"
     + ",\n".join(rows)
     + "\nON CONFLICT (word) DO NOTHING"
 )

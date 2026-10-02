@@ -38,6 +38,18 @@
     return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
+  // 点击单词 → 跳到在线词典查该词
+  function dictUrl(word) {
+    const base = (cfg && cfg.dictUrl) ||
+      'https://dictionary.cambridge.org/zhs/搜索/英语-汉语-简体/direct/?q=';
+    return base + encodeURIComponent(String(word || '').trim());
+  }
+
+  function dictLink(word, cls) {
+    return '<a class="' + (cls || 'dict-link') + '" href="' + esc(dictUrl(word)) +
+      '" target="_blank" rel="noopener" title="在剑桥词典查 ' + esc(word) + '">' + esc(word) + '</a>';
+  }
+
   function splitExamples(text) {
     return String(text || '').split(/\r?\n/).map(function (s) { return s.trim(); })
       .filter(function (s) { return s.length > 0; });
@@ -160,6 +172,7 @@
           pos: rec.pos || found.pos,
           meaning: rec.meaning || found.meaning,
           note: rec.note || found.note,
+          origin: rec.origin || found.origin || '',
           examples: merged,
           updated_at: new Date().toISOString()
         }).eq('id', found.id).select();
@@ -186,6 +199,7 @@
         pos: rec.pos || found.pos,
         meaning: rec.meaning || found.meaning,
         note: rec.note || found.note,
+        origin: rec.origin || found.origin || '',
         examples: merged,
         updated_at: new Date().toISOString()
       }).eq('id', found.id).select();
@@ -194,7 +208,8 @@
       return 'merged';
     }
     const { error } = await db.from('words').insert({
-      word: rec.word, pos: rec.pos, meaning: rec.meaning, examples: rec.examples, note: rec.note
+      word: rec.word, pos: rec.pos, meaning: rec.meaning,
+      origin: rec.origin || '', examples: rec.examples, note: rec.note
     });
     if (error) {
       if (error.code === '23505') return 'merged';
@@ -218,6 +233,7 @@
       if (weakOnly && !isWeak(w)) return false;
       if (!q) return true;
       if (w.word.indexOf(q) >= 0) return true;
+      if ((w.origin || '').toLowerCase().indexOf(q) >= 0) return true;
       if ((w.meaning || '').toLowerCase().indexOf(q) >= 0) return true;
       if ((w.note || '').toLowerCase().indexOf(q) >= 0) return true;
       return (w.examples || []).join(' ').toLowerCase().indexOf(q) >= 0;
@@ -320,6 +336,7 @@
     const rec = {
       id: editingId,
       word: word,
+      origin: $('fOrigin').value.trim(),
       pos: $('fPos').value.trim(),
       meaning: $('fMeaning').value.trim(),
       examples: splitExamples($('fExamples').value),
@@ -417,7 +434,8 @@
           pos: it.pos || '',
           meaning: it.meaning || it.cn || '',
           examples: Array.isArray(it.examples) ? it.examples : splitExamples(it.example || ''),
-          note: it.note || ''
+          note: it.note || '',
+          origin: it.origin || it.original || ''
         });
         if (r === 'created') created++; else merged++;
       } catch (err) { failed++; }
@@ -642,7 +660,7 @@
       if (!w) continue;
       try {
         const res = await upsert({
-          word: w, pos: r.pos.trim(), meaning: r.meaning.trim(),
+          word: w, origin: r.origin || '', pos: r.pos.trim(), meaning: r.meaning.trim(),
           examples: r.example ? [r.example] : [], note: r.note.trim()
         });
         if (res === 'created') created++; else merged++;
@@ -718,7 +736,11 @@
         return '<li>' + esc(blanked) + '</li>';
       }).join('');
     }
-    $('recNote').textContent = w.note ? '注：' + w.note : '';
+    let tail = w.note ? '注：' + w.note : '';
+    if (w.origin && normWord(w.origin) !== normWord(w.word)) {
+      tail += (tail ? '  ·  ' : '') + '原词 ' + w.origin;
+    }
+    $('recNote').textContent = tail;
   }
 
   function recReveal() {

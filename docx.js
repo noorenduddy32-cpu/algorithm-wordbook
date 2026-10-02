@@ -49,7 +49,7 @@
       .join('') +
     '</w:tblBorders>';
 
-  /* words: [{word, pos, meaning, examples:[], note}] */
+  /* words: [{word, origin, pos, meaning, examples:[], note}] */
   function buildDocumentXml(words, meta) {
     const COLS = [560, 1420, 880, 2180, 4598]; // 合计 9638 twips ≈ A4 正文宽度
     const HEAD = ['#', '单词', '词性', '中文释义', '例句'];
