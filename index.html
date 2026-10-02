@@ -131,6 +131,7 @@
       <label>拼写（只填原形：一般现在/单数/原形动词）
         <input id="fWord" required placeholder="例：partition">
         <span id="wordHint" class="field-hint"></span>
+        <a id="fDictLink" class="link-btn" target="_blank" rel="noopener" hidden>在剑桥词典查</a>
       </label>
       <label>原词（可选：题面 / 笔记里的原始形式，如 indice、errands、proceeds）
         <input id="fOrigin" placeholder="例：indice">
@@ -147,7 +148,7 @@
       <label>中文释义
         <input id="fMeaning" placeholder="划分，分区">
       </label>
-      <label>例句（一行一句，可留空）
+      <label>例句（一行一句，可留空；粘贴时会自动合并被折断的行）
         <textarea id="fExamples" rows="4" placeholder="Given an array a, let f(a) be the number of ways to partition a into one or more subarrays."></textarea>
       </label>
       <label>备注（可选）
@@ -179,8 +180,8 @@
 <div class="modal" id="pickModal" hidden>
   <div class="modal-box wide">
     <h2>从句中选词</h2>
-    <p class="muted small">粘贴题面里的英文句子 → 点「拆分」→ 点选想收集的词 → 点「识别」，自动给出原形 / 词性 / 中文释义，可改完再入库。</p>
-    <textarea id="pickText" rows="4" spellcheck="false" placeholder="Paste one or more sentences here, e.g.&#10;You can hack only if you solved all versions of this problem."></textarea>
+    <p class="muted small">粘贴题面里的英文句子（复制带来的换行会自动去掉）→ 点「拆分」→ 点选想收集的词 → 点「识别」，自动给出原形 / 词性 / 中文释义，可改完再入库。</p>
+    <textarea id="pickText" rows="4" spellcheck="false" placeholder="Paste sentences here, e.g.&#10;You can hack only if you solved all versions of this problem."></textarea>
     <div class="pick-actions">
       <button id="pickSplit" class="btn primary">拆分</button>
       <label class="check"><input type="checkbox" id="pickHideBasic" checked> 隐藏基础词</label>

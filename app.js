@@ -55,6 +55,84 @@
       .filter(function (s) { return s.length > 0; });
   }
 
+  /* ---------------- 文本清洗：自动去掉复制带来的换行 ---------------- */
+
+  // 复制题面 / PDF 时常在句中被硬折断，这里把它们合并回一行：
+  // 1) 行尾连字符断词（comput-\ner）直接接上，不留空格
+  // 2) 其余换行换成空格
+  // 3) 连续空格 / 制表符 / 不换行空格压成一个
+  function flattenSentence(text) {
+    let s = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
+    s = s.replace(/[ \t ]+/g, ' ');
+    s = s.replace(/([A-Za-z])-\n[ \t]*/g, '$1');
+    s = s.replace(/\n+/g, ' ');
+    s = s.replace(/[ \t ]+/g, ' ').trim();
+    return s;
+  }
+
+  function countBreaks(s) {
+    const m = String(s || '').match(/\r\n|\r|\n/g);
+    return m ? m.length : 0;
+  }
+
+  function endsSentence(line) {
+    return /[.!?。！？]["'”’)\]]?\s*$/.test(line);
+  }
+  function startsNewSentence(line) {
+    const t = String(line).trim();
+    if (!t) return true;
+    return !/^[a-z]/.test(t); // 下一行以小写字母开头 => 大概率是上一行被折断的尾巴
+  }
+
+  // 例句框用：只合并被折断的行，完整句子之间的换行保留（因为一行 = 一句）
+  function smartJoinLines(text) {
+    let s = String(text == null ? '' : text).replace(/\r\n?/g, '\n');
+    s = s.replace(/([A-Za-z])-\n[ \t]*/g, '$1');
+    const lines = s.split('\n');
+    const out = [];
+    let merged = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const cur = lines[i].replace(/[ \t ]+/g, ' ').trim();
+      if (!cur) continue;
+      if (out.length && !endsSentence(out[out.length - 1]) && !startsNewSentence(cur)) {
+        out[out.length - 1] = (out[out.length - 1] + ' ' + cur).replace(/\s+/g, ' ');
+        merged++;
+      } else {
+        out.push(cur);
+      }
+    }
+    return { text: out.join('\n'), merged: merged };
+  }
+
+  function insertText(el, txt) {
+    el.focus();
+    let ok = false;
+    try { ok = document.execCommand('insertText', false, txt); } catch (e) { ok = false; }
+    if (!ok) {
+      if (el.setRangeText) el.setRangeText(txt, el.selectionStart, el.selectionEnd, 'end');
+      else el.value += txt;
+    }
+  }
+
+  // smart=false：整段压成一行（题面句子）；smart=true：只合并折断的行（多条例句）
+  function bindPasteClean(el, smart) {
+    el.addEventListener('paste', function (e) {
+      const t = (e.clipboardData || window.clipboardData || {}).getData
+        ? (e.clipboardData || window.clipboardData).getData('text') : '';
+      if (!t || !/[\r\n]/.test(t)) return;
+      e.preventDefault();
+      if (smart) {
+        const r = smartJoinLines(t);
+        insertText(el, r.text);
+        if (r.merged) toast('自动合并了 ' + r.merged + ' 处换行');
+      } else {
+        const n = countBreaks(t);
+        insertText(el, flattenSentence(t));
+        if (n) toast('已去掉 ' + n + ' 处换行');
+      }
+    });
+  }
+
   function dedupe(arr) {
     const seen = {}; const out = [];
     (arr || []).forEach(function (s) {
@@ -183,6 +261,7 @@
       }
       const { data, error } = await db.from('words').update({
         word: rec.word, pos: rec.pos, meaning: rec.meaning,
+        origin: rec.origin || '',
         examples: rec.examples, note: rec.note, updated_at: new Date().toISOString()
       }).eq('id', rec.id).select();
       if (error) throw error;
@@ -295,9 +374,11 @@
       : '';
 
     return '<article class="card" data-id="' + w.id + '">' +
-      '<div class="card-head"><span class="word mono">' + esc(w.word) + '</span>' +
+      '<div class="card-head"><span class="word mono">' + dictLink(w.word, 'word mono dict-link') + '</span>' +
       (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') + '</div>' +
       '<div class="meaning">' + esc(w.meaning || '—') + '</div>' +
+      (w.origin && normWord(w.origin) !== normWord(w.word)
+        ? '<div class="origin-tag">原词 ' + esc(w.origin) + '</div>' : '') +
       (ex ? '<ul class="examples">' + ex + '</ul>' : '') +
       (w.note ? '<div class="note">' + esc(w.note) + '</div>' : '') +
       '<div class="card-foot"><span>' + fmtDate(w.created_at) + ' 加入</span>' +
@@ -319,13 +400,25 @@
     editingId = w ? w.id : null;
     $('wordModalTitle').textContent = w ? '编辑单词' : '添加单词';
     $('fWord').value = w ? w.word : '';
+    $('fOrigin').value = w ? (w.origin || '') : '';
     $('fPos').value = w ? (w.pos || '') : '';
     $('fMeaning').value = w ? (w.meaning || '') : '';
     $('fExamples').value = w ? (w.examples || []).join('\n') : '';
     $('fNote').value = w ? (w.note || '') : '';
     $('wordHint').textContent = '';
+    syncDictLink($('fWord').value);
     $('wordModal').hidden = false;
     $('fWord').focus();
+  }
+
+  // 弹窗里的「去剑桥查」小链接
+  function syncDictLink(word) {
+    const a = $('fDictLink');
+    if (!a) return;
+    if (!word) { a.hidden = true; a.href = '#'; return; }
+    a.hidden = false;
+    a.href = dictUrl(word);
+    a.textContent = '在剑桥词典查「' + word + '」';
   }
 
   async function onSaveWord(e) {
@@ -339,7 +432,7 @@
       origin: $('fOrigin').value.trim(),
       pos: $('fPos').value.trim(),
       meaning: $('fMeaning').value.trim(),
-      examples: splitExamples($('fExamples').value),
+      examples: splitExamples(smartJoinLines($('fExamples').value).text),
       note: $('fNote').value.trim()
     };
     const btn = $('wordForm').querySelector('button[type=submit]');
@@ -495,7 +588,11 @@
   }
 
   function onPickSplit() {
-    const text = $('pickText').value || '';
+    // 兜底：万一粘贴没走 paste 事件（拖拽、右键粘贴），拆分前先把换行去掉
+    const raw = $('pickText').value || '';
+    const flat = flattenSentence(raw);
+    if (flat !== raw) $('pickText').value = flat;
+    const text = flat;
     pickLines = text.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
     let toks = tokenize(text);
     if ($('pickHideBasic').checked) toks = toks.filter(function (w) { return w.length > 1 && !STOP.has(w); });
@@ -511,8 +608,8 @@
 
   function lineFor(w) {
     const re = new RegExp('(^|[^a-z])' + escapeRe(w) + '([^a-z]|$)', 'i');
-    for (const l of pickLines) { if (re.test(l)) return l; }
-    return pickLines[0] || '';
+    for (const l of pickLines) { if (re.test(l)) return flattenSentence(l); }
+    return pickLines[0] ? flattenSentence(pickLines[0]) : '';
   }
 
   const LLM_SYS =
@@ -807,6 +904,8 @@
       $('pickModal').hidden = false;
       $('pickText').focus();
     });
+    bindPasteClean($('pickText'), false);   // 题面句子：整段压成一行
+    bindPasteClean($('fExamples'), true);   // 例句：只合并被折断的行
     $('pickSplit').addEventListener('click', onPickSplit);
     $('pickHideBasic').addEventListener('change', onPickSplit);
     $('pickAll').addEventListener('click', function () { setAll(true); });
@@ -843,6 +942,7 @@
 
     $('fWord').addEventListener('input', function () {
       const w = normWord(this.value);
+      syncDictLink(w);
       const hint = inflectionHint(w);
       if (hint) { $('wordHint').textContent = hint; return; }
       const hit = all.find(function (x) { return x.word === w; });
