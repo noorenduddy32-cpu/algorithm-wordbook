@@ -157,6 +157,107 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------------- 动态玻璃主题 ----------------
+   做法：body::before / ::after 各是一个比视口大的渐变光斑层，
+   用 keyframes 让它们以不同周期缓慢漂移，底下 ::after 再叠一层缓慢旋转的色带。
+   backdrop-filter 会模糊它后面的一切，所以光斑动起来时整块面板的折射也跟着变。 */
+
+.aurora {
+  position: fixed;
+  inset: -35vmax;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .5s ease;
+}
+
+[data-theme="glass"] .aurora,
+[data-theme="glass-light"] .aurora {
+  opacity: 1;
+}
+
+.aurora.a1 {
+  background:
+    radial-gradient(38vmax 38vmax at 22% 28%, rgba(124, 92, 255, .55), transparent 62%),
+    radial-gradient(32vmax 32vmax at 78% 22%, rgba(0, 176, 255, .45), transparent 60%),
+    radial-gradient(40vmax 40vmax at 62% 82%, rgba(255, 86, 190, .34), transparent 62%);
+  animation: drift-a 34s ease-in-out infinite alternate;
+}
+
+.aurora.a2 {
+  background:
+    radial-gradient(30vmax 30vmax at 32% 76%, rgba(0, 224, 176, .40), transparent 60%),
+    radial-gradient(36vmax 36vmax at 84% 68%, rgba(120, 90, 255, .40), transparent 62%),
+    radial-gradient(26vmax 26vmax at 12% 62%, rgba(255, 190, 90, .28), transparent 60%);
+  animation: drift-b 46s ease-in-out infinite alternate;
+  mix-blend-mode: screen;
+}
+
+[data-theme="glass-light"] .aurora.a2 { mix-blend-mode: multiply; }
+[data-theme="glass-light"] .aurora.a1 { opacity: .55; }
+[data-theme="glass-light"] .aurora.a2 { opacity: .45; }
+
+@keyframes drift-a {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(4vmax, -3vmax, 0) scale(1.12); }
+  100% { transform: translate3d(-3vmax, 4vmax, 0) scale(1.05); }
+}
+@keyframes drift-b {
+  0%   { transform: translate3d(0, 0, 0) scale(1.08) rotate(0deg); }
+  50%  { transform: translate3d(-5vmax, 3vmax, 0) scale(1) rotate(8deg); }
+  100% { transform: translate3d(3vmax, -4vmax, 0) scale(1.14) rotate(-6deg); }
+}
+
+/* 面板上缓慢扫过的一道高光，让玻璃「活」起来 */
+[data-theme="glass"] .card::before,
+[data-theme="glass-light"] .card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(115deg,
+    transparent 32%,
+    rgba(255, 255, 255, .16) 46%,
+    rgba(255, 255, 255, .04) 54%,
+    transparent 66%);
+  background-size: 260% 100%;
+  background-position: 180% 0;
+  animation: sheen 9s linear infinite;
+  z-index: 2;
+}
+
+[data-theme="glass"] .card:nth-child(3n)::before { animation-delay: -3s; }
+[data-theme="glass"] .card:nth-child(3n+1)::before { animation-delay: -6s; }
+[data-theme="glass-light"] .card::before {
+  background: linear-gradient(115deg,
+    transparent 32%,
+    rgba(255, 255, 255, .55) 46%,
+    rgba(255, 255, 255, .12) 54%,
+    transparent 66%);
+  background-size: 260% 100%;
+  background-position: 180% 0;
+}
+[data-theme="glass-light"] .card:nth-child(3n)::before { animation-delay: -3s; }
+[data-theme="glass-light"] .card:nth-child(3n+1)::before { animation-delay: -6s; }
+
+@keyframes sheen {
+  0%   { background-position: 180% 0; }
+  55%  { background-position: -80% 0; }
+  100% { background-position: -80% 0; }
+}
+
+/* 卡片内容要压在光泽上面，否则高光会盖住文字 */
+[data-theme="glass"] .card > *,
+[data-theme="glass-light"] .card > * { position: relative; z-index: 3; }
+
+/* 不想看动效的人（或省电模式）直接静止 */
+@media (prefers-reduced-motion: reduce) {
+  .aurora { animation: none !important; }
+  [data-theme="glass"] .card::before,
+  [data-theme="glass-light"] .card::before { animation: none; background: none; }
+}
+
 /* 玻璃主题：给面板统一加毛玻璃 */
 [data-theme="glass"] .card,
 [data-theme="glass"] .topbar,
@@ -176,7 +277,11 @@ body {
 [data-theme="glass"] .tabs,
 [data-theme="glass"] .mini-btn,
 [data-theme="glass"] .badge,
-[data-theme="glass"] .chip {
+[data-theme="glass"] .chip,
+[data-theme="glass"] .detail-box,
+[data-theme="glass"] .speak-btn,
+[data-theme="glass"] .mini-speak,
+[data-theme="glass"] .deriv {
   backdrop-filter: blur(var(--card-filter)) saturate(150%);
   -webkit-backdrop-filter: blur(var(--card-filter)) saturate(150%);
 }
@@ -198,7 +303,11 @@ body {
 [data-theme="glass-light"] .tabs,
 [data-theme="glass-light"] .mini-btn,
 [data-theme="glass-light"] .badge,
-[data-theme="glass-light"] .chip {
+[data-theme="glass-light"] .chip,
+[data-theme="glass-light"] .detail-box,
+[data-theme="glass-light"] .speak-btn,
+[data-theme="glass-light"] .mini-speak,
+[data-theme="glass-light"] .deriv {
   backdrop-filter: blur(var(--card-filter)) saturate(150%);
   -webkit-backdrop-filter: blur(var(--card-filter)) saturate(150%);
 }
@@ -213,6 +322,21 @@ h1, h2 { margin: 0; font-weight: 650; }
 .ok { color: var(--ok); }
 .bad { color: var(--bad); }
 .spacer { flex: 1; }
+
+/* ---------- 顶部区域随滚动自动隐藏 ----------
+   把 顶栏 / 统计栏 / 工具栏 包在 .chrome 里，滚动时整体 translateY 移出视口，
+   只留单词；鼠标停在页面顶部 1 秒后 .chrome-hidden 去掉，它们滑回来。 */
+.chrome {
+  position: sticky; top: 0; z-index: 40;
+  transition: transform .26s cubic-bezier(.4, 0, .2, 1), opacity .26s ease;
+  will-change: transform;
+}
+body.chrome-hidden .chrome { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+/* 自动隐藏开启时，内部两栏不再各自吸顶（否则会和 .chrome 打架） */
+body.auto-hide .topbar,
+body.auto-hide .toolbar { position: static; }
+/* 关闭自动隐藏时，.chrome 只作为普通容器 */
+body:not(.auto-hide) .chrome { position: static; }
 
 /* ---------- top bar ---------- */
 /* z-index 必须高于 .toolbar(20)：玻璃主题给 topbar 加了 backdrop-filter，
@@ -236,9 +360,11 @@ h1, h2 { margin: 0; font-weight: 650; }
 .top-actions { display: flex; gap: 10px; align-items: center; }
 
 /* ---------- 主题下拉 ---------- */
-.theme-wrap { position: relative; }
+/* z-index 要高于 .chrome(40)：.chrome 是 sticky 且带 transform，会建层叠上下文，
+   菜单必须在它内部也保持最高层，否则会被下面的 .toolbar 盖住点不到 */
+.theme-wrap { position: relative; z-index: 70; }
 .theme-menu {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 71;
   min-width: 176px; padding: 6px;
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 12px; box-shadow: var(--shadow);
@@ -318,6 +444,16 @@ select {
   font: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 9px;
   border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
 }
+/* 排序：下拉 + 升降序切换按钮合成一组 */
+.sort-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.sort-dir {
+  width: 34px; height: 34px; padding: 0; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.sort-dir.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.cols-check { gap: 4px; }
+.col-select { padding: 5px 7px; font-size: 13px; border-radius: 8px; }
+
 .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--muted); cursor: pointer; }
 .seg {
   display: flex; align-items: center; gap: 2px; padding: 3px;
@@ -341,6 +477,30 @@ main { padding: 22px 26px 60px; }
   display: grid; gap: 14px;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
 }
+/* 「每行 N 个」：body 上有 --cols 就按它分列，否则 auto-fill 自适应 */
+body[data-cols] .card-grid {
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+}
+/* 方块模式下隐藏中文时，卡片内容变少，用更紧凑的排版避免下方留白 */
+body.layout-grid.hide-meaning .card .examples,
+body.layout-grid.hide-examples .card .examples { margin-top: 8px; }
+body.layout-grid.hide-meaning .card-foot,
+body.layout-grid.hide-examples .card-foot { margin-top: 10px; }
+/* 方块模式且没有例句时，卡片不需要留那么多底部空间 */
+body.layout-grid .card-foot { margin-top: 12px; }
+/* 中文释义也限两行，避免长释义把卡片撑得很高 */
+body.layout-grid .card .meaning {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* 隐藏中文时用 visibility（卡片高度不变、翻页不跳），
+   这里把中文换成不可见但仍占位，例句顶上来；隐藏例句则直接收掉。 */
+body.layout-grid.hide-meaning .card .examples { margin-top: 8px; }
+body.layout-grid.hide-meaning .card-foot { margin-top: 10px; padding-top: 8px; }
+body.layout-grid.hide-examples .card .meaning { margin-top: 6px; }
+body.layout-grid.hide-examples .card-foot { margin-top: 8px; padding-top: 8px; }
+/* 两者都隐藏时卡片很矮，压缩内边距 */
+body.layout-grid.hide-meaning.hide-examples .card { padding: 12px 16px; }
 
 /* 一行一个单词：整页单列，卡片内部改成横向紧凑排布 */
 body.layout-list .card-grid { grid-template-columns: 1fr; gap: 8px; }
@@ -348,8 +508,10 @@ body.layout-list .card {
   padding: 7px 16px; border-radius: 10px;
   display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap;
 }
-body.layout-list .card-head { flex: 0 0 auto; align-items: baseline; gap: 8px; }
+body.layout-list .card-head { flex: 0 0 auto; align-items: center; gap: 8px; }
 body.layout-list .word { font-size: 17px; }
+body.layout-list .mini-speak { width: 21px; height: 21px; }
+body.layout-list .word-wrap { gap: 7px; }
 body.layout-list .pos { margin-top: 0; }
 body.layout-list .meaning { margin-top: 0; font-size: 14.5px; flex: 0 1 auto; min-width: 0; }
 body.layout-list .examples {
@@ -385,12 +547,36 @@ body.hide-examples .rec-examples { display: none !important; }
 .card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .card-head { display: flex; align-items: flex-start; gap: 10px; }
 .word { font-size: 21px; font-weight: 700; letter-spacing: .2px; color: var(--accent); word-break: break-word; }
-/* 单词 / 原词 → 点一下跳剑桥词典 */
+/* 单词变成按钮：点开详情，不再跳链接 */
+.word-wrap { display: inline-flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.word-btn {
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: var(--accent); text-align: left;
+  border-bottom: 1px dashed color-mix(in srgb, var(--accent) 42%, transparent);
+  transition: color .12s, border-color .12s;
+}
+.word-btn:hover { border-bottom-color: var(--accent); color: color-mix(in srgb, var(--accent) 80%, var(--text)); }
+.word-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+/* 卡片里的小喇叭 */
+.mini-speak {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; flex: 0 0 auto;
+  border-radius: 50%; cursor: pointer;
+  background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  transition: color .12s, border-color .12s, transform .12s, background .12s;
+}
+.mini-speak:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.mini-speak.playing { animation: pulse-speak .7s ease; color: var(--accent); }
+@keyframes pulse-speak {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+/* 旧的外链样式（编辑弹窗里那个「去剑桥查」还在用） */
 .dict-link { color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; }
 .dict-link:hover { border-bottom-color: currentColor; }
-.word.dict-link { border-bottom: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
-.word.dict-link:hover { border-bottom-color: var(--accent); }
-.rec-word .dict-link { color: inherit; font: inherit; border-bottom: 1px dashed color-mix(in srgb, currentColor 45%, transparent); }
 .origin-tag {
   margin-top: 6px; font-size: 12.5px; color: var(--muted);
   display: inline-flex; align-items: baseline; gap: 5px;
@@ -410,6 +596,17 @@ body.hide-examples .rec-examples { display: none !important; }
   font-weight: 700; padding: 0 2px; border-radius: 3px;
 }
 .note { margin-top: 8px; font-size: 12.5px; color: var(--warn); }
+
+/* 方块模式：例句最多占两行，超出部分裁掉（点单词进详情能看全部）。
+   配合 grid 的 align-items:start，让同一行的卡片不会被最高的那张撑出大片留白。 */
+body.layout-grid .card-grid { align-items: start; }
+body.layout-grid .card .examples {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; max-height: 3.2em; padding-left: 0; list-style: none;
+  margin-top: 8px;
+}
+body.layout-grid .card .examples li { margin-bottom: 0; }
+body.layout-grid .card .examples li::before { content: "· "; opacity: .6; }
 .card-foot {
   display: flex; align-items: center; gap: 10px; margin-top: 12px;
   padding-top: 10px; border-top: 1px dashed var(--border);
@@ -525,8 +722,117 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 
 .foot { padding: 18px 26px 40px; text-align: center; font-size: 12.5px; color: var(--muted); }
 
+/* ---------- 单词详情弹窗 ---------- */
+.detail-box {
+  width: 620px; max-width: 94vw; max-height: 88vh; overflow: auto;
+  position: relative; padding: 26px 28px 22px;
+}
+.detail-close {
+  position: absolute; top: 12px; right: 14px; z-index: 5;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+.detail-close:hover { color: var(--text); border-color: var(--accent); }
+
+.detail-title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.detail-word {
+  margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -.4px;
+  color: var(--text); line-height: 1.15; word-break: break-word;
+}
+.speak-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex: 0 0 auto;
+  border-radius: 50%; cursor: pointer;
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+  transition: transform .12s, background .12s, box-shadow .12s;
+}
+.speak-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 5px var(--accent-soft); }
+.speak-btn.playing { animation: pulse-speak .8s ease; }
+.speak-hint { font-size: 12px; color: var(--muted); }
+
+.detail-phonetic {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+}
+.ipa { font-size: 15px; color: var(--muted); }
+.accent-sel {
+  font: inherit; font-size: 12px; padding: 3px 7px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--panel2); color: var(--muted);
+}
+.detail-pos { margin-top: 10px; display: flex; gap: 8px; }
+
+.detail-body { margin-top: 4px; }
+.detail-block { margin-top: 18px; }
+.detail-block h4 {
+  margin: 0 0 8px; font-size: 12px; font-weight: 600;
+  color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase;
+}
+.detail-meaning { font-size: 16px; line-height: 1.7; }
+.detail-meaning .origin-tag { margin-left: 6px; }
+
+.en-defs { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+.en-defs li { margin-bottom: 5px; }
+.en-defs .en-pos { color: var(--accent); font-style: italic; margin-right: 4px; }
+
+.detail-examples { list-style: none; margin: 0; padding: 0; }
+.detail-examples li {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  font-size: 14px; line-height: 1.6;
+}
+.detail-examples li .en { flex: 1; min-width: 0; }
+.ex-speak {
+  flex: 0 0 auto; width: 24px; height: 24px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+}
+.ex-speak:hover { color: var(--accent); border-color: var(--accent); }
+.ex-speak.playing { animation: pulse-speak .7s ease; }
+
+.spell-break, .root-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.frag {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 19px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border-radius: 8px; padding: 4px 10px;
+}
+.frag-tail {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 19px; font-weight: 700; color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, transparent); border-radius: 8px; padding: 4px 10px;
+}
+.frag-note { font-size: 13px; color: var(--muted); }
+/* 词根：在完整词干上把词根标色，不拆段 */
+.stem-word {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 19px; letter-spacing: .5px; color: var(--text);
+}
+.stem-root {
+  color: var(--accent); font-weight: 800;
+  background: var(--accent-soft); border-radius: 6px;
+  padding: 3px 4px; margin: 0 1px;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.deriv-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.deriv {
+  font: inherit; font-size: 13px; cursor: pointer;
+  background: var(--panel2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 999px; padding: 4px 12px;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.deriv:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+.syn-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.syn-row b { font-size: 12px; color: var(--muted); font-weight: 600; }
+
 @media (max-width: 640px) {
   .topbar, .stats-bar, .toolbar, main { padding-left: 14px; padding-right: 14px; }
   .rec-word { font-size: 30px; }
   .btn { padding: 7px 11px; }
+  .detail-box { padding: 22px 18px 18px; }
+  .detail-word { font-size: 27px; }
 }
