@@ -503,16 +503,16 @@ body[data-cols] .card-grid {
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
 }
 
-/* ---------- 方块模式：严格正方形 + 固定五行结构 ----------
+/* ---------- 方块模式：高度按内容自适应 ----------
    第 1 行 单词 + 喇叭（喇叭与英文同高、垂直居中）
    第 2 行 词性 + 中文释义
-   第 3-5 行 例句（最多 3 行）
+   第 3-5 行 例句（最多 3 行，按实际行数占高）
    底部 认识/不认识 + 编辑删除；备注不显示。
    隐藏中文 / 隐藏例句时直接把那块 display:none，位置一起收掉，不留空白。 */
 body.layout-grid .card-grid { align-items: stretch; }
 
 body.layout-grid .card {
-  aspect-ratio: 1 / 1;          /* 长宽完全相等 */
+  /* 高度按内容自适应，不再强制正方形，避免例句少时大量留白 */
   display: flex; flex-direction: column;
   padding: 16px 18px;
   min-height: 0;
@@ -557,14 +557,14 @@ body.layout-grid .zh-line .meaning {
   overflow: hidden;
 }
 
-/* 第 3-5 行：例句，固定只留 3 行高度，不收放 */
+/* 第 3-5 行：例句最多显示 3 行，按实际行数自适应高度 */
 body.layout-grid .examples {
   flex: 0 0 auto;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 8px 0 0; padding-left: 0; list-style: none;
   font-size: 13px; line-height: 1.55;
-  min-height: calc(1.55em * 3); max-height: calc(1.55em * 3);
+  max-height: calc(1.55em * 3);
 }
 /* 隐藏中文时把中文那行收掉，例句直接顶到第 2 行 */
 body.layout-grid.hide-meaning .zh-line { display: none; }
