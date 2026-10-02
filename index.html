@@ -8,9 +8,14 @@
 </head>
 <body>
 
-<!-- 玻璃主题的动态光斑背景（其他主题下透明，不显示） -->
-<div class="aurora a1" aria-hidden="true"></div>
-<div class="aurora a2" aria-hidden="true"></div>
+<!-- 玻璃主题的背景光晕：几团大光斑，位置 / 大小 / 色调由 JS 每隔几秒随机换一次目标，
+     CSS 负责用很长的过渡把移动过程抹平，看上去就是缓慢无规则地呼吸 -->
+<div class="aurora-bg" aria-hidden="true">
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+  <div class="aurora a3"></div>
+  <div class="aurora a4"></div>
+</div>
 
 <!-- 会随滚动藏起来的顶部区域：顶栏 + 统计栏 + 工具栏 -->
 <div id="chrome" class="chrome">
@@ -56,10 +61,9 @@
   </div>
   <div class="sort-wrap">
     <select id="sortSelect" title="排序">
-      <option value="recent">最近添加</option>
-      <option value="oldest">最早添加</option>
-      <option value="freq">频率</option>
+      <option value="time">时间</option>
       <option value="alpha">字典序</option>
+      <option value="freq">频率</option>
       <option value="random">随机</option>
     </select>
     <button id="sortDir" class="icon-btn sort-dir" title="升序 / 降序切换">
@@ -367,17 +371,31 @@
       </label>
       <label>排序方式
         <select id="exSort">
+          <option value="time">时间（配合下面的升降序）</option>
           <option value="alpha">字典序 A→Z</option>
-          <option value="freq">频率降序（例句多的在前）</option>
-          <option value="recent">最近添加</option>
-          <option value="oldest">最早添加</option>
+          <option value="freq">频率（例句多的在前）</option>
           <option value="random">随机</option>
+        </select>
+      </label>
+      <label>排序方向
+        <select id="exDir">
+          <option value="desc">降序（新 / 多 / 靠后的在前）</option>
+          <option value="asc">升序（旧 / 少 / 靠前的在前）</option>
         </select>
       </label>
       <label>排版
         <select id="exLayout">
           <option value="two">经典词汇表（双栏 + 勾选框）</option>
           <option value="one">单栏带例句（完整）</option>
+        </select>
+      </label>
+      <label id="exPerPageWrap">每页单词数（双栏时 = 每页行数 × 2，表格行高固定）
+        <select id="exPerPage">
+          <option value="20">20（10 行）</option>
+          <option value="24">24（12 行）</option>
+          <option value="30" selected>30（15 行）</option>
+          <option value="36">36（18 行）</option>
+          <option value="40">40（20 行）</option>
         </select>
       </label>
       <div class="opt-row">

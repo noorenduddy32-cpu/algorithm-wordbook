@@ -826,14 +826,14 @@
 
   /* ---------------- 滚动时自动隐藏导航 ----------------
      往下滚 → 顶栏 / 统计栏 / 工具栏整体上移藏起来，只剩单词；
-     鼠标停到页面顶部 → 停满 1 秒才把它们放出来（防误触）。 */
+     鼠标停到页面顶部 → 停满 0.1 秒就把它们放出来。 */
 
   let navHoldTimer = null;
 
   function bindAutoHide() {
     let lastY = window.scrollY;
     let shown = true;
-    const HOVER_MS = 1000;
+    const HOVER_MS = 100;
 
     const show = function () {
       clearTimeout(navHoldTimer);
@@ -847,7 +847,7 @@
       shown = false;
       document.body.classList.add('chrome-hidden');
     };
-    // 往上滚 / 鼠标进顶部区：先不急着显示，等满 1 秒
+    // 往上滚 / 鼠标进顶部区：先不急着显示，等满 0.1 秒
     const schedule = function () {
       clearTimeout(navHoldTimer);
       if (shown) return;
@@ -856,7 +856,7 @@
 
     document.addEventListener('mousemove', function (e) {
       if (!view.autoHide) return;
-      if (e.clientY <= 120) schedule();
+      if (e.clientY <= 140) schedule();
     });
 
     window.addEventListener('scroll', function () {
@@ -866,8 +866,53 @@
       lastY = y;
       if (y < 60) { show(); return; }        // 回到顶部就常驻
       if (dy > 4) hide();                     // 往下滚 → 藏
-      else if (dy < -4) schedule();           // 往上滚 → 等 1 秒再给
+      else if (dy < -4) schedule();           // 往上滚 → 等一下再给
     }, { passive: true });
+  }
+
+  /* ---------------- 玻璃主题：背景光晕无规则慢漂移 ----------------
+     每隔 2.5~6 秒给每团光斑一个随机目标（位置 / 大小 / 色相 / 透明度），
+     CSS 用 7 秒超长过渡把过程抹平 —— 于是没有循环、也看不出规律。 */
+
+  function bindAurora() {
+    const wrap = document.querySelector('.aurora-bg');
+    if (!wrap) return;
+    const blobs = [].slice.call(wrap.querySelectorAll('.aurora'));
+    if (!blobs.length) return;
+    const reduce = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const HUES = [
+      [255, 85, 62], [196, 92, 58], [322, 82, 64], [160, 78, 52],
+      [38, 95, 60], [280, 80, 66], [172, 85, 55]
+    ];
+
+    blobs.forEach(function (b, i) {
+      b.dataset.hue = String(HUES[i % HUES.length][0]);
+      b.dataset.baseA = String(0.5 + Math.random() * 0.35);
+    });
+
+    const rnd = function (a, b) { return a + Math.random() * (b - a); };
+
+    const move = function () {
+      blobs.forEach(function (b) {
+        const baseA = Number(b.dataset.baseA);
+        const x = rnd(-14, 14);
+        const y = rnd(-12, 12);
+        const sc = rnd(0.72, 1.3);
+        const rot = rnd(-40, 40);
+        const a = Math.max(0.16, Math.min(0.95, baseA * rnd(0.55, 1.35)));
+        b.style.transform = 'translate3d(' + x.toFixed(2) + 'vmax,' + y.toFixed(2) +
+          'vmax,0) scale(' + sc.toFixed(3) + ') rotate(' + rot.toFixed(1) + 'deg)';
+        b.style.opacity = a.toFixed(3);
+        b.style.filter = 'blur(' + rnd(58, 96).toFixed(0) + 'px) hue-rotate(' +
+          rnd(-45, 45).toFixed(0) + 'deg) saturate(' + rnd(85, 135).toFixed(0) + '%)';
+      });
+      timer = setTimeout(move, 2500 + Math.random() * 3500);
+    };
+
+    let timer = null;
+    if (!reduce) { move(); }
   }
 
   /* ---------------- 渲染 ---------------- */
@@ -883,6 +928,7 @@
 
   // 所有排序都走这里：页面列表、导出 Word 共用同一套规则
   // dir: 'desc'（默认）= 新的/多的/靠后的在前；'asc' 反过来
+  // mode: time（按添加时间） / alpha（字典序） / freq（频率） / random（随机）
   function sortList(list, mode, dir) {
     const s = dir === 'asc' ? -1 : 1;
     const arr = list.slice();
@@ -893,10 +939,9 @@
         const d = freqOf(b) - freqOf(a);
         return (d !== 0 ? s * d : s * String(a.word).localeCompare(String(b.word), 'en'));
       });
-    } else if (mode === 'recent') {
+    } else if (mode === 'time' || mode === 'recent' || mode === 'oldest') {
+      // 「时间」统管最近 / 最早添加，方向交给升降序按钮
       arr.sort(function (a, b) { return s * String(b.created_at).localeCompare(String(a.created_at)); });
-    } else if (mode === 'oldest') {
-      arr.sort(function (a, b) { return s * String(a.created_at).localeCompare(String(b.created_at)); });
     } else if (mode === 'updated') {
       arr.sort(function (a, b) { return s * String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
     } else {
@@ -986,6 +1031,12 @@
     $('emptyState').hidden = filtered.length > 0;
   }
 
+  // 方块模式下的行结构（配合 styles.css 里 body.layout-grid .card 的规则）：
+  //   第 1 行：单词 + 小喇叭（同一行、喇叭与文字同高）
+  //   第 2 行：词性 + 中文释义
+  //   第 3-5 行：例句（最多 3 行）
+  //   底部：认识 / 不认识 + 编辑删除
+  // 备注 note 在方块模式里不显示（内容太碎，留白反而多）。
   function cardHtml(w) {
     const s = stats[w.word] || {};
     const ex = (w.examples || []).map(function (e) {
@@ -995,7 +1046,6 @@
     let badges = '';
     if (s.k) badges += '<span class="badge ok">认识 ' + s.k + '</span>';
     if (s.u) badges += '<span class="badge weak">不认识 ' + s.u + '</span>';
-    if (!ex) badges += '<span class="badge">暂无例句</span>';
 
     const actions = unlocked
       ? '<div class="card-actions">' +
@@ -1004,19 +1054,20 @@
         '</div>'
       : '';
 
-    // 单词本体点开详情，旁边小喇叭直接朗读
+    // 单词本体点开详情，旁边小喇叭直接朗读（两者始终同一行）
     const head =
       '<button class="word word-btn mono" data-detail="' + w.id + '" title="点击看读音、音标、派生与词根">' +
       esc(w.word) + '</button>' +
       '<button class="mini-speak" data-say="' + esc(w.word) + '" title="朗读 ' + esc(w.word) + '">' + SPEAK_ICON + '</button>';
 
     return '<article class="card" data-id="' + w.id + '">' +
-      '<div class="card-head"><span class="word-wrap">' + head + '</span>' +
-      (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') + '</div>' +
-      '<div class="meaning">' + esc(w.meaning || '—') + '</div>' +
+      '<div class="card-head"><span class="word-wrap">' + head + '</span></div>' +
+      '<div class="zh-line">' +
+      (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') +
+      '<span class="meaning">' + esc(w.meaning || '—') + '</span></div>' +
       (w.origin && normWord(w.origin) !== normWord(w.word)
         ? '<div class="origin-tag">原词 ' + esc(w.origin) + '</div>' : '') +
-      (ex ? '<ul class="examples">' + ex + '</ul>' : '') +
+      (ex ? '<ul class="examples">' + ex + '</ul>' : '<ul class="examples"></ul>') +
       (w.note ? '<div class="note">' + esc(w.note) + '</div>' : '') +
       (badges || actions
         ? '<div class="card-foot">' + badges + actions + '</div>'
@@ -1139,7 +1190,7 @@
     const scope = $('exScope').value;
     let list = scope === 'all' ? all.slice() : (scope === 'weak' ? all.filter(isWeak) : filtered.slice());
     if (!list.length) list = all.slice();
-    return sortList(list, $('exSort').value);
+    return sortList(list, $('exSort').value, $('exDir').value);
   }
 
   function openExport() {
@@ -1150,9 +1201,16 @@
   function updateExportHint() {
     const n = exportScopeList().length;
     const two = $('exLayout').value === 'two';
-    $('exHint').textContent = '将导出 ' + n + ' 个单词。' + (two
-      ? '双栏版式参考经典词汇表：左右两栏 No./Word/Meaning + 每行勾选框，页脚有页码。'
-      : '单栏适合带例句的完整复习，页脚同样有页码。');
+    $('exPerPageWrap').hidden = !two;
+    if (!two) {
+      $('exHint').textContent = '将导出 ' + n + ' 个单词。单栏适合带例句的完整复习，页脚同样有页码。';
+      return;
+    }
+    const per = Number($('exPerPage').value) || 30;
+    const rows = Math.round(per / 2);
+    const pages = Math.max(1, Math.ceil(n / per));
+    $('exHint').textContent = '将导出 ' + n + ' 个单词：每页 ' + per + ' 个（左右各 ' + rows +
+      ' 行），行高固定、列宽固定，共 ' + pages + ' 页；不足的空格自动补齐。';
   }
 
   async function doExport(e) {
@@ -1165,6 +1223,7 @@
       docTitle: $('exDocTitle').value.trim() || '收藏的单词',
       date: nowStr(),
       columns: two ? 2 : 1,
+      perPage: Number($('exPerPage').value) || 30,
       withMeaning: $('exMeaning').checked,
       withPos: $('exPos').checked,
       withNote: $('exNote').checked,
@@ -1608,6 +1667,9 @@
     // 滚动时自动隐藏 / 鼠标停留显示
     bindAutoHide();
 
+    // 玻璃主题背景光晕：随机慢漂移
+    bindAurora();
+
     $('layoutSeg').addEventListener('click', function (e) {
       const b = e.target.closest('.seg-btn');
       if (!b) return;
@@ -1804,7 +1866,7 @@
 
     $('exportDocxBtn').addEventListener('click', openExport);
     $('exportForm').addEventListener('submit', doExport);
-    ['exScope', 'exSort', 'exLayout'].forEach(function (id) {
+    ['exScope', 'exSort', 'exDir', 'exLayout', 'exPerPage'].forEach(function (id) {
       $(id).addEventListener('change', updateExportHint);
     });
     $('exportJsonBtn').addEventListener('click', exportJson);

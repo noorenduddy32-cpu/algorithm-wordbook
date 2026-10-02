@@ -83,7 +83,9 @@
 
   /* ------------------------------------------------------------------
      双栏速记表（默认版式，对应图 2）
-     布局：一张表 6 列 = [No. | Word | Meaning | ☐] × 2 栏
+     布局：一张表 9 列 = [No. | Word | Meaning | ☐] × 2 栏 + 中间缝列
+     每页固定 rowsPerPage 行（= 每页单词数 / 2），行高固定 trHeight(exact)，
+     页与页之间插分页符，最后一页补空行使每页表格一样高。
      ------------------------------------------------------------------ */
   function buildClassic(words, opts) {
     const FULL = 9638;               // A4 正文宽（twips）
@@ -92,9 +94,17 @@
     // No. | Word | Meaning | ☐ —— Word 吃掉栏内剩余宽度，四列合计正好等于 colW
     const NO = 520, MEAN = 340, BOXW = 280;
     const C = [NO, colW - NO - MEAN - BOXW, MEAN, BOXW];
-    const half = Math.ceil(words.length / 2);
     // 9 列：左栏 4 列 + 中间 1 个空列（GAP）+ 右栏 4 列，合计正好等于 FULL
     const grid = [].concat(C, [GAP], C);
+
+    // 每页放多少个单词 → 每页多少行；行高按可用高度平均分，固定死
+    const perPage = Math.max(2, Number(opts.perPage) || 30);
+    const rowsPerPage = Math.max(1, Math.round(perPage / 2));
+    const AVAIL = 12600;             // 去掉标题 / Title-Date 行后留给表格的高度
+    let ROW_H = Math.floor(AVAIL / rowsPerPage);
+    ROW_H = Math.max(520, Math.min(ROW_H, 1300));
+    const ROW_RULE = opts.withExample ? 'atLeast' : 'exact';
+    const rowPr = '<w:trPr><w:trHeight w:val="' + ROW_H + '" w:hRule="' + ROW_RULE + '"/></w:trPr>';
 
     // 中间那个缝列：左右无边框，只有横线跟上下对齐，两栏才真的分开
     const gapCell = function (isHead) {
@@ -111,27 +121,6 @@
         '</w:tcPr><w:p/></w:tc>';
     };
 
-    let body = '';
-
-    // 标题
-    body += para(opts.title || 'Classic Vocabulary List',
-      { bold: true, italic: true, sz: 40, font: 'Times New Roman', after: 100 });
-
-    // Title / Date 行
-    const titleCell = para('Title: ' + (opts.docTitle || '收藏的单词'),
-      { bold: true, italic: true, sz: 22, font: 'Times New Roman' });
-    const dateCell = para('Date:  ' + (opts.dateOnly || ''),
-      { bold: true, italic: true, sz: 22, font: 'Times New Roman', align: 'right' });
-    body += '<w:tbl>' +
-      '<w:tblPr><w:tblW w:w="' + FULL + '" w:type="dxa"/>' + BORDER_NONE + '</w:tblPr>' +
-      '<w:tblGrid><w:gridCol w:w="' + Math.floor(FULL * 0.55) + '"/><w:gridCol w:w="' + (FULL - Math.floor(FULL * 0.55)) + '"/></w:tblGrid>' +
-      '<w:tr>' +
-      cell(titleCell, Math.floor(FULL * 0.55), { vcenter: true }) +
-      cell(dateCell, FULL - Math.floor(FULL * 0.55), { vcenter: true }) +
-      '</w:tr></w:tbl>';
-
-    body += para('', { sz: 12, after: 60 });
-
     // 表头（两栏各一份，中间夹一个空缝列）
     const headCells = function () {
       return cell(para('', { sz: 18 }), C[0], { shd: 'F0F0F0', vcenter: true }) +
@@ -139,10 +128,10 @@
         cell(para('Meaning', { bold: true, sz: 20, font: 'Times New Roman' }), C[2], { shd: 'F0F0F0', vcenter: true }) +
         cell(para('', { sz: 18 }), C[3], { shd: 'F0F0F0', vcenter: true });
     };
-    const headRow = '<w:tr><w:trPr><w:tblHeader/></w:trPr>' +
+    const headRow = '<w:tr><w:trPr><w:tblHeader/><w:trHeight w:val="360" w:hRule="atLeast"/></w:trPr>' +
       headCells() + gapCell(true) + headCells() + '</w:tr>';
 
-    // 数据行：左栏第 1..half，右栏第 half+1..end
+    // 数据行：左栏第 1..rowsPerPage，右栏第 rowsPerPage+1..end
     const rowCells = function (w, no) {
       const meaning = [];
       const pos = opts.withPos === false ? '' : (w.pos ? w.pos + ' ' : '');
@@ -165,19 +154,54 @@
         cell(para('', { sz: 18 }), C[2]) + cell(para('', { sz: 18 }), C[3]);
     };
 
-    let rows = '';
-    for (let i = 0; i < half; i++) {
-      const lw = words[i];
-      const rw = words[i + half];
-      rows += '<w:tr>' + rowCells(lw, i + 1) + gapCell(false) +
-        (rw ? rowCells(rw, i + half + 1) : emptyCells()) + '</w:tr>';
-    }
+    // 一页 = 表头 + 固定 rowsPerPage 行；左栏从上往下填满，再填右栏
+    const tableXml = function (pageWords, startNo) {
+      let rows = '';
+      for (let i = 0; i < rowsPerPage; i++) {
+        const lw = pageWords[i];
+        const rw = pageWords[i + rowsPerPage];
+        rows += '<w:tr>' + rowPr + (lw ? rowCells(lw, startNo + i) : emptyCells()) +
+          gapCell(false) + (rw ? rowCells(rw, startNo + i + rowsPerPage) : emptyCells()) + '</w:tr>';
+      }
+      return '<w:tbl>' +
+        '<w:tblPr><w:tblW w:w="' + FULL + '" w:type="dxa"/><w:tblLayout w:type="fixed"/>' +
+        tblBorders({ outer: 12, inner: 4 }) + '</w:tblPr>' +
+        '<w:tblGrid>' + grid.map(function (w) { return '<w:gridCol w:w="' + w + '"/>'; }).join('') + '</w:tblGrid>' +
+        headRow + rows + '</w:tbl>';
+    };
 
+    const pageBreak = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+
+    // 按每页容量切片
+    const perPageWords = rowsPerPage * 2;
+    const pages = [];
+    for (let i = 0; i < words.length; i += perPageWords) {
+      pages.push(words.slice(i, i + perPageWords));
+    }
+    if (!pages.length) pages.push([]);
+
+    let body = '';
+
+    // 标题 + Title/Date 行（只在第一页）
+    body += para(opts.title || 'Classic Vocabulary List',
+      { bold: true, italic: true, sz: 40, font: 'Times New Roman', after: 100 });
+    const tW = Math.floor(FULL * 0.55);
     body += '<w:tbl>' +
-      '<w:tblPr><w:tblW w:w="' + FULL + '" w:type="dxa"/><w:tblLayout w:type="fixed"/>' +
-      tblBorders({ outer: 12, inner: 4 }) + '</w:tblPr>' +
-      '<w:tblGrid>' + grid.map(function (w) { return '<w:gridCol w:w="' + w + '"/>'; }).join('') + '</w:tblGrid>' +
-      headRow + rows + '</w:tbl>';
+      '<w:tblPr><w:tblW w:w="' + FULL + '" w:type="dxa"/>' + BORDER_NONE + '</w:tblPr>' +
+      '<w:tblGrid><w:gridCol w:w="' + tW + '"/><w:gridCol w:w="' + (FULL - tW) + '"/></w:tblGrid>' +
+      '<w:tr>' +
+      cell(para('Title: ' + (opts.docTitle || '收藏的单词'),
+        { bold: true, italic: true, sz: 22, font: 'Times New Roman' }), tW, { vcenter: true }) +
+      cell(para('Date:  ' + (opts.dateOnly || ''),
+        { bold: true, italic: true, sz: 22, font: 'Times New Roman', align: 'right' }),
+        FULL - tW, { vcenter: true }) +
+      '</w:tr></w:tbl>';
+    body += para('', { sz: 12, after: 60 });
+
+    pages.forEach(function (pw, pi) {
+      body += tableXml(pw, pi * perPageWords + 1);
+      if (pi < pages.length - 1) body += pageBreak;
+    });
 
     body += '<w:p/>';
     return body;
@@ -313,7 +337,7 @@
     if (typeof JSZip === 'undefined') throw new Error('JSZip 未加载');
     const o = Object.assign({
       title: 'Classic Vocabulary List', docTitle: '收藏的单词', date: nowStr(),
-      dateOnly: dateOnly(), columns: 2,
+      dateOnly: dateOnly(), columns: 2, perPage: 30,
       withMeaning: true, withPos: true, withNote: false,
       withExample: false, withOrigin: false, withIndex: true
     }, opts || {});
