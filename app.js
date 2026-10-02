@@ -5,9 +5,34 @@
   const cfg = window.APP_CONFIG;
   const LS_STATS = 'wb_recite_stats_v1';
   const LS_LOCK = 'wb_edit_unlocked';
-  const LS_THEME = 'wb_theme';
+  const LS_THEME = 'wb_theme_v2';
   const LS_GH_TOKEN = 'wb_gh_token';
   const LS_LLM = 'wb_llm_cfg';
+  const LS_VIEW = 'wb_view_cfg_v1';
+
+  // 主题：名字 + 用于色块预览的底色
+  const THEMES = [
+    { id: 'dark', name: '夜间深色', swatch: 'linear-gradient(135deg,#161a22,#0e1116)' },
+    { id: 'light', name: '日间亮色', swatch: 'linear-gradient(135deg,#ffffff,#e9eef7)' },
+    { id: 'glass', name: '玻璃拟态（深）', swatch: 'linear-gradient(135deg,#6d5cff,#00b0ff)' },
+    { id: 'glass-light', name: '玻璃拟态（亮）', swatch: 'linear-gradient(135deg,#f6f8ff,#a8c4ff)' },
+    { id: 'eye', name: '护眼米黄', swatch: 'linear-gradient(135deg,#f2ecd6,#e8e2c9)' },
+    { id: 'eye-green', name: '护眼豆绿', swatch: 'linear-gradient(135deg,#e6efe0,#d8e3d0)' },
+    { id: 'ink', name: '墨绿复古', swatch: 'linear-gradient(135deg,#2a323b,#14181c)' }
+  ];
+
+  function loadView() {
+    let o = {};
+    try { o = JSON.parse(localStorage.getItem(LS_VIEW) || '{}'); } catch (e) { o = {}; }
+    return {
+      layout: o.layout === 'list' ? 'list' : 'grid',
+      hideMeaning: !!o.hideMeaning,
+      hideExamples: !!o.hideExamples,
+      navCollapsed: !!o.navCollapsed
+    };
+  }
+  let view = loadView();
+  function saveView() { localStorage.setItem(LS_VIEW, JSON.stringify(view)); }
 
   let all = [];
   let filtered = [];
@@ -169,15 +194,36 @@
     sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>',
     lock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
     unlock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.9"/></svg>',
-    gear: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>'
+    gear: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>',
+    collapse: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>',
+    expand: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 9l-7 7-7-7"/></svg>'
   };
 
   /* ---------------- 主题 / 锁 ---------------- */
 
+  function currentTheme() {
+    const t = document.documentElement.getAttribute('data-theme');
+    return THEMES.some(function (x) { return x.id === t; }) ? t : 'dark';
+  }
+
   function applyTheme(name) {
-    document.documentElement.setAttribute('data-theme', name);
-    localStorage.setItem(LS_THEME, name);
-    $('themeIcon').innerHTML = name === 'dark' ? ICONS.moon : ICONS.sun;
+    const t = THEMES.some(function (x) { return x.id === name; }) ? name : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem(LS_THEME, t);
+    $('themeIcon').innerHTML = ICONS.moon;
+    $('themeBtn').title = '主题：' + (THEMES.find(function (x) { return x.id === t; }) || {}).name;
+    renderThemeMenu(t);
+  }
+
+  function renderThemeMenu(active) {
+    const box = $('themeMenu');
+    if (!box) return;
+    box.innerHTML = THEMES.map(function (x) {
+      return '<button type="button" data-theme-id="' + x.id + '"' +
+        (x.id === active ? ' class="on"' : '') + '>' +
+        '<span class="theme-swatch" style="background:' + x.swatch + '"></span>' +
+        esc(x.name) + '</button>';
+    }).join('');
   }
 
   function updateLockBtn() {
@@ -390,6 +436,49 @@
     return (s.u || 0) > (s.k || 0);
   }
 
+  // 频率 = 这个词在词库里被收集的次数，用例句条数衡量（例句越多说明越常遇到）
+  function freqOf(w) { return (w.examples || []).length; }
+
+  // 所有排序都走这里：页面列表、导出 Word 共用同一套规则
+  function sortList(list, mode) {
+    const arr = list.slice();
+    if (mode === 'alpha') {
+      arr.sort(function (a, b) { return String(a.word).localeCompare(String(b.word), 'en'); });
+    } else if (mode === 'freq') {
+      arr.sort(function (a, b) {
+        const d = freqOf(b) - freqOf(a);
+        return d !== 0 ? d : String(a.word).localeCompare(String(b.word), 'en');
+      });
+    } else if (mode === 'recent') {
+      arr.sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); });
+    } else if (mode === 'oldest') {
+      arr.sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
+    } else if (mode === 'updated') {
+      arr.sort(function (a, b) { return String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
+    } else {
+      arr.sort(function (a, b) { return a._r - b._r; });
+    }
+    return arr;
+  }
+
+  function applyView() {
+    document.body.classList.toggle('layout-list', view.layout === 'list');
+    document.body.classList.toggle('hide-meaning', view.hideMeaning);
+    document.body.classList.toggle('hide-examples', view.hideExamples);
+    document.body.classList.toggle('nav-collapsed', view.navCollapsed);
+    const seg = $('layoutSeg');
+    Array.prototype.forEach.call(seg.querySelectorAll('.seg-btn'), function (b) {
+      b.classList.toggle('active', b.dataset.layout === view.layout);
+    });
+    Array.prototype.forEach.call($('hideSeg').querySelectorAll('.seg-btn'), function (b) {
+      b.classList.toggle('active', !!view['hide' + (b.dataset.hide === 'meaning' ? 'Meaning' : 'Examples')]);
+    });
+    const nt = $('navToggle');
+    nt.classList.toggle('on', view.navCollapsed);
+    $('navToggleIcon').innerHTML = view.navCollapsed ? ICONS.expand : ICONS.collapse;
+    nt.querySelector('.btn-label').textContent = view.navCollapsed ? '展开' : '收起';
+  }
+
   function computeFiltered() {
     const q = $('searchInput').value.trim().toLowerCase();
     const weakOnly = $('onlyWeak').checked;
@@ -402,13 +491,7 @@
       if ((w.note || '').toLowerCase().indexOf(q) >= 0) return true;
       return (w.examples || []).join(' ').toLowerCase().indexOf(q) >= 0;
     });
-
-    const sort = $('sortSelect').value;
-    if (sort === 'alpha') list.sort(function (a, b) { return a.word.localeCompare(b.word, 'en'); });
-    else if (sort === 'recent') list.sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); });
-    else if (sort === 'oldest') list.sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
-    else list.sort(function (a, b) { return a._r - b._r; });
-    return list;
+    return sortList(list, $('sortSelect').value);
   }
 
   function render() {
@@ -582,19 +665,65 @@
     }
   }
 
-  async function exportDocx() {
-    const list = filtered.length ? filtered : all;
+  function exportScopeList() {
+    const scope = $('exScope').value;
+    let list = scope === 'all' ? all.slice() : (scope === 'weak' ? all.filter(isWeak) : filtered.slice());
+    if (!list.length) list = all.slice();
+    return sortList(list, $('exSort').value);
+  }
+
+  function openExport() {
+    $('exportModal').hidden = false;
+    updateExportHint();
+  }
+
+  function updateExportHint() {
+    const n = exportScopeList().length;
+    $('exHint').textContent = '将导出 ' + n + ' 个单词。' +
+      ($('exLayout').value === 'two' ? '双栏排版适合只求「词+释义」的速记表。' : '单栏适合带例句的完整复习。');
+  }
+
+  async function doExport(e) {
+    e.preventDefault();
+    const list = exportScopeList();
     if (!list.length) { toast('没有可导出的单词', true); return; }
+    const opts = {
+      title: cfg.docTitle || 'algorithm-wordbook',
+      date: nowStr(),
+      columns: $('exLayout').value === 'two' ? 2 : 1,
+      withMeaning: $('exMeaning').checked,
+      withPos: $('exPos').checked,
+      withNote: $('exNote').checked,
+      withExample: $('exExample').checked,
+      withOrigin: $('exOrigin').checked,
+      withIndex: $('exIndex').checked
+    };
+    const btn = $('exportForm').querySelector('button[type=submit]');
+    btn.disabled = true;
     try {
-      const blob = await window.DocxExport.exportDocx(list, cfg.docTitle);
-      const d = new Date();
-      const p = function (n) { return n < 10 ? '0' + n : '' + n; };
-      const name = cfg.docTitle + '-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.docx';
-      download(blob, name);
+      const blob = await window.DocxExport.exportDocx(list, opts);
+      download(blob, fileName(opts.columns));
+      $('exportModal').hidden = true;
       toast('已导出 ' + list.length + ' 个单词到 Word');
     } catch (err) {
       toast('导出失败：' + (err && err.message ? err.message : err), true);
+    } finally {
+      btn.disabled = false;
     }
+  }
+
+  function nowStr() {
+    const d = new Date();
+    const p = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function fileName(cols) {
+    const d = new Date();
+    const p = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return (cfg.docTitle || 'algorithm-wordbook') + '-' + d.getFullYear() + p(d.getMonth() + 1) +
+      p(d.getDate()) + (cols === 2 ? '-双栏' : '') + '.docx';
   }
 
   function exportJson() {
@@ -959,9 +1088,43 @@
 
   function bindUI() {
     $('setupIcon').innerHTML = ICONS.gear;
-    $('themeBtn').addEventListener('click', function () {
-      const cur = document.documentElement.getAttribute('data-theme');
-      applyTheme(cur === 'dark' ? 'light' : 'dark');
+    applyView();
+
+    $('themeBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      const m = $('themeMenu');
+      m.hidden = !m.hidden;
+    });
+    $('themeMenu').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-theme-id]');
+      if (!b) return;
+      applyTheme(b.dataset.themeId);
+      $('themeMenu').hidden = true;
+    });
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.theme-wrap')) $('themeMenu').hidden = true;
+    });
+
+    $('navToggle').addEventListener('click', function () {
+      view.navCollapsed = !view.navCollapsed;
+      saveView();
+      applyView();
+    });
+
+    $('layoutSeg').addEventListener('click', function (e) {
+      const b = e.target.closest('.seg-btn');
+      if (!b) return;
+      view.layout = b.dataset.layout;
+      saveView();
+      applyView();
+    });
+    $('hideSeg').addEventListener('click', function (e) {
+      const b = e.target.closest('.seg-btn');
+      if (!b) return;
+      if (b.dataset.hide === 'meaning') view.hideMeaning = !view.hideMeaning;
+      else view.hideExamples = !view.hideExamples;
+      saveView();
+      applyView();
     });
 
     $('lockBtn').addEventListener('click', function () {
@@ -1098,7 +1261,11 @@
       if (v === 'recite') buildQueue();
     });
 
-    $('exportDocxBtn').addEventListener('click', exportDocx);
+    $('exportDocxBtn').addEventListener('click', openExport);
+    $('exportForm').addEventListener('submit', doExport);
+    ['exScope', 'exSort', 'exLayout'].forEach(function (id) {
+      $(id).addEventListener('change', updateExportHint);
+    });
     $('exportJsonBtn').addEventListener('click', exportJson);
     $('importJsonBtn').addEventListener('click', function () {
       if (requireUnlock('导入 JSON')) $('fileInput').click();

@@ -49,56 +49,99 @@
       .join('') +
     '</w:tblBorders>';
 
-  /* words: [{word, origin, pos, meaning, examples:[], note}] */
-  function buildDocumentXml(words, meta) {
-    const COLS = [560, 1420, 880, 2180, 4598]; // 合计 9638 twips ≈ A4 正文宽度
-    const HEAD = ['#', '单词', '词性', '中文释义', '例句'];
+  /* words: [{word, origin, pos, meaning, examples:[], note}]
+     opts: {title, date, columns:1|2, withMeaning, withPos, withNote, withExample, withOrigin, withIndex} */
+  function buildDocumentXml(words, opts) {
+    const two = opts.columns === 2;
+    // A4 正文宽 9638 twips；双栏时两栏等宽，中间留 400 的栏间距
+    const FULL = 9638;
+    const tableW = two ? Math.floor((FULL - 400) / 2) : FULL;
+
+    // 依据勾选项决定列顺序与列宽
+    const cols = [];   // {key, head, w}
+    if (opts.withIndex !== false) cols.push({ key: 'i', head: '#', w: 460 });
+    cols.push({ key: 'word', head: '单词', w: 0 });
+    if (opts.withOrigin) cols.push({ key: 'origin', head: '原词', w: 0 });
+    if (opts.withPos) cols.push({ key: 'pos', head: '词性', w: 0 });
+    if (opts.withMeaning) cols.push({ key: 'meaning', head: '中文释义', w: 0 });
+    if (opts.withExample) cols.push({ key: 'example', head: '例句', w: 0 });
+    if (opts.withNote) cols.push({ key: 'note', head: '备注', w: 0 });
+
+    // 把剩余宽度按权重分给弹性列（最后一步把舍入误差补给最后一列，保证合计正好等于 tableW）
+    const FLEX = { word: 26, origin: 16, pos: 10, meaning: 34, example: 62, note: 20 };
+    let fixed = 0, flexTotal = 0;
+    cols.forEach(function (c) { if (c.w) fixed += c.w; else flexTotal += FLEX[c.key] || 10; });
+    const rest = Math.max(1200, tableW - fixed);
+    cols.forEach(function (c) { if (!c.w) c.w = Math.round(rest * (FLEX[c.key] || 10) / flexTotal); });
+    const drift = tableW - cols.reduce(function (s, c) { return s + c.w; }, 0);
+    if (cols.length && drift) cols[cols.length - 1].w += drift;
 
     let body = '';
-    body += para(meta.title, { bold: true, sz: 36, align: 'center', after: 60 });
-    body += para('共 ' + words.length + ' 个单词 · 导出于 ' + meta.date,
+    body += para(opts.title, { bold: true, sz: 36, align: 'center', after: 60 });
+    const mode = two ? '双栏速记' : '完整版';
+    body += para('共 ' + words.length + ' 个单词 · ' + mode + ' · 导出于 ' + opts.date,
       { sz: 18, align: 'center', color: '808080', after: 240 });
 
-    let rows = '';
+    const table = function (rowsXml) {
+      return '<w:tbl>' +
+        '<w:tblPr><w:tblW w:w="' + tableW + '" w:type="dxa"/><w:tblLayout w:type="fixed"/>' + BORDER + '</w:tblPr>' +
+        '<w:tblGrid>' + cols.map(function (c) { return '<w:gridCol w:w="' + c.w + '"/>'; }).join('') + '</w:tblGrid>' +
+        rowsXml + '</w:tbl>';
+    };
 
-    // 表头
-    rows += '<w:tr><w:trPr><w:tblHeader/></w:trPr>' +
-      HEAD.map(function (h, i) {
-        return cell(para(h, { bold: true, sz: 20, align: 'center' }), COLS[i], { shd: 'DCE5F2', vcenter: true });
+    const headRow = '<w:tr><w:trPr><w:tblHeader/></w:trPr>' +
+      cols.map(function (c) {
+        return cell(para(c.head, { bold: true, sz: 20, align: 'center' }), c.w, { shd: 'DCE5F2', vcenter: true });
       }).join('') + '</w:tr>';
 
-    // 数据行
-    words.forEach(function (w, idx) {
-      const exParas = (w.examples && w.examples.length)
-        ? w.examples.map(function (e, i) {
-          return para((i + 1) + '. ' + e, { sz: 19, indent: 0, after: 40 });
-        }).join('')
-        : para('—', { sz: 19, color: '9099A8' });
+    const dataRows = words.map(function (w, idx) {
+      const tds = cols.map(function (c) {
+        if (c.key === 'i') return cell(para(String(idx + 1), { sz: 19, align: 'center' }), c.w, { vcenter: true });
+        if (c.key === 'word') {
+          return cell(para(w.word || '', { bold: true, sz: two ? 20 : 21 }), c.w, { vcenter: true });
+        }
+        if (c.key === 'origin') {
+          const o = (w.origin || '').trim();
+          return cell(o ? para(o, { sz: 18, color: '8A6D3B' }) : para('—', { sz: 18, color: '9099A8' }), c.w, { vcenter: true });
+        }
+        if (c.key === 'pos') {
+          return cell(para(w.pos || '', { sz: 18, color: '5A6474' }), c.w, { vcenter: true });
+        }
+        if (c.key === 'meaning') {
+          return cell(para(w.meaning || '—', { sz: 20 }), c.w, { vcenter: true });
+        }
+        if (c.key === 'example') {
+          const ex = (w.examples || []).filter(Boolean);
+          return cell(ex.length
+            ? ex.map(function (e, i) { return para((i + 1) + '. ' + e, { sz: 18, after: 30 }); }).join('')
+            : para('—', { sz: 18, color: '9099A8' }), c.w);
+        }
+        if (c.key === 'note') {
+          return cell(para(w.note || '—', { sz: 18, color: 'B08000' }), c.w, { vcenter: true });
+        }
+        return cell(para(''), c.w);
+      }).join('');
+      return '<w:tr>' + tds + '</w:tr>';
+    }).join('');
 
-      const cells = [
-        cell(para(String(idx + 1), { sz: 20, align: 'center' }), COLS[0], { vcenter: true }),
-        cell(para(w.word, { bold: true, sz: 21 }), COLS[1], { vcenter: true }),
-        cell(para(w.pos || '', { sz: 19, color: '5A6474' }), COLS[2], { vcenter: true }),
-        cell(para(w.meaning || '', { sz: 21 }), COLS[3], { vcenter: true }),
-        cell(exParas + (w.note ? para('注：' + w.note, { sz: 18, color: 'B08000' }) : ''), COLS[4])
-      ];
-      rows += '<w:tr>' + cells.join('') + '</w:tr>';
-    });
-
-    body +=
-      '<w:tbl>' +
-      '<w:tblPr><w:tblW w:w="9638" w:type="dxa"/><w:tblLayout w:type="fixed"/>' + BORDER + '</w:tblPr>' +
-      '<w:tblGrid>' + COLS.map(function (c) { return '<w:gridCol w:w="' + c + '"/>'; }).join('') + '</w:tblGrid>' +
-      rows +
-      '</w:tbl>';
+    if (two) {
+      // 双栏：一张表先排满第一栏，再自动流入第二栏（Word 的连续分节会自动换栏）
+      body += table(headRow + dataRows);
+    } else {
+      body += table(headRow + dataRows);
+    }
 
     body += '<w:p/>'; // Word 要求表格后必须有一个空段落
 
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<w:document ' + W + '><w:body>' + body +
+    // 双栏用等宽（equalWidth 默认 1），两栏宽度相同，最省事也不会渲染错乱
+    const sect =
       '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
       '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="851" w:footer="992" w:gutter="0"/>' +
-      '</w:sectPr></w:body></w:document>';
+      (two ? '<w:cols w:num="2" w:space="400"/>' : '<w:cols w:space="425"/>') +
+      '</w:sectPr>';
+
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document ' + W + '><w:body>' + body + sect + '</w:body></w:document>';
   }
 
   const CONTENT_TYPES =
@@ -126,15 +169,20 @@
       ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
 
-  /* 返回 Promise<Blob> */
-  async function exportDocx(words, title) {
+  /* 返回 Promise<Blob>；opts 见 buildDocumentXml 的注释 */
+  async function exportDocx(words, opts) {
     if (typeof JSZip === 'undefined') throw new Error('JSZip 未加载');
+    const o = Object.assign({
+      title: 'algorithm-wordbook', date: nowStr(), columns: 1,
+      withMeaning: true, withPos: true, withNote: false,
+      withExample: false, withOrigin: false, withIndex: true
+    }, opts || {});
 
     const list = words.slice().sort(function (a, b) {
       return String(a.word).localeCompare(String(b.word), 'en');
     });
 
-    const docXml = buildDocumentXml(list, { title: title || 'algorithm-wordbook', date: nowStr() });
+    const docXml = buildDocumentXml(list, o);
 
     const zip = new JSZip();
     zip.file('[Content_Types].xml', CONTENT_TYPES);
