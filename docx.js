@@ -1,6 +1,6 @@
 /* 纯前端生成 .docx（OOXML + JSZip），无需服务器
    版式参考「Classic Vocabulary List」：斜体大标题 + Title/Date 行 +
-   双栏 No./Word/Meaning 表格 + 每行右侧勾选框 + 页脚居中页码 */
+   多栏 No./Word/Meaning/Example 表格 + 每行右侧勾选框 + 页脚居中页码 */
 (function () {
   const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
   const R_NS = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
@@ -26,8 +26,7 @@
     if (o.bold) rPr += '<w:b/>';
     if (o.italic) rPr += '<w:i/>';
     if (o.color) rPr += '<w:color w:val="' + o.color + '"/>';
-    rPr += '<w:sz w:val="' + (o.sz || 21) + '"/><w:szCs w:val="' + (o.sz || 21) + '"/>';
-    rPr += '</w:rPr>';
+    rPr += '<w:sz w:val="' + (o.sz || 21) + '"/></w:rPr>';
 
     let pPr = '<w:pPr>';
     if (o.align) pPr += '<w:jc w:val="' + o.align + '"/>';
@@ -69,8 +68,8 @@
 
   function tblBorders(o) {
     o = o || {};
-    const outer = o.outer || 12;      // 上下左右粗边
-    const inner = o.inner || 4;      // 内部细虚线
+    const outer = o.outer || 12;
+    const inner = o.inner || 4;
     return '<w:tblBorders>' +
       bd('top', outer, '4A4A4A') + bd('left', outer, '4A4A4A') +
       bd('bottom', outer, '4A4A4A') + bd('right', outer, '4A4A4A') +
@@ -78,36 +77,53 @@
       '</w:tblBorders>';
   }
 
-  // 勾选框：☐ 字符，Times New Roman 有这个字形
+  // 勾选框：☐ 字符
   const BOX = '☐';
 
   /* ------------------------------------------------------------------
-     双栏速记表（默认版式，对应图 2）
-     布局：一张表 9 列 = [No. | Word | Meaning | ☐] × 2 栏 + 中间缝列
-     每页固定 rowsPerPage 行（= 每页单词数 / 2），行高固定 trHeight(exact)，
-     页与页之间插分页符，最后一页补空行使每页表格一样高。
+     多栏速记表（Classic Vocabulary List）
+     可配置：每页栏数（columns）、每栏行数（perCol）、是否带例句列等。
+     每页 = 表头 + 固定 perCol 行；每栏从上往下填满，再填下一栏。
      ------------------------------------------------------------------ */
   function buildClassic(words, opts) {
-    const FULL = 9638;               // A4 正文宽（twips）
-    const GAP = 340;                 // 两栏之间的缝
-    const colW = Math.floor((FULL - GAP) / 2);   // 每栏宽
-    // No. | Word | Meaning | ☐ —— Word 吃掉栏内剩余宽度，四列合计正好等于 colW
-    const NO = 520, MEAN = 340, BOXW = 280;
-    const C = [NO, colW - NO - MEAN - BOXW, MEAN, BOXW];
-    // 9 列：左栏 4 列 + 中间 1 个空列（GAP）+ 右栏 4 列，合计正好等于 FULL
-    const grid = [].concat(C, [GAP], C);
+    const FULL = 9638;
+    const colsPerPage = Math.max(1, Math.min(4, Number(opts.columns) || 2));
+    const perCol = Math.max(1, Number(opts.perCol) || 15);
+    const gapW = colsPerPage <= 2 ? 340 : 240;
+    const colW = Math.floor((FULL - gapW * (colsPerPage - 1)) / colsPerPage);
 
-    // 每页放多少个单词 → 每页多少行；行高按可用高度平均分，固定死
-    const perPage = Math.max(2, Number(opts.perPage) || 30);
-    const rowsPerPage = Math.max(1, Math.round(perPage / 2));
-    const AVAIL = 12600;             // 去掉标题 / Title-Date 行后留给表格的高度
-    let ROW_H = Math.floor(AVAIL / rowsPerPage);
-    ROW_H = Math.max(520, Math.min(ROW_H, 1300));
-    const ROW_RULE = opts.withExample ? 'atLeast' : 'exact';
+    const withIdx = opts.withIndex !== false;
+    const withMean = opts.withMeaning !== false;
+    const withEx = opts.withExample;
+    const withPos = opts.withPos !== false;
+    const withOrigin = opts.withOrigin;
+    const withNote = opts.withNote;
+
+    // 内部分配每栏的列宽：序号 / 单词 / 中文 / 例句 / 勾选框
+    const part = [];
+    if (withIdx) part.push({ key: 'idx', head: 'No.', min: 280, weight: 8 });
+    part.push({ key: 'word', head: 'Word', min: 520, weight: 28 });
+    if (withMean) part.push({ key: 'mean', head: 'Meaning', min: 360, weight: 20 });
+    if (withEx) part.push({ key: 'ex', head: 'Example', min: 440, weight: 22 });
+    part.push({ key: 'box', head: '', min: 220, weight: 8 });
+
+    const C = distribute(colW, part);
+
+    // 表格总宽度：所有内容列 + 所有缝列
+    const grid = [];
+    for (let c = 0; c < colsPerPage; c++) {
+      C.forEach(function (w) { grid.push(w); });
+      if (c < colsPerPage - 1) grid.push(gapW);
+    }
+
+    const AVAIL = 12600;
+    let ROW_H = Math.floor(AVAIL / perCol);
+    ROW_H = Math.max(480, Math.min(ROW_H, 1400));
+    const ROW_RULE = withEx ? 'atLeast' : 'exact';
     const rowPr = '<w:trPr><w:trHeight w:val="' + ROW_H + '" w:hRule="' + ROW_RULE + '"/></w:trPr>';
 
-    // 中间那个缝列：左右无边框，只有横线跟上下对齐，两栏才真的分开
-    const gapCell = function (isHead) {
+    // 缝列：左右无边框，只留上下横线，让各栏视觉上分开
+    function gapCell(isHead) {
       const vnone = ['left', 'right', 'bottom'].map(function (k) {
         return '<w:' + k + ' w:val="none" w:sz="0" w:space="0" w:color="auto"/>';
       }).join('');
@@ -117,72 +133,85 @@
           '<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>' +
           '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="C8C8C8"/></w:tcBorders>'
         : '<w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="C8C8C8"/>' + vnone + '</w:tcBorders>';
-      return '<w:tc><w:tcPr><w:tcW w:w="' + GAP + '" w:type="dxa"/>' + borders +
+      return '<w:tc><w:tcPr><w:tcW w:w="' + gapW + '" w:type="dxa"/>' + borders +
         '</w:tcPr><w:p/></w:tc>';
-    };
+    }
 
-    // 表头（两栏各一份，中间夹一个空缝列）
-    const headCells = function () {
-      return cell(para('', { sz: 18 }), C[0], { shd: 'F0F0F0', vcenter: true }) +
-        cell(para('Word', { bold: true, sz: 20, font: 'Times New Roman' }), C[1], { shd: 'F0F0F0', vcenter: true }) +
-        cell(para('Meaning', { bold: true, sz: 20, font: 'Times New Roman' }), C[2], { shd: 'F0F0F0', vcenter: true }) +
-        cell(para('', { sz: 18 }), C[3], { shd: 'F0F0F0', vcenter: true });
-    };
-    const headRow = '<w:tr><w:trPr><w:tblHeader/><w:trHeight w:val="360" w:hRule="atLeast"/></w:trPr>' +
-      headCells() + gapCell(true) + headCells() + '</w:tr>';
+    function headCells() {
+      let out = '';
+      part.forEach(function (p, i) {
+        const text = p.head;
+        const sz = p.key === 'idx' ? 18 : 20;
+        const align = p.key === 'idx' || p.key === 'box' ? 'center' : '';
+        out += cell(para(text, { bold: true, sz: sz, font: 'Times New Roman', align: align }), C[i], { shd: 'F0F0F0', vcenter: true });
+      });
+      return out;
+    }
 
-    // 数据行：左栏第 1..rowsPerPage，右栏第 rowsPerPage+1..end
-    const rowCells = function (w, no) {
-      const meaning = [];
-      const pos = opts.withPos === false ? '' : (w.pos ? w.pos + ' ' : '');
-      meaning.push(para(pos + (w.meaning || '—'), { sz: 18, color: '404040' }));
-      if (opts.withOrigin && w.origin) meaning.push(para('原词 ' + w.origin, { sz: 16, color: '8A6D3B' }));
-      if (opts.withNote && w.note) meaning.push(para('注：' + w.note, { sz: 16, color: '8A6D3B' }));
-      if (opts.withExample) {
-        (w.examples || []).filter(Boolean).forEach(function (e) {
-          meaning.push(para(e, { sz: 15, color: '6A7280', indent: 120 }));
-        });
-      }
-      return cell(para(String(no), { sz: 18, align: 'center', font: 'Times New Roman' }), C[0], { vcenter: true }) +
-        cell(para(w.word || '', { bold: true, sz: 20, font: 'Times New Roman' }), C[1], { vcenter: true }) +
-        cell(meaning.join(''), C[2], { vcenter: true }) +
-        cell(para(BOX, { sz: 22, font: 'Segoe UI Symbol', align: 'center' }), C[3], { vcenter: true });
-    };
+    const headRow = '<w:tr><w:trPr><w:tblHeader/><w:trHeight w:val="380" w:hRule="atLeast"/></w:trPr>' +
+      interleave(headCells, colsPerPage, gapCell, true) + '</w:tr>';
 
-    const emptyCells = function () {
-      return cell(para('', { sz: 18 }), C[0]) + cell(para('', { sz: 18 }), C[1]) +
-        cell(para('', { sz: 18 }), C[2]) + cell(para('', { sz: 18 }), C[3]);
-    };
+    function rowCells(w, no) {
+      let out = '';
+      part.forEach(function (p) {
+        if (p.key === 'idx') {
+          out += cell(para(String(no), { sz: 18, align: 'center', font: 'Times New Roman' }), C[part.indexOf(p)], { vcenter: true });
+        } else if (p.key === 'word') {
+          out += cell(para(w.word || '', { bold: true, sz: 20, font: 'Times New Roman' }), C[part.indexOf(p)], { vcenter: true });
+        } else if (p.key === 'mean') {
+          const meaning = [];
+          const pos = withPos ? (w.pos ? w.pos + ' ' : '') : '';
+          meaning.push(para(pos + (w.meaning || '—'), { sz: 18, color: '404040' }));
+          if (withOrigin && w.origin) meaning.push(para('原词 ' + w.origin, { sz: 16, color: '8A6D3B' }));
+          if (withNote && w.note) meaning.push(para('注：' + w.note, { sz: 16, color: '8A6D3B' }));
+          out += cell(meaning.join(''), C[part.indexOf(p)], { vcenter: true });
+        } else if (p.key === 'ex') {
+          const ex = (w.examples || []).filter(Boolean);
+          out += cell(ex.length
+            ? ex.map(function (e) { return para(e, { sz: 15, color: '6A7280', indent: 80 }); }).join('')
+            : para('—', { sz: 18, color: '9099A8' }), C[part.indexOf(p)], { vcenter: true });
+        } else if (p.key === 'box') {
+          out += cell(para(BOX, { sz: 22, font: 'Segoe UI Symbol', align: 'center' }), C[part.indexOf(p)], { vcenter: true });
+        }
+      });
+      return out;
+    }
 
-    // 一页 = 表头 + 固定 rowsPerPage 行；左栏从上往下填满，再填右栏
-    const tableXml = function (pageWords, startNo) {
+    function emptyCells() {
+      let out = '';
+      part.forEach(function (p) {
+        out += cell(para('', { sz: 18 }), C[part.indexOf(p)]);
+      });
+      return out;
+    }
+
+    function tableXml(pageWords, startNo) {
       let rows = '';
-      for (let i = 0; i < rowsPerPage; i++) {
-        const lw = pageWords[i];
-        const rw = pageWords[i + rowsPerPage];
-        rows += '<w:tr>' + rowPr + (lw ? rowCells(lw, startNo + i) : emptyCells()) +
-          gapCell(false) + (rw ? rowCells(rw, startNo + i + rowsPerPage) : emptyCells()) + '</w:tr>';
+      for (let r = 0; r < perCol; r++) {
+        let row = '<w:tr>' + rowPr;
+        for (let c = 0; c < colsPerPage; c++) {
+          const w = pageWords[c * perCol + r];
+          const no = startNo + c * perCol + r;
+          row += (w ? rowCells(w, no) : emptyCells());
+          if (c < colsPerPage - 1) row += gapCell(false);
+        }
+        row += '</w:tr>';
+        rows += row;
       }
       return '<w:tbl>' +
         '<w:tblPr><w:tblW w:w="' + FULL + '" w:type="dxa"/><w:tblLayout w:type="fixed"/>' +
         tblBorders({ outer: 12, inner: 4 }) + '</w:tblPr>' +
         '<w:tblGrid>' + grid.map(function (w) { return '<w:gridCol w:w="' + w + '"/>'; }).join('') + '</w:tblGrid>' +
         headRow + rows + '</w:tbl>';
-    };
+    }
 
     const pageBreak = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
-
-    // 按每页容量切片
-    const perPageWords = rowsPerPage * 2;
+    const perPage = perCol * colsPerPage;
     const pages = [];
-    for (let i = 0; i < words.length; i += perPageWords) {
-      pages.push(words.slice(i, i + perPageWords));
-    }
+    for (let i = 0; i < words.length; i += perPage) pages.push(words.slice(i, i + perPage));
     if (!pages.length) pages.push([]);
 
     let body = '';
-
-    // 标题 + Title/Date 行（只在第一页）
     body += para(opts.title || 'Classic Vocabulary List',
       { bold: true, italic: true, sz: 40, font: 'Times New Roman', after: 100 });
     const tW = Math.floor(FULL * 0.55);
@@ -199,12 +228,44 @@
     body += para('', { sz: 12, after: 60 });
 
     pages.forEach(function (pw, pi) {
-      body += tableXml(pw, pi * perPageWords + 1);
+      body += tableXml(pw, pi * perPage + 1);
       if (pi < pages.length - 1) body += pageBreak;
     });
 
     body += '<w:p/>';
     return body;
+  }
+
+  // 把 cells 函数重复 cols 次，中间插入 gapCell
+  function interleave(cellsFn, cols, gapFn, isHead) {
+    let out = '';
+    for (let c = 0; c < cols; c++) {
+      out += cellsFn();
+      if (c < cols - 1) out += gapFn(isHead);
+    }
+    return out;
+  }
+
+  // 按权重分配宽度，同时保证最小宽度；返回每列宽度数组
+  function distribute(total, parts) {
+    const n = parts.length;
+    const widths = parts.map(function () { return 0; });
+    let minSum = 0;
+    parts.forEach(function (p) { minSum += p.min; });
+    if (minSum >= total) {
+      // 放不下，按比例压缩最小值
+      const scale = total / minSum;
+      return parts.map(function (p) { return Math.max(120, Math.floor(p.min * scale)); });
+    }
+    let remaining = total - minSum;
+    const totalWeight = parts.reduce(function (s, p) { return s + p.weight; }, 0);
+    parts.forEach(function (p, i) {
+      widths[i] = p.min + Math.floor(remaining * p.weight / totalWeight);
+    });
+    // 处理舍入误差
+    const sum = widths.reduce(function (s, w) { return s + w; }, 0);
+    if (sum !== total && n) widths[n - 1] += (total - sum);
+    return widths;
   }
 
   /* ------------------------------------------------------------------
@@ -269,8 +330,9 @@
   }
 
   function buildDocumentXml(words, opts) {
-    const two = opts.columns === 2;
-    const body = two ? buildClassic(words, opts) : buildFull(words, opts);
+    // 新版用 opts.layout 区分；旧版没传 layout 时靠 columns/perPage/perCol 兜底
+    const layout = opts.layout || (opts.columns > 1 || opts.perPage != null || opts.perCol != null ? 'classic' : 'full');
+    const body = layout === 'classic' ? buildClassic(words, opts) : buildFull(words, opts);
     const sect =
       '<w:sectPr>' +
       '<w:footerReference w:type="default" r:id="rIdFtr"/>' +
@@ -282,7 +344,7 @@
       '<w:document ' + W + ' ' + R_NS + '><w:body>' + body + sect + '</w:body></w:document>';
   }
 
-  // 页脚：居中的 "第 X 页"，用 PAGE 域，Word 打开时会自动算
+  // 页脚：居中的 "第 X 页"，用 PAGE 域
   const FOOTER =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:ftr ' + W + ' ' + R_NS + '><w:p><w:pPr><w:jc w:val="center"/></w:pPr>' +
@@ -332,12 +394,11 @@
     return p(d.getMonth() + 1) + ' / ' + p(d.getDate()) + ' / ' + d.getFullYear();
   }
 
-  /* 返回 Promise<Blob>；opts 见 buildClassic 里的说明 */
   async function exportDocx(words, opts) {
     if (typeof JSZip === 'undefined') throw new Error('JSZip 未加载');
     const o = Object.assign({
       title: 'Classic Vocabulary List', docTitle: '收藏的单词', date: nowStr(),
-      dateOnly: dateOnly(), columns: 2, perPage: 30,
+      dateOnly: dateOnly(), columns: 2, perCol: 15,
       withMeaning: true, withPos: true, withNote: false,
       withExample: false, withOrigin: false, withIndex: true
     }, opts || {});

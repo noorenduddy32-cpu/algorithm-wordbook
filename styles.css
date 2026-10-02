@@ -447,6 +447,24 @@ select {
   font: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 9px;
   border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
 }
+/* 修正深色主题下 select 选项背景变成白色的问题 */
+select option, select optgroup {
+  background: var(--panel2);
+  color: var(--text);
+}
+/* 玻璃深色主题下 option 需要更不透明的背景，否则看不清 */
+[data-theme="glass"] select option,
+[data-theme="glass"] select optgroup,
+[data-theme="glass-light"] select option,
+[data-theme="glass-light"] select optgroup {
+  background: #1a2030;
+  color: #eef2ff;
+}
+[data-theme="glass-light"] select option,
+[data-theme="glass-light"] select optgroup {
+  background: #ffffff;
+  color: #16203a;
+}
 /* 排序：下拉 + 升降序切换按钮合成一组 */
 .sort-wrap { display: inline-flex; align-items: center; gap: 4px; }
 .sort-dir {
@@ -499,7 +517,17 @@ body.layout-grid .card {
   padding: 16px 18px;
   min-height: 0;
   overflow: hidden;
+  transition: transform .18s ease, box-shadow .18s ease, font-size .18s ease;
 }
+body.layout-grid .card:hover {
+  transform: scale(1.035);
+  box-shadow: var(--shadow), 0 0 0 1px var(--accent-soft);
+  z-index: 2;
+}
+body.layout-grid .card:hover .word { font-size: 24px; }
+body.layout-grid .card:hover .mini-speak { font-size: 24px; }
+body.layout-grid .card:hover .meaning { font-size: 16px; }
+body.layout-grid .card:hover .examples { font-size: 14px; }
 body.layout-grid .card-head { flex: 0 0 auto; }
 /* 单词与小喇叭同一行，喇叭高度跟字号走，看起来跟英文一样高 */
 body.layout-grid .word-wrap { align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; }
@@ -529,14 +557,22 @@ body.layout-grid .zh-line .meaning {
   overflow: hidden;
 }
 
-/* 第 3-5 行：例句，最多 3 行 */
+/* 第 3-5 行：例句，固定只留 3 行高度，不收放 */
 body.layout-grid .examples {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 8px 0 0; padding-left: 0; list-style: none;
   font-size: 13px; line-height: 1.55;
+  min-height: calc(1.55em * 3); max-height: calc(1.55em * 3);
 }
+/* 隐藏中文时把中文那行收掉，例句直接顶到第 2 行 */
+body.layout-grid.hide-meaning .zh-line { display: none; }
+body.layout-grid.hide-meaning .examples { margin-top: 4px; }
+/* 隐藏例句时彻底不占位 */
+body.layout-grid.hide-examples .examples { display: none; }
+/* 两者都隐藏时压缩卡片 */
+body.layout-grid.hide-meaning.hide-examples .card { padding: 12px 16px; }
 body.layout-grid .examples li { margin-bottom: 0; word-break: break-word; }
 body.layout-grid .examples li::before { content: "· "; opacity: .6; }
 
@@ -795,13 +831,14 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 }
 .speak-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; flex: 0 0 auto;
+  width: 34px; height: 34px; flex: 0 0 auto;
   border-radius: 50%; cursor: pointer;
   background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--accent);
   transition: transform .12s, background .12s, box-shadow .12s;
 }
-.speak-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 5px var(--accent-soft); }
+.speak-btn svg { width: 17px; height: 17px; }
+.speak-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .speak-btn.playing { animation: pulse-speak .8s ease; }
 .speak-hint { font-size: 12px; color: var(--muted); }
 

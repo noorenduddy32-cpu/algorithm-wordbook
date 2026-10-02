@@ -1201,16 +1201,20 @@
   function updateExportHint() {
     const n = exportScopeList().length;
     const two = $('exLayout').value === 'two';
-    $('exPerPageWrap').hidden = !two;
+    $('exPerColWrap').hidden = !two;
+    $('exColsWrap').hidden = !two;
     if (!two) {
       $('exHint').textContent = '将导出 ' + n + ' 个单词。单栏适合带例句的完整复习，页脚同样有页码。';
       return;
     }
-    const per = Number($('exPerPage').value) || 30;
-    const rows = Math.round(per / 2);
-    const pages = Math.max(1, Math.ceil(n / per));
-    $('exHint').textContent = '将导出 ' + n + ' 个单词：每页 ' + per + ' 个（左右各 ' + rows +
-      ' 行），行高固定、列宽固定，共 ' + pages + ' 页；不足的空格自动补齐。';
+    const perCol = Math.max(1, Number($('exPerCol').value) || 15);
+    const cols = Math.max(1, Number($('exCols').value) || 2);
+    const perPage = perCol * cols;
+    const pages = Math.max(1, Math.ceil(n / perPage));
+    const example = $('exExample').checked;
+    $('exHint').textContent = '将导出 ' + n + ' 个单词：每页 ' + cols + ' 栏 × 每栏 ' + perCol +
+      ' 词 = ' + perPage + ' 词，行高固定、列宽固定，共 ' + pages + ' 页；' +
+      (example ? '例句作为单独一列。' : '例句不导出。');
   }
 
   async function doExport(e) {
@@ -1222,8 +1226,9 @@
       title: two ? 'Classic Vocabulary List' : (cfg.docTitle || 'algorithm-wordbook'),
       docTitle: $('exDocTitle').value.trim() || '收藏的单词',
       date: nowStr(),
-      columns: two ? 2 : 1,
-      perPage: Number($('exPerPage').value) || 30,
+      layout: two ? 'classic' : 'full',
+      columns: two ? (Math.max(1, Number($('exCols').value) || 2)) : 1,
+      perCol: Math.max(1, Number($('exPerCol').value) || 15),
       withMeaning: $('exMeaning').checked,
       withPos: $('exPos').checked,
       withNote: $('exNote').checked,
@@ -1235,7 +1240,7 @@
     btn.disabled = true;
     try {
       const blob = await window.DocxExport.exportDocx(list, opts);
-      download(blob, fileName(two));
+      download(blob, fileName(opts.columns));
       $('exportModal').hidden = true;
       toast('已导出 ' + list.length + ' 个单词到 Word');
     } catch (err) {
@@ -1255,8 +1260,9 @@
   function fileName(cols) {
     const d = new Date();
     const p = function (n) { return n < 10 ? '0' + n : '' + n; };
+    const colLabel = cols > 1 ? '-' + cols + '栏' : '';
     return (cfg.docTitle || 'algorithm-wordbook') + '-' + d.getFullYear() + p(d.getMonth() + 1) +
-      p(d.getDate()) + (cols === 2 ? '-双栏' : '') + '.docx';
+      p(d.getDate()) + colLabel + '.docx';
   }
 
   function exportJson() {
@@ -1866,7 +1872,10 @@
 
     $('exportDocxBtn').addEventListener('click', openExport);
     $('exportForm').addEventListener('submit', doExport);
-    ['exScope', 'exSort', 'exDir', 'exLayout', 'exPerPage'].forEach(function (id) {
+    ['exScope', 'exSort', 'exDir', 'exLayout', 'exPerCol', 'exCols'].forEach(function (id) {
+      $(id).addEventListener('change', updateExportHint);
+    });
+    ['exMeaning', 'exPos', 'exNote', 'exExample', 'exOrigin', 'exIndex'].forEach(function (id) {
       $(id).addEventListener('change', updateExportHint);
     });
     $('exportJsonBtn').addEventListener('click', exportJson);

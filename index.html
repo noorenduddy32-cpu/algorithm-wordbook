@@ -389,13 +389,23 @@
           <option value="one">单栏带例句（完整）</option>
         </select>
       </label>
-      <label id="exPerPageWrap">每页单词数（双栏时 = 每页行数 × 2，表格行高固定）
-        <select id="exPerPage">
-          <option value="20">20（10 行）</option>
-          <option value="24">24（12 行）</option>
-          <option value="30" selected>30（15 行）</option>
-          <option value="36">36（18 行）</option>
-          <option value="40">40（20 行）</option>
+      <label id="exPerColWrap">每列单词数（每栏固定行数）
+        <select id="exPerCol">
+          <option value="10">10</option>
+          <option value="12">12</option>
+          <option value="15" selected>15</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+          <option value="30">30</option>
+        </select>
+      </label>
+      <label id="exColsWrap">每页栏数（A4 横向并排栏数）
+        <select id="exCols">
+          <option value="1">1 栏</option>
+          <option value="2" selected>2 栏</option>
+          <option value="3">3 栏</option>
+          <option value="4">4 栏</option>
         </select>
       </label>
       <div class="opt-row">
@@ -412,7 +422,7 @@
         <button type="submit" class="btn primary">导出</button>
       </div>
     </form>
-    <p class="muted small">双栏模式是经典词汇表样式（左右两栏 No./Word/Meaning + ☐ 勾选框），页脚居中显示页码。双栏默认不带例句，勾上会很挤。</p>
+    <p class="muted small">经典模式是多栏速记表（No./Word/Meaning/Example + ☐ 勾选框），可自定义每栏行数和栏数；页脚居中显示页码。栏数多或带例句时建议少放一点词，避免太挤。</p>
   </div>
 </div>
 
