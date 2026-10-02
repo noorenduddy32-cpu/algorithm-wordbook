@@ -3,6 +3,19 @@
   'use strict';
 
   const cfg = window.APP_CONFIG;
+
+  // 云端大模型（「AI 查中文」按钮用，keyless）
+  let cloud = null, cloudModel = null, cloudReady = false;
+  function initCloud() {
+    const c = cfg && cfg.cloud;
+    if (!c || !c.endpoint || !c.publishableKey) return;
+    if (typeof WorkBuddyCloud === 'undefined') return;
+    try {
+      cloud = WorkBuddyCloud.createWorkBuddyCloud({ endpoint: c.endpoint, publishableKey: c.publishableKey });
+      cloudReady = true;
+    } catch (e) { cloud = null; cloudReady = false; }
+  }
+
   const LS_STATS = 'wb_recite_stats_v1';
   const LS_LOCK = 'wb_edit_unlocked';
   const LS_THEME = 'wb_theme_v2';
@@ -364,6 +377,8 @@
 
   function init() {
     bindUI();
+    initCloud();
+    if (cloudReady && $('aiCnBtn')) $('aiCnBtn').hidden = false;
     applyTheme(localStorage.getItem(LS_THEME) || 'dark');
     applyCols();
     updateLockBtn();
@@ -1790,6 +1805,7 @@
     $('batchGo').addEventListener('click', onBatch);
 
     $('wordForm').addEventListener('submit', onSaveWord);
+    if ($('aiCnBtn')) $('aiCnBtn').addEventListener('click', aiLookupCn);
 
     $('fWord').addEventListener('input', function () {
       const w = normWord(this.value);
@@ -1799,6 +1815,47 @@
       const hit = all.find(function (x) { return x.word === w; });
       $('wordHint').textContent = hit ? '词库已有该单词，保存时会自动合并例句' : '';
     });
+
+    // 「AI 查中文」：调云端大模型，自动填词性 + 中文释义
+    async function aiLookupCn() {
+      const word = normWord($('fWord').value);
+      if (!word) { toast('请先填写单词拼写', true); return; }
+      if (!cloudReady) { toast('云端查词不可用（需在 WorkBuddy 部署版使用）', true); return; }
+      const btn = $('aiCnBtn');
+      const old = btn.textContent;
+      btn.disabled = true; btn.textContent = '查询中…';
+      try {
+        if (!cloudModel) {
+          const models = await cloud.llm.models.list();
+          cloudModel = models.find(function (m) { return m.disabled !== true; }) || null;
+          if (!cloudModel) throw new Error('no_model');
+        }
+        let answer = '';
+        for await (const chunk of cloud.llm.chat.completions.create({
+          model: cloudModel.id,
+          messages: [
+            { role: 'system', content: '你是英语词典助手。给定英文单词，返回它的词性和最常用中文释义。严格只返回 JSON：{"pos":"词性，如 n. / v. / adj.","meaning":"中文释义，1-3 个，用顿号分隔"}。不要解释，不要多余文字。' },
+            { role: 'user', content: word }
+          ],
+          stream: true,
+          response_format: { type: 'json_object' }
+        })) {
+          const d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
+          if (d) answer += d;
+        }
+        let obj;
+        try { obj = JSON.parse(answer.trim()); } catch (e) { throw new Error('解析失败'); }
+        if (obj.pos && !$('fPos').value.trim()) $('fPos').value = obj.pos;
+        if (obj.meaning) $('fMeaning').value = obj.meaning;
+        toast('已填入中文释义' + (obj.pos ? '与词性' : ''));
+      } catch (err) {
+        let msg = (err && err.error && err.error.message) || (err && err.message) || String(err);
+        if (err && err.error && /auth/i.test(err.error.code || '')) msg = '云端查词需在 WorkBuddy 部署版（app.workbuddy.host）使用';
+        toast('查词失败：' + msg, true);
+      } finally {
+        btn.disabled = false; btn.textContent = old;
+      }
+    }
 
     $('cardGrid').addEventListener('click', function (e) {
       // 小喇叭：只朗读，不打开详情

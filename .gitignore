@@ -10,3 +10,6 @@ shot-*.png
 # 系统文件
 Thumbs.db
 .DS_Store
+
+# 站点配置（含编辑密码与云端 key，不入库；仓库里是 config.example.js 模板）
+config.js

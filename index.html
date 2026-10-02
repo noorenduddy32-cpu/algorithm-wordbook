@@ -267,6 +267,7 @@
         </datalist>
       </label>
       <label>中文释义
+        <button type="button" id="aiCnBtn" class="mini-btn" hidden style="float:right" title="用云端大模型自动查中文释义">AI 查中文</button>
         <input id="fMeaning" placeholder="划分，分区">
       </label>
       <label>例句（一行一句，可留空；粘贴时会自动合并被折断的行）
@@ -446,6 +447,7 @@
 
 <script src="vendor/jszip.min.js"></script>
 <script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script src="docx.js"></script>
 <script src="app.js"></script>
 </body>

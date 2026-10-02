@@ -21,5 +21,13 @@ window.APP_CONFIG = {
   docTitle: "algorithm-wordbook",
 
   /* 大模型（可选，留空则由使用者在「设置」里自己填） */
-  llm: { endpoint: "", model: "" }
+  llm: { endpoint: "", model: "" },
+
+  /* WorkBuddy 云端大模型（「AI 查中文」按钮用）：keyless，无需自备 API Key。
+     下面的是 algorithm-wordbook 这个应用自带的云端配置，publishableKey 可公开；
+     直接部署即可用，无需修改。 */
+  cloud: {
+    endpoint: "https://algorithm-wordbook.app.workbuddy.host",
+    publishableKey: "wbpk_FjheAsGmlutOmbmgXfuE7B_2C9ZJU2MsnUqVjYC1FW9OYt790zY7VBK"
+  }
 };
