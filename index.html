@@ -39,7 +39,7 @@
       </button>
       <div id="themeMenu" class="theme-menu" hidden></div>
     </div>
-    <button id="setupBtn" class="icon-btn" title="设置（GitHub Token / 模型）">
+    <button id="setupBtn" class="icon-btn" title="设置（可选模型）">
       <span id="setupIcon"></span><span class="btn-label">设置</span>
     </button>
     <button id="lockBtn" class="icon-btn" title="编辑模式">
@@ -183,7 +183,7 @@
 </main>
 
 <footer class="foot">
-  <span>词库就是仓库里的 words.json，任何拿到链接的人都能查看；增删改需要「编辑模式」密码 + 一次 GitHub Token。</span>
+  <span>词库存在云端数据库，任何拿到链接的人都能查看；增删改只需「编辑模式」密码，无需 GitHub Token / API Key。</span>
   <span>点单词看读音 / 音标 / 派生 / 词根，点小喇叭直接朗读；详情底部可跳剑桥词典。</span>
 </footer>
 
@@ -330,18 +330,13 @@
   </div>
 </div>
 
-<!-- 设置：GitHub Token（写词库用）+ 可选大模型 -->
+<!-- 设置：可选大模型（「从句中选词」自动识别用） -->
 <div class="modal" id="setupModal" hidden>
   <div class="modal-box">
     <h2>设置</h2>
-    <p class="muted small">这些内容<b>只存在你这台机器的浏览器里</b>，不上传、不进仓库。</p>
+    <p class="muted small">增删改已不需要任何 Token。下面三项<b>可选</b>，只存在你这台机器的浏览器里，不上传、不进仓库。</p>
     <form id="setupForm" autocomplete="off">
-      <label>GitHub Token（增删改单词时用来提交 words.json）
-        <input id="ghTokenInput" type="password" placeholder="github_pat_... 或 ghp_..." autocomplete="off">
-        <span class="field-hint muted">生成：<a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a> → Fine-grained token → 只选这个仓库 → 权限 Contents: Read and write</span>
-      </label>
-      <hr class="sep">
-      <p class="muted small">下面三项可选：填了才能用「从句中选词」的自动识别，用任何 OpenAI 兼容接口都行（不填就手动写释义）。</p>
+      <p class="muted small">填了才能用「从句中选词」的自动识别（用任何 OpenAI 兼容接口都行；不填就手动写释义）。</p>
       <label>API 地址
         <input id="llmEndpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
       </label>

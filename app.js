@@ -4,22 +4,22 @@
 
   const cfg = window.APP_CONFIG;
 
-  // 云端大模型（「AI 查中文」按钮用，keyless）
-  let cloud = null, cloudModel = null, cloudReady = false;
+  // 云端能力（keyless）：大模型用于「AI 查中文」，database 用于词库读写
+  let cloud = null, db = null, cloudModel = null, cloudReady = false;
   function initCloud() {
     const c = cfg && cfg.cloud;
     if (!c || !c.endpoint || !c.publishableKey) return;
     if (typeof WorkBuddyCloud === 'undefined') return;
     try {
       cloud = WorkBuddyCloud.createWorkBuddyCloud({ endpoint: c.endpoint, publishableKey: c.publishableKey });
+      db = cloud.database;
       cloudReady = true;
-    } catch (e) { cloud = null; cloudReady = false; }
+    } catch (e) { cloud = null; db = null; cloudReady = false; }
   }
 
   const LS_STATS = 'wb_recite_stats_v1';
   const LS_LOCK = 'wb_edit_unlocked';
   const LS_THEME = 'wb_theme_v2';
-  const LS_GH_TOKEN = 'wb_gh_token';
   const LS_LLM = 'wb_llm_cfg';
   const LS_VIEW = 'wb_view_cfg_v1';
 
@@ -272,108 +272,25 @@
     return false;
   }
 
-  // 打开设置弹窗，回填已有配置
+  // 打开设置弹窗，回填已有配置（仅大模型可选配置）
   function openSetup() {
-    $('ghTokenInput').value = ghToken();
     const c = llmCfg();
     $('llmEndpoint').value = c.endpoint;
     $('llmModel').value = c.model;
     $('llmKey').value = c.apiKey;
     $('setupModal').hidden = false;
-    $('ghTokenInput').focus();
+    $('llmEndpoint').focus();
   }
 
   function closeModals() {
     Array.prototype.forEach.call(document.querySelectorAll('.modal'), function (m) { m.hidden = true; });
     pending = null;
-    settleToken(false);
   }
 
-  /* ---------------- 数据：词库就是一个仓库里的 words.json ---------------- */
-
-  const gh = cfg.github || { owner: '', repo: '', branch: 'main', path: 'words.json' };
-
-  function ghToken() { return localStorage.getItem(LS_GH_TOKEN) || ''; }
-
-  function ghApi(path) {
-    return 'https://api.github.com/repos/' + gh.owner + '/' + gh.repo + '/contents/' + path;
-  }
-
-  function b64(text) {
-    const bytes = new TextEncoder().encode(text);
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-    }
-    return btoa(bin);
-  }
-
-  function dataUrl() {
-    if (cfg.dataUrl) return cfg.dataUrl;
-    return 'words.json?t=' + Date.now();
-  }
-
-  let tokenWaiter = null;
-
-  // 第一次保存时要一次 GitHub Token，弹窗等着填
-  function askToken() {
-    return new Promise(function (resolve) {
-      tokenWaiter = resolve;
-      openSetup();
-      toast('第一次保存需要填一次 GitHub Token（只存在你这台机器的浏览器里）');
-    });
-  }
-
-  function settleToken(ok) {
-    if (!tokenWaiter) return false;
-    const r = tokenWaiter;
-    tokenWaiter = null;
-    r(ok);
-    return true;
-  }
-
-  // 把整个词库提交成一个 commit
-  async function persist(message) {
-    if (!ghToken()) {
-      const ok = await askToken();
-      if (!ok) {
-        toast('没填 Token，改动没保存，已还原', true);
-        await loadWords();
-        return false;
-      }
-    }
-    const text = JSON.stringify({ updated: new Date().toISOString(), words: all }, null, 2);
-    const headers = {
-      'Authorization': 'token ' + ghToken(),
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    };
-    try {
-      let sha = '';
-      try {
-        const r = await fetch(ghApi(gh.path) + '?ref=' + gh.branch, { headers: headers });
-        if (r.ok) { const j = await r.json(); sha = j.sha || ''; }
-      } catch (e) { /* 新文件就没有 sha */ }
-      const res = await fetch(ghApi(gh.path), {
-        method: 'PUT', headers: headers,
-        body: JSON.stringify({
-          message: message || 'wordbook: update words.json',
-          content: b64(text),
-          sha: sha || undefined,
-          branch: gh.branch
-        })
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(function () { return {}; });
-        throw new Error((j.message || ('GitHub 返回 ' + res.status)) + '（检查 Token 是否对该仓库有写权限）');
-      }
-      return true;
-    } catch (err) {
-      toast('保存失败：' + (err && err.message ? err.message : err), true);
-      await loadWords();
-      return false;
-    }
-  }
+  /* ---------------- 数据：词库就是云端数据库 public.words ----------------
+     增删改直接写云端 Postgres（keyless，publishableKey 已内嵌），
+     只需先解锁编辑模式（输入 editPassword）即可，不需要任何 GitHub Token / API Key。
+     读取是公开的（RLS SELECT 全开）。 */
 
   function init() {
     bindUI();
@@ -386,70 +303,84 @@
   }
 
   async function loadWords() {
-    setStatus('正在加载词库…');
+    setStatus('正在连接词库…');
+    if (!db) {
+      setStatus('云端未就绪，刷新页面重试');
+      toast('云端未连接，无法加载词库（请检查网络后刷新）', true);
+      return;
+    }
     try {
-      const res = await fetch(dataUrl(), { cache: 'no-store' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const j = await res.json();
-      const rows = Array.isArray(j) ? j : (j.words || []);
-      all = rows.map(function (w, i) {
+      const { data, error } = await db.from('words').select('*').order('created_at', { ascending: true });
+      if (error) throw error;
+      all = (data || []).map(function (w) {
         w._r = Math.random();
         if (!Array.isArray(w.examples)) w.examples = [];
-        if (!w.id) w.id = i + 1;
         return w;
       });
       setStatus('已同步 ' + all.length + ' 个单词');
       render();
     } catch (err) {
-      setStatus('加载失败：' + err.message);
+      setStatus('加载失败：' + (err && err.message ? err.message : err));
       toast('加载失败：' + (err && err.message ? err.message : err), true);
     }
   }
 
-  // 只改内存里的数组，真正落盘在 persist()
-  function upsert(rec) {
+  // 落盘到云端数据库；返回 'created' / 'updated' / 'merged'
+  async function upsert(rec) {
+    // 编辑已有条目
     if (rec.id != null) {
-      const idx = all.findIndex(function (x) { return x.id === rec.id; });
-      if (idx >= 0) {
-        const cur = all[idx];
-        if (normWord(cur.word) !== normWord(rec.word)) {
-          // 改成了另一个已存在的单词：合并进那条，删掉当前这条
-          const dup = all.find(function (x) { return x.id !== rec.id && normWord(x.word) === normWord(rec.word); });
-          if (dup) {
-            dup.examples = dedupe((dup.examples || []).concat(rec.examples));
-            dup.pos = dup.pos || rec.pos;
-            dup.meaning = dup.meaning || rec.meaning;
-            dup.note = dup.note || rec.note;
-            dup.origin = dup.origin || rec.origin || '';
-            all.splice(idx, 1);
-            return 'merged';
-          }
-        }
-        all[idx] = {
-          id: rec.id, word: rec.word, pos: rec.pos, meaning: rec.meaning,
-          origin: rec.origin || '', examples: rec.examples, note: rec.note,
-          created_at: cur.created_at || new Date().toISOString(),
+      const { data: found } = await db.from('words').select('*').eq('word', rec.word).maybeSingle();
+      if (found && found.id !== rec.id) {
+        // 改成的单词已存在：合并进已有词条，删掉旧行
+        const merged = dedupe((found.examples || []).concat(rec.examples));
+        const { data, error } = await db.from('words').update({
+          pos: rec.pos || found.pos,
+          meaning: rec.meaning || found.meaning,
+          note: rec.note || found.note,
+          origin: rec.origin || found.origin || '',
+          examples: merged,
           updated_at: new Date().toISOString()
-        };
-        return 'updated';
+        }).eq('id', found.id).select();
+        if (error) throw error;
+        if (!data || !data.length) throw new Error('没有权限修改该词条');
+        await db.from('words').delete().eq('id', rec.id);
+        return 'merged';
       }
+      const { data, error } = await db.from('words').update({
+        word: rec.word, pos: rec.pos, meaning: rec.meaning,
+        examples: rec.examples, note: rec.note, origin: rec.origin || '',
+        updated_at: new Date().toISOString()
+      }).eq('id', rec.id).select();
+      if (error) throw error;
+      if (!data || !data.length) throw new Error('没有权限修改该词条');
+      return 'updated';
     }
-    const hit = all.find(function (x) { return normWord(x.word) === normWord(rec.word); });
-    if (hit) {
-      hit.examples = dedupe((hit.examples || []).concat(rec.examples));
-      if (rec.pos) hit.pos = rec.pos;
-      if (rec.meaning) hit.meaning = rec.meaning;
-      if (rec.note) hit.note = rec.note;
-      if (rec.origin) hit.origin = rec.origin;
-      hit.updated_at = new Date().toISOString();
+
+    // 新词：先查重，重复则合并例句
+    const { data: found, error: e1 } = await db.from('words').select('*').eq('word', rec.word).maybeSingle();
+    if (e1) throw e1;
+    if (found) {
+      const merged = dedupe((found.examples || []).concat(rec.examples));
+      const { data, error } = await db.from('words').update({
+        pos: rec.pos || found.pos,
+        meaning: rec.meaning || found.meaning,
+        note: rec.note || found.note,
+        origin: rec.origin || found.origin || '',
+        examples: merged,
+        updated_at: new Date().toISOString()
+      }).eq('id', found.id).select();
+      if (error) throw error;
+      if (!data || !data.length) throw new Error('没有权限修改该词条');
       return 'merged';
     }
-    const maxId = all.reduce(function (m, x) { return Math.max(m, Number(x.id) || 0); }, 0);
-    all.push({
-      id: maxId + 1, word: rec.word, pos: rec.pos, meaning: rec.meaning,
-      origin: rec.origin || '', examples: rec.examples, note: rec.note,
-      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    const { error } = await db.from('words').insert({
+      word: rec.word, pos: rec.pos, meaning: rec.meaning,
+      examples: rec.examples, note: rec.note, origin: rec.origin || ''
     });
+    if (error) {
+      if (error.code === '23505') return 'merged';
+      throw error;
+    }
     return 'created';
   }
 
@@ -1142,8 +1073,7 @@
     const btn = $('wordForm').querySelector('button[type=submit]');
     btn.disabled = true;
     try {
-      const r = upsert(rec);
-      await persist('wordbook: ' + (r === 'created' ? 'add ' : 'update ') + word);
+      const r = await upsert(rec);
       $('wordModal').hidden = true;
       await loadWords();
       toast(r === 'merged' ? '已存在该单词，例句已合并' : (r === 'created' ? '已添加：' + word : '已保存'));
@@ -1159,13 +1089,13 @@
     if (!w) return;
     if (!confirm('确定删除「' + w.word + '」？此操作不可恢复。')) return;
     try {
-      all = all.filter(function (x) { return x.id !== id; });
-      await persist('wordbook: remove ' + w.word);
+      const { data, error } = await db.from('words').delete().eq('id', id).select();
+      if (error) throw error;
+      if (!data || !data.length) throw new Error('没有权限或词条不存在');
       await loadWords();
       toast('已删除：' + w.word);
     } catch (err) {
       toast('删除失败：' + (err && err.message ? err.message : err), true);
-      loadWords();
     }
   }
 
@@ -1184,7 +1114,7 @@
       const exRaw = parts[3] || '';
       const examples = exRaw.split(/\\\\|\s*;\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
       try {
-        const r = upsert({
+        const r = await upsert({
           word: word, pos: parts[1] || '', meaning: parts[2] || '', examples: examples,
           note: parts[4] || '', origin: parts[5] || ''
         });
@@ -1193,7 +1123,6 @@
     }
     $('batchModal').hidden = true;
     try {
-      await persist('wordbook: batch add ' + (created + merged) + ' words');
       await loadWords();
       toast('新增 ' + created + ' 条，合并 ' + merged + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''));
     } catch (err) {
@@ -1301,7 +1230,7 @@
       const word = normWord(it.word || it.spelling);
       if (!word) { failed++; continue; }
       try {
-        const r = upsert({
+        const r = await upsert({
           word: word,
           pos: it.pos || '',
           meaning: it.meaning || it.cn || '',
@@ -1313,7 +1242,6 @@
       } catch (err) { failed++; }
     }
     try {
-      await persist('wordbook: import ' + (created + merged) + ' words');
       await loadWords();
       toast('导入完成：新增 ' + created + '，合并 ' + merged + (failed ? '，失败 ' + failed : ''));
     } catch (err) {
@@ -1531,7 +1459,7 @@
       const w = normWord(r.word);
       if (!w) continue;
       try {
-        const res = upsert({
+        const res = await upsert({
           word: w, origin: r.origin || '', pos: r.pos.trim(), meaning: r.meaning.trim(),
           examples: r.example ? [r.example] : [], note: r.note.trim()
         });
@@ -1539,7 +1467,6 @@
       } catch (err) { failed++; }
     }
     try {
-      await persist('wordbook: add ' + (created + merged) + ' words from sentence');
       btn.disabled = false;
       await loadWords();
       toast('新增 ' + created + ' 条，合并 ' + merged + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''));
@@ -1727,8 +1654,6 @@
     });
     $('setupForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      const t = $('ghTokenInput').value.trim();
-      if (t) localStorage.setItem(LS_GH_TOKEN, t);
       localStorage.setItem(LS_LLM, JSON.stringify({
         endpoint: $('llmEndpoint').value.trim(),
         model: $('llmModel').value.trim(),
@@ -1737,11 +1662,9 @@
       const act = pending;
       pending = null;
       $('setupModal').hidden = true;
-      if (!settleToken(true)) {
-        toast('设置已保存（只存在这台机器的浏览器里）');
-        if (act === '添加单词') openWordModal(null);
-        else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }
-      }
+      toast('设置已保存（只存在这台机器的浏览器里）');
+      if (act === '添加单词') openWordModal(null);
+      else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }
     });
 
     $('passForm').addEventListener('submit', function (e) {
@@ -1962,13 +1885,11 @@
     document.addEventListener('click', function (e) {
       if (e.target.classList && e.target.classList.contains('modal')) {
         if (e.target.id === 'passModal') pending = null;
-        if (e.target.id === 'setupModal') settleToken(false);
         e.target.hidden = true;
       }
       if (e.target.closest('[data-close]')) {
         const m = e.target.closest('.modal');
         if (m.id === 'passModal') pending = null;
-        if (m.id === 'setupModal') settleToken(false);
         m.hidden = true;
       }
     });
