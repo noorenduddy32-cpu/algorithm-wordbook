@@ -222,10 +222,18 @@
     if (bar) {
       bar.innerHTML =
         '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理员模式' : '访客模式') + '</span>' +
-        '<button id="logoutBtn" class="icon-btn" title="退出登录">退出</button>';
-      bar.querySelector('#logoutBtn').addEventListener('click', async function () {
+        (admin
+          ? '<button id="logoutBtn" class="icon-btn" title="退出登录，回到访客只读">退出</button>'
+          : '<button id="upgradeBtn" class="icon-btn" title="输入管理员密码升级，获得增删改权限">升级</button>');
+      const logoutBtn = bar.querySelector('#logoutBtn');
+      if (logoutBtn) logoutBtn.addEventListener('click', async function () {
         await Auth.logout();
         location.reload();
+      });
+      const upgradeBtn = bar.querySelector('#upgradeBtn');
+      if (upgradeBtn) upgradeBtn.addEventListener('click', function () {
+        if (window.reopenGate) window.reopenGate();
+        else location.reload();
       });
     }
   }
@@ -236,6 +244,7 @@
     let resp = null;
     try { resp = await fetch('/api/me', { credentials: 'include' }); } catch (e) { resp = null; }
     const hasBackend = !!(resp && resp.status !== 404);
+    window.AN_HAS_BACKEND = hasBackend;
     if (!resp || resp.status === 404) {
       const gate = document.getElementById('gate');
       if (gate) { gate.remove(); document.body.style.overflow = ''; }
@@ -248,4 +257,7 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
+
+  // 暴露给页面脚本：重新弹出访问门（本地有后端时，点编辑模式按钮用它升级为管理员）
+  window.reopenGate = function () { buildGate(); };
 })();

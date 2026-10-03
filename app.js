@@ -1771,6 +1771,20 @@
     });
 
     $('lockBtn').addEventListener('click', function () {
+      // 本地有后端：编辑模式 = 管理员角色（由访问门密码决定）
+      if (window.AN_HAS_BACKEND) {
+        if (window.AN_ROLE === 'admin') {
+          if (window.Auth && window.Auth.logout) {
+            window.Auth.logout().then(function () { location.reload(); });
+          } else { location.reload(); }
+        } else {
+          // 访客 → 重新弹出访问门，输管理员密码升级
+          if (window.reopenGate) window.reopenGate();
+          else location.reload();
+        }
+        return;
+      }
+      // 纯静态部署：靠 config.js 的编辑密码解锁
       if (unlocked) {
         unlocked = false;
         localStorage.removeItem(LS_LOCK);
