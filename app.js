@@ -653,21 +653,34 @@
   // 打开详情
   let detailWord = null;
 
+  function renderMeaningRows(pos, meaning) {
+    if (!meaning) return '<div class="meaning-row"><span class="mean">—</span></div>';
+    const posList = (pos || '').split(/[\/,;]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    const meanList = (meaning || '').split(/[；;]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!meanList.length) meanList.push(meaning);
+    const lines = [];
+    for (let i = 0; i < meanList.length; i++) {
+      const p = posList.length > 1 ? posList[i] : (posList[0] || '');
+      lines.push('<div class="meaning-row"><span class="pos">' + esc(p) + '</span><span class="mean">' + esc(meanList[i]) + '</span></div>');
+    }
+    return lines.join('');
+  }
+
   function openDetail(w) {
     if (!w) return;
     detailWord = w;
     const word = w.word;
 
     $('dWord').textContent = word;
-    $('dPos').innerHTML = w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '';
+    $('dPos').innerHTML = '';
     $('dIpa').textContent = '…';
     $('dDictLink').href = dictUrl(word);
     $('dDictLink').textContent = '在剑桥词典查「' + word + '」';
-    $('dStatus').textContent = canSpeak() ? '' : '这个浏览器不支持朗读，下面有词典链接';
+    $('dStatus').textContent = canSpeak() ? '' : '这个浏览器不支持朗读，请点下方词典链接';
     $('dSpeakHint').textContent = '';
 
     // 词库里的中文释义 + 例句
-    $('dMeaning').innerHTML = esc(w.meaning || '—');
+    $('dMeaning').innerHTML = renderMeaningRows(w.pos, w.meaning);
     const ex = (w.examples || []).filter(Boolean);
     $('dExampleBlock').hidden = !ex.length;
     $('dExamples').innerHTML = ex.map(function (e) {
