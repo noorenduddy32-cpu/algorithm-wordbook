@@ -653,17 +653,19 @@
   // 打开详情
   let detailWord = null;
 
-  function renderMeaningRows(pos, meaning) {
+  function renderMeaningRows(meaning) {
     if (!meaning) return '<div class="meaning-row"><span class="mean">—</span></div>';
-    const posList = (pos || '').split(/[\/,;]/).map(function (s) { return s.trim(); }).filter(Boolean);
     const meanList = (meaning || '').split(/[；;]/).map(function (s) { return s.trim(); }).filter(Boolean);
     if (!meanList.length) meanList.push(meaning);
-    const lines = [];
-    for (let i = 0; i < meanList.length; i++) {
-      const p = posList.length > 1 ? posList[i] : (posList[0] || '');
-      lines.push('<div class="meaning-row"><span class="pos">' + esc(p) + '</span><span class="mean">' + esc(meanList[i]) + '</span></div>');
-    }
-    return lines.join('');
+    return meanList.map(function (m) {
+      return '<div class="meaning-row"><span class="mean">' + esc(m) + '</span></div>';
+    }).join('');
+  }
+
+  function renderPosTags(pos) {
+    const list = (pos || '').split(/[\/,;]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!list.length) return '';
+    return list.map(function (p) { return '<span class="pos">' + esc(p) + '</span>'; }).join('');
   }
 
   function openDetail(w) {
@@ -672,15 +674,15 @@
     const word = w.word;
 
     $('dWord').textContent = word;
-    $('dPos').innerHTML = '';
     $('dIpa').textContent = '…';
     $('dDictLink').href = dictUrl(word);
-    $('dDictLink').textContent = '在剑桥词典查「' + word + '」';
+    const dictWord = $('dDictLink').querySelector('.dict-word');
+    if (dictWord) dictWord.textContent = word;
     $('dStatus').textContent = canSpeak() ? '' : '这个浏览器不支持朗读，请点下方词典链接';
-    $('dSpeakHint').textContent = '';
 
-    // 词库里的中文释义 + 例句
-    $('dMeaning').innerHTML = renderMeaningRows(w.pos, w.meaning);
+    // 词性单独一行，释义只保留中文
+    $('dPos').innerHTML = renderPosTags(w.pos);
+    $('dMeaning').innerHTML = renderMeaningRows(w.meaning);
     const ex = (w.examples || []).filter(Boolean);
     $('dExampleBlock').hidden = !ex.length;
     $('dExamples').innerHTML = ex.map(function (e) {
@@ -735,13 +737,13 @@
       // 接口挂了也别让音标空着：先用内置表兜底
       const fbIpa = IPA_FALLBACK[normWord(word)] || '';
       if (!d) {
-        $('dIpa').textContent = fbIpa || '无音标';
+        $('dIpa').textContent = fbIpa || '…';
         $('dStatus').textContent = fbIpa
           ? '在线词典暂时连不上，先显示内置音标；下方剑桥链接可查完整词条。'
-          : '在线词典没查到这个词（可能太偏或拼写特殊），可点下方剑桥链接手动查。';
+          : '';
         return;
       }
-      $('dIpa').textContent = d.ipa || fbIpa || '无音标';
+      $('dIpa').textContent = d.ipa || fbIpa || '…';
       $('dStatus').textContent = d.ipa ? '' : (fbIpa ? '内置音标（在线词典没返回）' : '');
 
       if (d.defs.length) {
@@ -1964,11 +1966,8 @@
       const ok = speak(detailWord.word, $('dAccent').value);
       if (ok) {
         this.classList.add('playing');
-        $('dSpeakHint').textContent = '朗读中…';
         setTimeout(function () {
           document.getElementById('dSpeak').classList.remove('playing');
-          const h = document.getElementById('dSpeakHint');
-          if (h) h.textContent = '';
         }, 900);
       }
     });
