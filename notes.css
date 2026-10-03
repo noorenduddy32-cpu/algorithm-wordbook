@@ -295,14 +295,19 @@
   background: var(--panel);
   color: var(--text);
   padding: 20px 22px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 14px;
-  line-height: 1.85;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, sans-serif;
+  font-size: 15.5px;
+  line-height: 1.9;
   resize: none;
   min-height: 62vh;
-  tab-size: 2;
 }
 .ed-input:focus { border-color: transparent; box-shadow: none; }
+.ed-input[data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  opacity: .5;
+  pointer-events: none;
+}
 
 .ed-preview {
   padding: 20px 26px;
@@ -386,6 +391,93 @@
   line-height: 1.7;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+/* ============================================================
+   代码块增强（notes.js enhanceCodeBlocks 生成）：
+   行号 + 超 10 行可收起 + 过宽可换行。阅读 / 预览共用。
+   ============================================================ */
+.md-body pre.code-enh,
+pre.code-enh {
+  position: relative;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 1.1em 0;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--panel3);
+  border-bottom: 1px solid var(--border);
+}
+.code-lang {
+  color: var(--muted);
+  font-size: 11.5px;
+  letter-spacing: .4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.code-btns { display: flex; gap: 6px; }
+.code-toggle, .code-wrap {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11.5px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.code-toggle:hover, .code-wrap:hover { color: var(--text); border-color: var(--accent); }
+.code-area {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  max-height: 264px;   /* 默认收起：约 10 行 */
+}
+pre.code-enh.expanded .code-area { max-height: none; }
+pre.code-enh:not(.expanded) .code-area::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 48px;
+  background: linear-gradient(transparent, var(--panel2));
+  pointer-events: none;
+}
+.ln-gutter {
+  flex: none;
+  padding: 14px 10px 14px 14px;
+  text-align: right;
+  white-space: pre;
+  color: var(--muted);
+  opacity: .5;
+  user-select: none;
+  border-right: 1px solid var(--border);
+  background: var(--panel2);
+}
+.code-area > code {
+  display: block;
+  flex: 1;
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  white-space: pre;
+  background: none;
+  border: none;
+}
+pre.code-enh.wrapped .code-area > code {
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: hidden;
+}
+pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; }
 
 .md-body table {
   border-collapse: collapse;

@@ -89,11 +89,27 @@
 
   <div class="ed-meta-row">
     <input id="edSummary" placeholder="摘要：写一句概括，会显示在文章列表（可留空自动生成）" autocomplete="off">
-    <input id="edTags" placeholder="标签，逗号分隔：如 图论, 最短路, CF1900" autocomplete="off">
+    <input id="edTags" placeholder="标签，逗号分隔：如 图论, 最短路, CF1900" list="tagList" autocomplete="off">
   </div>
+  <datalist id="tagList">
+    <option value="动态规划"></option><option value="图论"></option><option value="最短路"></option>
+    <option value="网络流"></option><option value="树形DP"></option><option value="贪心"></option>
+    <option value="字符串"></option><option value="数学"></option><option value="数论"></option>
+    <option value="组合数学"></option><option value="数据结构"></option><option value="线段树"></option>
+    <option value="树状数组"></option><option value="平衡树"></option><option value="搜索"></option>
+    <option value="二分答案"></option><option value="分治"></option><option value="构造"></option>
+    <option value="模拟"></option><option value="位运算"></option><option value="思维"></option>
+    <option value="计算几何"></option><option value="博弈"></option><option value="差分约束"></option>
+    <option value="最小生成树"></option><option value="拓扑排序"></option><option value="倍增"></option>
+    <option value="DP优化"></option><option value="状压DP"></option><option value="概率期望"></option>
+    <option value="前缀和"></option><option value="双指针"></option><option value="滑动窗口"></option>
+    <option value="哈希"></option><option value="莫队"></option><option value="后缀数组"></option>
+    <option value="CF1900"></option><option value="CF2100"></option><option value="CF2300"></option>
+    <option value="Codeforces"></option><option value="ICPC"></option><option value="NOIP"></option>
+  </datalist>
 
   <!-- 工具栏 -->
-  <div class="ed-toolbar" id="edToolbar">
+  <div class="ed-toolbar" id="edToolbar" data-admin>
     <div class="tb-group">
       <button class="tb" data-cmd="h2" title="二级标题">H2</button>
       <button class="tb" data-cmd="h3" title="三级标题">H3</button>
@@ -136,17 +152,22 @@
       </button>
     </div>
     <div class="tb-group">
-      <button class="tb" id="aiBtn" title="用云端大模型帮你写">
+      <button class="tb" id="aiBtn" data-admin title="用云端大模型帮你写">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 13.7 8l4.8 1.7-4.8 1.7L12 16.2 10.3 11.4 5.5 9.7l4.8-1.7z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
         AI 续写
       </button>
       <button class="tb" id="insertTplBtn" title="插入算法笔记模板">模板</button>
     </div>
+    <div class="tb-group">
+      <button class="tb" id="importBtn" data-admin title="从文件导入（.md / .html）">导入</button>
+      <button class="tb" id="exportBtn" data-admin title="导出当前文章（.html）">导出</button>
+      <input id="importFile" type="file" accept=".md,.html,.txt" hidden>
+    </div>
   </div>
 
-  <!-- 编辑区 + 预览区 -->
+  <!-- 编辑区 + 预览区（CSDN 风格富文本：粘贴从别处复制的题目/博客原样保真） -->
   <div class="ed-panes" id="edPanes">
-    <textarea id="edBody" class="ed-input" spellcheck="false" placeholder="用 Markdown 写正文…&#10;&#10;## 题目描述&#10;## 思路&#10;## 复杂度&#10;## 代码"></textarea>
+    <div id="edBody" class="ed-input md-body" contenteditable="true" spellcheck="false" data-placeholder="在这里写正文，或直接粘贴从 Codeforces / CSDN 等地方复制的题面与笔记，格式会原样保留…"></div>
     <div class="ed-preview md-body" id="edPreview"></div>
   </div>
 
@@ -170,21 +191,6 @@
       <button type="button" class="btn ghost" data-close>关闭</button>
       <button type="button" class="btn primary" id="aiRun" data-admin disabled>开始</button>
     </div>
-  </div>
-</div>
-
-<!-- 密码 -->
-<div class="modal" id="passModal" hidden>
-  <div class="modal-box narrow">
-    <h2>编辑模式</h2>
-    <p class="muted small">输入密码解锁「写 / 改 / 删文章」。</p>
-    <form id="passForm" autocomplete="off">
-      <input id="passInput" type="password" placeholder="密码" autocomplete="off" required>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" data-close>取消</button>
-        <button type="submit" class="btn primary">解锁</button>
-      </div>
-    </form>
   </div>
 </div>
 

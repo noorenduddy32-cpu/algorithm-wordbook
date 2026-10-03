@@ -243,6 +243,23 @@
 
   /* ---------------- 工具 ---------------- */
 
+  // 活跃度：本地背诵/编辑次数（与单词本同键，跨页共享）
+  const LS_ACT = 'wb_activity_v1';
+  function dayKeyOf(d) {
+    const p = function (x) { return x < 10 ? '0' + x : '' + x; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function bumpActivity(n) {
+    const d = dayKeyOf(new Date());
+    let o = {};
+    try { o = JSON.parse(localStorage.getItem(LS_ACT) || '{}'); } catch (e) {}
+    o[d] = (o[d] || 0) + (n || 1);
+    try { localStorage.setItem(LS_ACT, JSON.stringify(o)); } catch (e) {}
+  }
+  function getLocalActivity() {
+    try { return JSON.parse(localStorage.getItem(LS_ACT) || '{}'); } catch (e) { return {}; }
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -319,6 +336,8 @@
     },
     boot: boot,
     esc: esc,
+    bumpActivity: bumpActivity,
+    getLocalActivity: getLocalActivity,
     fmtDate: fmtDate,
     relTime: relTime,
     countWords: countWords,

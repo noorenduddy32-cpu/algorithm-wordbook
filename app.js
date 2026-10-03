@@ -943,7 +943,6 @@
     filtered = computeFiltered();
     renderStats();
     renderCards();
-    renderActivity();
   }
 
   function renderStats() {
@@ -1707,7 +1706,6 @@
   function bindUI() {
     $('setupIcon').innerHTML = ICONS.gear;
     applyView();
-    bindActivity();
 
     $('themeBtn').addEventListener('click', function (e) {
       e.stopPropagation();

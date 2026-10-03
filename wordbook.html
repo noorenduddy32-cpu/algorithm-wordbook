@@ -66,41 +66,6 @@
   <div class="stat-hint" id="statusText">正在连接词库…</div>
 </section>
 
-<!-- 活跃度：GitHub 贡献图那种。数据 = 每天新增单词数 + 当天背诵次数 -->
-<section class="activity-bar" id="activityBar">
-  <button id="activityToggle" class="activity-toggle" aria-expanded="false">
-    <span class="activity-caret" id="activityCaret">▸</span>
-    <b>活跃度</b>
-    <span class="activity-sum" id="activitySum">近一年 0 天有记录</span>
-  </button>
-  <div class="activity-body" id="activityBody" hidden>
-    <!-- 月份标签行 + 星期列 + 热力图整体放在滚动容器里，窄屏时一起横向滚，标签不会错位 -->
-    <div class="activity-scroll">
-      <div class="activity-legend">
-        <span class="activity-months" id="activityMonths"></span>
-      </div>
-      <div class="activity-main">
-        <div class="activity-weekdays">
-          <span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span>
-        </div>
-        <div class="activity-grid" id="activityGrid"></div>
-      </div>
-    </div>
-    <!-- 图例（少 ▢▢▢▢▢ 多）单独一行靠右，不再和月份标签抢位置 -->
-    <div class="activity-scale">
-      <span class="muted">少</span>
-      <i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i>
-      <span class="muted">多</span>
-    </div>
-    <div class="activity-foot">
-      <span class="stat"><b id="actStreak">0</b><span>天连续</span></span>
-      <span class="stat"><b id="actTotal">0</b><span>次操作</span></span>
-      <span class="stat"><b id="actDays">0</b><span>天活跃</span></span>
-      <span class="muted small" id="actHint"></span>
-    </div>
-  </div>
-</section>
-
 <div class="toolbar">
   <div class="search-wrap">
     <input id="searchInput" type="search" placeholder="搜索单词 / 中文 / 例句" autocomplete="off">
