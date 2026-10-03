@@ -352,12 +352,19 @@ body:not(.auto-hide) .chrome { position: static; }
 }
 .brand { display: flex; align-items: center; gap: 14px; }
 .logo {
-  width: 42px; height: 42px; border-radius: 12px; flex: none;
-  background: linear-gradient(140deg, var(--accent), #b28cff);
-  color: #fff; font-weight: 800; font-size: 22px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: "JetBrains Mono", Consolas, monospace;
+  width: auto; height: 42px; border-radius: 12px; flex: none;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 0 7px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
 }
+.logo svg {
+  width: 24px; height: 24px; flex: none;
+  padding: 3px; border-radius: 6px;
+}
+.logo-cloud { color: #fff; background: #4a90e2; }
+.logo-bulb  { color: #2a1a00; background: #facc15; }
+.logo-balloon { color: #fff; background: #e04e4e; }
 .brand-text h1 { font-size: 20px; letter-spacing: .3px; }
 .brand-text p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
 .top-actions { display: flex; gap: 10px; align-items: center; }
@@ -391,7 +398,8 @@ body.nav-collapsed .topbar {
   position: sticky; top: 0; z-index: 40;
 }
 body.nav-collapsed .brand-text { display: none; }
-body.nav-collapsed .logo { width: 32px; height: 32px; font-size: 17px; border-radius: 9px; }
+body.nav-collapsed .logo { height: 32px; padding: 0 5px; border-radius: 9px; }
+body.nav-collapsed .logo svg { width: 18px; height: 18px; padding: 2px; border-radius: 5px; }
 body.nav-collapsed .stats-bar { display: none; }
 body.nav-collapsed .foot > span:first-child { display: none; }
 .icon-btn.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
@@ -525,7 +533,7 @@ body.layout-grid .card:hover {
   z-index: 2;
 }
 body.layout-grid .card:hover .word { font-size: 24px; }
-body.layout-grid .card:hover .mini-speak { font-size: 24px; }
+body.layout-grid .card:hover .mini-speak { font-size: 24px; width: 1.15em; height: 1.15em; }
 body.layout-grid .card:hover .meaning { font-size: 16px; }
 body.layout-grid .card:hover .examples { font-size: 14px; }
 body.layout-grid .card-head { flex: 0 0 auto; }
@@ -536,13 +544,14 @@ body.layout-grid .word {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 body.layout-grid .mini-speak {
-  font-size: 22px;                  /* 跟单词同号，圆圈直径 ≈ 1.42 倍字号，正好和英文等高 */
-  width: 1.42em; height: 1.42em;
+  font-size: 22px;                  /* 跟单词同号，圆圈直径 ≈ 1.15 倍字号，与英文上下对齐 */
+  width: 1.15em; height: 1.15em;
   background: transparent;
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   color: var(--accent);
+  vertical-align: middle;
 }
-body.layout-grid .mini-speak svg { width: 62%; height: 62%; }
+body.layout-grid .mini-speak svg { width: 58%; height: 58%; }
 
 /* 第 2 行：词性 + 中文 */
 body.layout-grid .zh-line {
@@ -831,13 +840,14 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 }
 .speak-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; flex: 0 0 auto;
+  width: 1.15em; height: 1.15em; flex: 0 0 auto;
   border-radius: 50%; cursor: pointer;
   background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--accent);
   transition: transform .12s, background .12s, box-shadow .12s;
+  vertical-align: middle;
 }
-.speak-btn svg { width: 17px; height: 17px; }
+.speak-btn svg { width: 58%; height: 58%; }
 .speak-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .speak-btn.playing { animation: pulse-speak .8s ease; }
 .speak-hint { font-size: 12px; color: var(--muted); }

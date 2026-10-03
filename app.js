@@ -253,7 +253,7 @@
     btn.className = 'icon-btn ' + (unlocked ? 'unlocked' : 'locked');
     $('lockIcon').innerHTML = unlocked ? ICONS.unlock : ICONS.lock;
     $('lockLabel').textContent = unlocked ? '编辑模式 · 已解锁' : '编辑模式';
-    $('addBtn').disabled = !unlocked;
+    // 添加按钮保持可用：点它再弹密码框，符合第一版直觉
     $('batchBtn').disabled = !unlocked;
     $('pickBtn').disabled = !unlocked;
     $('importJsonBtn').disabled = !unlocked;
