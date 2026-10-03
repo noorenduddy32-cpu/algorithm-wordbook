@@ -1002,14 +1002,14 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   font-size: 30px;            /* 跟随详情单词字号，使喇叭与英文等高对齐 */
   width: 1.1em; height: 1.1em; flex: 0 0 auto;
   border-radius: 50%; cursor: pointer;
-  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  color: var(--accent);
-  transition: transform .12s, background .12s, box-shadow .12s;
+  background: var(--panel2); border: 1px solid var(--border);
+  color: var(--muted);
+  transition: transform .12s, background .12s, box-shadow .12s, color .12s, border-color .12s;
   vertical-align: middle;
 }
 .speak-btn svg { width: 58%; height: 58%; }
-.speak-btn:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: 0 0 0 4px var(--accent-soft); }
-.speak-btn.playing { animation: pulse-speak .8s ease; }
+.speak-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 4px var(--accent-soft); }
+.speak-btn.playing { animation: pulse-speak .8s ease; color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .speak-hint { font-size: 12px; color: var(--muted); }
 
 .detail-phonetic {
@@ -1060,8 +1060,8 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 .spell-break, .root-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .frag {
   font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 19px; font-weight: 700; color: var(--accent);
-  background: var(--accent-soft); border-radius: 8px; padding: 4px 10px;
+  font-size: 19px; font-weight: 700; color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 16%, transparent); border-radius: 8px; padding: 4px 10px;
 }
 .frag-tail {
   font-family: "JetBrains Mono", Consolas, monospace;
@@ -1075,10 +1075,10 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   font-size: 19px; letter-spacing: .5px; color: var(--text);
 }
 .stem-root {
-  color: var(--accent); font-weight: 800;
-  background: var(--accent-soft); border-radius: 6px;
+  color: var(--warn); font-weight: 800;
+  background: color-mix(in srgb, var(--warn) 18%, transparent); border-radius: 6px;
   padding: 3px 4px; margin: 0 1px;
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--warn) 35%, transparent);
 }
 
 .deriv-list { display: flex; flex-wrap: wrap; gap: 7px; }
