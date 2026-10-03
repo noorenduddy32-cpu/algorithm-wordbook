@@ -157,6 +157,7 @@
             '<button type="submit" class="btn primary">进入笔记</button>' +
           '</form>' +
           '<p id="gateErr" class="err" hidden></p>' +
+          '<button type="button" id="gateVisitor" class="link-btn">以访客身份浏览（只读）</button>' +
         '</div>' +
       '</div>'
     );
@@ -165,6 +166,12 @@
     const input = g.querySelector('#gatePw');
     const err = g.querySelector('#gateErr');
     setTimeout(function () { input.focus(); }, 60);
+    const visitorBtn = g.querySelector('#gateVisitor');
+    if (visitorBtn) visitorBtn.addEventListener('click', function () {
+      const gate = document.getElementById('gate');
+      if (gate) { gate.remove(); document.body.style.overflow = ''; }
+      applyRole(null);
+    });
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       err.hidden = true;
@@ -181,21 +188,29 @@
     document.body.style.overflow = 'hidden';
   }
 
-  function onAuthed(role) {
+  function onAuthed(role, backendMode) {
     const g = document.getElementById('gate');
     if (g) { g.remove(); document.body.style.overflow = ''; }
-    applyRole(role);
+    applyRole(role, backendMode);
     window.AN_ROLE = role;
     window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: role } }));
   }
 
-  function applyRole(role) {
+  function applyRole(role, backendMode) {
     role = role || Auth.role;
     const admin = role === 'admin';
-    // 访客隐藏一切写操作控件
-    document.querySelectorAll('[data-admin]').forEach(function (n) {
-      n.style.display = admin ? '' : 'none';
-    });
+    // 有后端（本地 _dev.js）才按角色隐藏管理按钮；纯静态部署让 lockBtn 编辑模式自己控制
+    if (backendMode) {
+      document.querySelectorAll('[data-admin]').forEach(function (n) {
+        n.style.display = admin ? '' : 'none';
+      });
+    }
+    // 角色徽标只在本地有后端时显示；纯静态站点没有登录态，不显示访客/管理员标签
+    if (!backendMode) {
+      const bar = document.getElementById('roleBar');
+      if (bar) bar.remove();
+      return;
+    }
     // 右上角角色徽标 + 退出
     let bar = document.getElementById('roleBar');
     if (!bar) {
@@ -216,8 +231,18 @@
 
   async function init() {
     buildGate();
+    // 探测后端：纯静态部署（WorkBuddy）没有 /api/me，不卡访问门，由 lockBtn 编辑模式控制写权限
+    let resp = null;
+    try { resp = await fetch('/api/me', { credentials: 'include' }); } catch (e) { resp = null; }
+    const hasBackend = !!(resp && resp.status !== 404);
+    if (!resp || resp.status === 404) {
+      const gate = document.getElementById('gate');
+      if (gate) { gate.remove(); document.body.style.overflow = ''; }
+      applyRole(null, false);
+      return;
+    }
     const role = await Auth.me();
-    if (role) onAuthed(role);
+    if (role) onAuthed(role, true);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
