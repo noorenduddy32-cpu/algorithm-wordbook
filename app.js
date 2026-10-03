@@ -4,17 +4,13 @@
 
   const cfg = window.APP_CONFIG;
 
-  // 云端能力（keyless）：大模型用于「AI 查中文」，database 用于词库读写
+  // 数据层与云端大模型均改走 /api 代理（api.js）。
+  // 前端不再直接连云端，密钥与密码只在服务端，因此这里直接取代理对象。
   let cloud = null, db = null, cloudModel = null, cloudReady = false;
   function initCloud() {
-    const c = cfg && cfg.cloud;
-    if (!c || !c.endpoint || !c.publishableKey) return;
-    if (typeof WorkBuddyCloud === 'undefined') return;
-    try {
-      cloud = WorkBuddyCloud.createWorkBuddyCloud({ endpoint: c.endpoint, publishableKey: c.publishableKey });
-      db = cloud.database;
-      cloudReady = true;
-    } catch (e) { cloud = null; db = null; cloudReady = false; }
+    db = window.DB || null;
+    cloud = window.ANCloud || null;
+    cloudReady = !!cloud;
   }
 
   const LS_STATS = 'wb_recite_stats_v1';
@@ -292,8 +288,14 @@
     if (cloudReady && $('aiCnBtn')) $('aiCnBtn').hidden = false;
     applyTheme(localStorage.getItem(LS_THEME) || 'dark');
     applyCols();
+    // 登录态同步：管理员=已解锁，访客=未解锁
+    if (window.AN_ROLE === 'admin') unlocked = true;
+    window.addEventListener('an:authed', function (e) {
+      unlocked = (e.detail.role === 'admin');
+      updateLockBtn();
+    });
     updateLockBtn();
-    loadWords();
+    window.whenAuthed(loadWords);
   }
 
   async function loadWords() {
@@ -1129,8 +1131,8 @@
 
     const actions = unlocked
       ? '<div class="card-actions">' +
-        '<button class="mini-btn" data-edit="' + w.id + '">编辑</button>' +
-        '<button class="mini-btn danger" data-del="' + w.id + '">删除</button>' +
+        '<button class="mini-btn" data-admin data-edit="' + w.id + '">编辑</button>' +
+        '<button class="mini-btn danger" data-admin data-del="' + w.id + '">删除</button>' +
         '</div>'
       : '';
 

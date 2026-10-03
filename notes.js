@@ -753,7 +753,7 @@
 
   function start() {
     bind();
-    loadAll();
+    window.whenAuthed(loadAll);
     // 支持 notes.html#n12 直达
     if (location.hash) {
       const m = location.hash.match(/#n(\d+)/);

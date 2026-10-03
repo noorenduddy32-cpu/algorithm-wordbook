@@ -323,7 +323,9 @@
     relTime: relTime,
     countWords: countWords,
     autoSummary: autoSummary,
-    getDb: function () { return db; },
-    getCloud: function () { return cloud; }
+    // 数据层改走 /api 代理（api.js 提供 window.DB / window.ANCloud），
+    // 云端密钥与密码只在服务端，前端零敏感信息。
+    getDb: function () { return window.DB || db; },
+    getCloud: function () { return window.ANCloud || cloud; }
   };
 })();

@@ -95,5 +95,5 @@
     if (wrap) wrap.hidden = false;
   }
 
-  loadStats();
+  window.whenAuthed(loadStats);
 })();

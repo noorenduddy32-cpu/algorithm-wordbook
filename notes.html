@@ -25,7 +25,7 @@
     </div>
     <div class="notes-head-actions">
       <input id="noteSearch" type="search" placeholder="搜索标题 / 摘要 / 标签" autocomplete="off">
-      <button id="newNoteBtn" class="btn primary">
+      <button id="newNoteBtn" class="btn primary" data-admin>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></svg>
         写文章
       </button>
@@ -52,8 +52,8 @@
     </button>
     <div class="spacer"></div>
     <div class="reader-actions" id="readerActions" hidden>
-      <button id="editNoteBtn" class="btn">编辑</button>
-      <button id="delNoteBtn" class="btn ghost">删除</button>
+      <button id="editNoteBtn" class="btn" data-admin>编辑</button>
+      <button id="delNoteBtn" class="btn ghost" data-admin>删除</button>
     </div>
   </div>
 
@@ -81,8 +81,8 @@
       <button class="seg-btn" data-mode="edit" title="只看源码">编辑</button>
       <button class="seg-btn" data-mode="preview" title="只看效果">预览</button>
     </div>
-    <button id="saveDraftBtn" class="btn ghost">存草稿</button>
-    <button id="publishBtn" class="btn primary">发布</button>
+      <button id="saveDraftBtn" class="btn ghost" data-admin>存草稿</button>
+      <button id="publishBtn" class="btn primary" data-admin>发布</button>
   </div>
 
   <input id="edTitle" class="ed-title" placeholder="给这篇文章起个标题…" maxlength="120" autocomplete="off">
@@ -158,17 +158,17 @@
     <h2>AI 帮你写</h2>
     <p class="muted small">走站点自带的云端大模型，不用配任何 Key。选一个动作，选中正文里的相关段落会更准。</p>
     <div class="ai-acts">
-      <button class="btn" data-ai="continue">接着往下写</button>
-      <button class="btn" data-ai="improve">润色选中段</button>
-      <button class="btn" data-ai="outline">拟一个提纲</button>
-      <button class="btn" data-ai="explain">解释选中段</button>
-      <button class="btn" data-ai="summary">写摘要</button>
-      <button class="btn" data-ai="title">起几个标题</button>
+      <button class="btn" data-admin data-ai="continue">接着往下写</button>
+      <button class="btn" data-admin data-ai="improve">润色选中段</button>
+      <button class="btn" data-admin data-ai="outline">拟一个提纲</button>
+      <button class="btn" data-admin data-ai="explain">解释选中段</button>
+      <button class="btn" data-admin data-ai="summary">写摘要</button>
+      <button class="btn" data-admin data-ai="title">起几个标题</button>
     </div>
     <p id="aiHint" class="field-hint"></p>
     <div class="modal-actions">
       <button type="button" class="btn ghost" data-close>关闭</button>
-      <button type="button" class="btn primary" id="aiRun" disabled>开始</button>
+      <button type="button" class="btn primary" id="aiRun" data-admin disabled>开始</button>
     </div>
   </div>
 </div>
@@ -215,11 +215,11 @@
     document.write('<script src="config.example.js"><\/script>');
   }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
 <script src="common.js"></script>
+<script src="api.js"></script>
 <script src="notes.js"></script>
 </body>
 </html>
