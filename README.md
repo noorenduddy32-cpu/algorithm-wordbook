@@ -8,8 +8,13 @@
 纯静态站点（HTML + CSS + 原生 JS），**没有后端**。单词和文章都存在 WorkBuddy 云数据库（PostgreSQL），
 任何人拿到链接都能查看；增删改需要「编辑模式」密码，**不需要 GitHub Token，也不需要任何 API Key**。
 
-- 在线地址：<https://noorenduddy32-cpu.github.io/algorithm-wordbook/>
+- 在线地址：<https://algorithm-wordbook.app.workbuddy.host/>
 - 仓库：<https://github.com/noorenduddy32-cpu/algorithm-wordbook>
+
+> ⚠️ **为什么主站不是 github.io**：云端数据库只允许**同源**访问
+> （`Access-Control-Allow-Origin` 只放行 `https://algorithm-wordbook.app.workbuddy.host`）。
+> 站点部署在 `*.github.io` 时，浏览器的 CORS 预检会被 403 拒绝，页面就显示「云端未连接」、单词数为 0。
+> 所以站点本身也发布在 WorkBuddy 上，和数据库同源。GitHub Pages 版仅作源码镜像。
 
 ---
 
