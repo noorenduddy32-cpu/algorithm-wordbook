@@ -10,12 +10,9 @@ window.APP_CONFIG = {
   /* 导出 Word 时的标题 */
   docTitle: "algorithm-wordbook",
 
-  /* 大模型（可选，留空则由使用者在「设置」里自己填） */
-  llm: { endpoint: "", model: "" },
-
-  /* WorkBuddy 云端能力（keyless，无需自备 API Key）：
+  /* WorkBuddy 云端能力（keyless，无需自备 API Key / Token）：
      - database：词库读写（public.words），GitHub Pages 版也能跨域直连；
-     - llm：「AI 查中文」按钮自动填词性+中文释义。
+     - llm：「AI 查中文」按钮 +「从句中选词」自动识别，都走云端大模型。
      下面的是 algorithm-wordbook 这个应用自带的云端配置，publishableKey 可公开；
      直接部署即可用，无需修改。 */
   cloud: {

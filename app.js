@@ -20,7 +20,6 @@
   const LS_STATS = 'wb_recite_stats_v1';
   const LS_LOCK = 'wb_edit_unlocked';
   const LS_THEME = 'wb_theme_v2';
-  const LS_LLM = 'wb_llm_cfg';
   const LS_VIEW = 'wb_view_cfg_v1';
 
   // 主题：名字 + 用于色块预览的底色
@@ -272,14 +271,9 @@
     return false;
   }
 
-  // 打开设置弹窗，回填已有配置（仅大模型可选配置）
+  // 打开设置 / 关于弹窗（无需任何配置，仅说明）
   function openSetup() {
-    const c = llmCfg();
-    $('llmEndpoint').value = c.endpoint;
-    $('llmModel').value = c.model;
-    $('llmKey').value = c.apiKey;
     $('setupModal').hidden = false;
-    $('llmEndpoint').focus();
   }
 
   function closeModals() {
@@ -1352,23 +1346,40 @@
     return obj.items || obj.words || obj.data || obj.result || [];
   }
 
-  // 模型配置存在浏览器本地（不写进仓库），可用任何 OpenAI 兼容端点：
-  // 例：DeepSeek https://api.deepseek.com/v1/chat/completions  模型 deepseek-chat
-  function llmCfg() {
-    let o = {};
-    try { o = JSON.parse(localStorage.getItem(LS_LLM) || '{}'); } catch (e) { o = {}; }
-    return {
-      endpoint: o.endpoint || (cfg.llm && cfg.llm.endpoint) || '',
-      model: o.model || (cfg.llm && cfg.llm.model) || '',
-      apiKey: o.apiKey || ''
-    };
+  // 识别走站点自带的云端大模型（keyless，无需用户自备任何 API Key / Token）。
+  // 优先用非思考型对话模型；拿不到再退回第一个可用模型。
+  const PREF_MODELS = ['hunyuan-chat', 'default'];
+
+  async function ensureModel() {
+    if (llmModelId) return llmModelId;
+    if (!cloud || !cloudReady) throw new Error('云端查词暂不可用：请确认能联网加载云端 SDK（WorkBuddy 部署版始终可用）');
+    const models = await cloud.llm.models.list();
+    const usable = (models || []).filter(function (x) { return x && x.disabled !== true; });
+    let m = null;
+    for (const id of PREF_MODELS) {
+      m = usable.find(function (x) { return x.id === id; });
+      if (m) break;
+    }
+    if (!m) m = usable.find(function (x) { return x.supportsReasoning !== true; });
+    if (!m) m = usable[0];
+    if (!m) throw new Error('当前应用没有可用的模型');
+    llmModelId = m.id;
+    return llmModelId;
+  }
+
+  async function streamOnce(model, messages, jsonMode) {
+    const opts = { model: model, messages: messages, stream: true, temperature: 0.2 };
+    if (jsonMode) opts.response_format = { type: 'json_object' };
+    let answer = '';
+    for await (const chunk of cloud.llm.chat.completions.create(opts)) {
+      const d = chunk && chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+      if (d && d.content) answer += d.content;
+    }
+    return answer;
   }
 
   async function llmLookup(words) {
-    const c = llmCfg();
-    if (!c.endpoint || !c.apiKey) {
-      throw new Error('还没配置模型：点「设置」填你的 API 地址和 Key（如 DeepSeek），或手动填释义');
-    }
+    const model = await ensureModel();
     const messages = [
       { role: 'system', content: LLM_SYS },
       {
@@ -1377,22 +1388,16 @@
           '待识别单词：\n<<<\n' + words.join(', ') + '\n>>>'
       }
     ];
-    const res = await fetch(c.endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + c.apiKey },
-      body: JSON.stringify({ model: c.model, messages: messages, temperature: 0.2 })
-    });
-    if (!res.ok) {
-      const t = await res.text().catch(function () { return ''; });
-      throw new Error('模型请求失败 ' + res.status + ' ' + t.slice(0, 80));
+    let items = null;
+    let answer = await streamOnce(model, messages, true);
+    try { items = parseItems(answer); } catch (e) { items = null; }
+    if (!items || !items.length) {
+      answer = await streamOnce(model, messages, false);
+      try { items = parseItems(answer); } catch (e) {
+        throw new Error('模型返回无法解析：' + String(answer).slice(0, 60));
+      }
     }
-    const j = await res.json();
-    const answer = (j.choices && j.choices[0] && (j.choices[0].message.content || j.choices[0].text)) || '';
-    try {
-      const items = parseItems(answer);
-      if (items && items.length) return items;
-    } catch (e) { /* 下面抛错 */ }
-    throw new Error('模型返回无法解析：' + String(answer).slice(0, 60));
+    return items;
   }
 
   async function onPickQuery() {
@@ -1431,14 +1436,13 @@
   }
 
   function renderPickPreview() {
-    const head = '<div class="preview-row preview-head"><span></span><span>原形</span><span>词性</span>' +
+    const head = '<div class="preview-row preview-head"><span></span><span>单词</span><span>词性</span>' +
       '<span>中文释义</span><span>备注</span></div>';
     $('pickPreview').innerHTML = head + pickRows.map(function (r, i) {
       const warn = inflectionHint(r.word) ? ' warn' : '';
       return '<div class="preview-row" data-i="' + i + '">' +
         '<input type="checkbox"' + (r.on ? ' checked' : '') + ' data-f="on">' +
-        '<input class="base' + warn + '" data-f="word" value="' + esc(r.word) + '" placeholder="原形"' +
-        (warn ? ' title="可能不是原形，请手动改"' : '') + '>' +
+        '<span class="base-label' + warn + '"' + (warn ? ' title="可能不是原形"' : '') + '>' + esc(r.word) + '</span>' +
         '<input data-f="pos" value="' + esc(r.pos) + '" placeholder="n.">' +
         '<input data-f="meaning" value="' + esc(r.meaning) + '" placeholder="中文">' +
         '<input data-f="note" value="' + esc(r.note) + '" placeholder="可选">' +
@@ -1647,24 +1651,9 @@
       }
     });
 
-    // 设置：GitHub Token（写词库用）+ 可选的大模型配置
+    // 设置 / 关于：无需任何配置，打开说明弹窗即可
     $('setupBtn').addEventListener('click', function () {
-      if (!requireUnlock('设置')) return;
       openSetup();
-    });
-    $('setupForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      localStorage.setItem(LS_LLM, JSON.stringify({
-        endpoint: $('llmEndpoint').value.trim(),
-        model: $('llmModel').value.trim(),
-        apiKey: $('llmKey').value.trim()
-      }));
-      const act = pending;
-      pending = null;
-      $('setupModal').hidden = true;
-      toast('设置已保存（只存在这台机器的浏览器里）');
-      if (act === '添加单词') openWordModal(null);
-      else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }
     });
 
     $('passForm').addEventListener('submit', function (e) {

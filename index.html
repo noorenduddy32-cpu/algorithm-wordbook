@@ -23,9 +23,7 @@
 <header class="topbar">
   <div class="brand">
     <div class="logo" aria-label="ICPC 云朵 · 灯泡 · 气球">
-      <svg class="logo-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19c2.5 0 4.5-2 4.5-4.5S19.5 10 17 10c-.2 0-.5 0-.7.1C15.8 6.6 12.8 4 9.2 4 5.2 4 2 7.2 2 11.2c0 .4 0 .7.1 1.1C.8 13 0 14.4 0 16c0 2.8 2.2 5 5 5h12.5z"/><path d="M6 22c1.5-2 3-3 3-3"/><circle cx="8" cy="15" r=".8"/><circle cx="12" cy="15" r=".8"/><circle cx="16" cy="15" r=".8"/></svg>
-      <svg class="logo-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21h6"/><path d="M10 21v2h4v-2"/><path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7Z"/><path d="M9 10h6"/><path d="M12 2V1"/><path d="M4.2 4.2 3.5 3.5"/><path d="M19.8 4.2l.7-.7"/><path d="M2 12H1"/><path d="M22 12h1"/></svg>
-      <svg class="logo-balloon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c0-4 3-7 3-12a3 3 0 0 0-6 0c0 5 3 8 3 12"/><path d="M12 10C9 10 6.5 8 6.5 4.5S9 0 12 0s5.5 2.5 5.5 5.5S15 10 12 10Z"/></svg>
+      <img src="assets/logo.png" alt="logo" draggable="false">
     </div>
     <div class="brand-text">
       <h1>algorithm-wordbook</h1>
@@ -39,7 +37,7 @@
       </button>
       <div id="themeMenu" class="theme-menu" hidden></div>
     </div>
-    <button id="setupBtn" class="icon-btn" title="设置（可选模型）">
+    <button id="setupBtn" class="icon-btn" title="关于 / 设置">
       <span id="setupIcon"></span><span class="btn-label">设置</span>
     </button>
     <button id="lockBtn" class="icon-btn" title="编辑模式">
@@ -330,27 +328,16 @@
   </div>
 </div>
 
-<!-- 设置：可选大模型（「从句中选词」自动识别用） -->
+<!-- 设置 / 关于（无需任何配置） -->
 <div class="modal" id="setupModal" hidden>
   <div class="modal-box">
-    <h2>设置</h2>
-    <p class="muted small">增删改已不需要任何 Token。下面三项<b>可选</b>，只存在你这台机器的浏览器里，不上传、不进仓库。</p>
-    <form id="setupForm" autocomplete="off">
-      <p class="muted small">填了才能用「从句中选词」的自动识别（用任何 OpenAI 兼容接口都行；不填就手动写释义）。</p>
-      <label>API 地址
-        <input id="llmEndpoint" placeholder="https://api.deepseek.com/v1/chat/completions">
-      </label>
-      <label>模型名
-        <input id="llmModel" placeholder="deepseek-chat">
-      </label>
-      <label>API Key
-        <input id="llmKey" type="password" placeholder="sk-..." autocomplete="off">
-      </label>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" data-close>取消</button>
-        <button type="submit" class="btn primary">保存</button>
-      </div>
-    </form>
+    <h2>关于</h2>
+    <p class="muted small">增删改单词已不需要任何 Token 或 API Key——解锁编辑模式（密码 <code>yqx</code>）即可直接操作。</p>
+    <p class="muted small">「从句中选词」的自动识别走<b>站点自带的云端大模型</b>，同样无需你配置任何接口，点「识别」就能直接出词性+中文释义。</p>
+    <p class="muted small">以上都不需要你填任何密钥，纯前端即可用。</p>
+    <div class="modal-actions">
+      <button type="button" class="btn primary" data-close>知道了</button>
+    </div>
   </div>
 </div>
 
