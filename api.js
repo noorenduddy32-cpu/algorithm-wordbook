@@ -170,14 +170,14 @@
     if (visitorBtn) visitorBtn.addEventListener('click', function () {
       const gate = document.getElementById('gate');
       if (gate) { gate.remove(); document.body.style.overflow = ''; }
-      applyRole(null);
+      applyRole('visitor', true);
     });
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       err.hidden = true;
       try {
         const role = await Auth.login(input.value);
-        onAuthed(role);
+        onAuthed(role, true);
       } catch (ex) {
         err.textContent = ex.message;
         err.hidden = false;
@@ -191,7 +191,8 @@
   function onAuthed(role, backendMode) {
     const g = document.getElementById('gate');
     if (g) { g.remove(); document.body.style.overflow = ''; }
-    applyRole(role, backendMode);
+    // 从访问门进入默认按本地后端处理；明确传 false 才走纯静态分支
+    applyRole(role, backendMode !== false);
     window.AN_ROLE = role;
     window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: role } }));
   }
