@@ -87,18 +87,31 @@
     <div class="recent-list" id="recentList"></div>
   </section>
 
-  <section class="hub-foot">
-    <div class="foot-card">
-      <b>怎么用</b>
-      <ol>
-        <li>做题卡壳时，把题面里看不懂的词丢进「从句中选词」，自动识别原形和中文释义。</li>
-        <li>做完题写篇笔记，标上「图论 / DP / 构造」这类标签，以后翻起来靠它。</li>
-        <li>点右上角锁图标解锁编辑模式，密码只有自己知道。</li>
-      </ol>
+  <section class="activity" id="activityWrap">
+    <div class="activity-head">
+      <h3>活跃度</h3>
+      <span class="activity-sum" id="activitySum">今年 0 天有记录</span>
+      <div class="activity-scale">
+        <span class="muted small">少</span>
+        <i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i>
+        <span class="muted small">多</span>
+      </div>
     </div>
-    <div class="foot-card">
-      <b>数据在哪</b>
-      <p>单词和文章都存在云端数据库，任何拿到链接的人都能查看；增删改需要编辑密码，不需要 GitHub Token 或 API Key。</p>
+    <div class="activity-calendar">
+      <div class="activity-calendar-inner">
+        <div class="activity-months" id="activityMonths"></div>
+        <div class="activity-body">
+          <div class="activity-weekdays">
+            <span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span>
+          </div>
+          <div class="activity-grid" id="activityGrid"></div>
+        </div>
+      </div>
+    </div>
+    <div class="activity-foot">
+      <span><b id="actStreak">0</b> 天连续</span>
+      <span><b id="actTotal">0</b> 次操作</span>
+      <span><b id="actDays">0</b> 天活跃</span>
     </div>
   </section>
 
