@@ -96,7 +96,6 @@
     const withMean = opts.withMeaning !== false;
     const withEx = opts.withExample;
     const withPos = opts.withPos !== false;
-    const withOrigin = opts.withOrigin;
     const withNote = opts.withNote;
 
     // 内部分配每栏的列宽：序号 / 单词 / 中文 / 例句 / 勾选框
@@ -162,7 +161,6 @@
           const meaning = [];
           const pos = withPos ? (w.pos ? w.pos + ' ' : '') : '';
           meaning.push(para(pos + (w.meaning || '—'), { sz: 18, color: '404040' }));
-          if (withOrigin && w.origin) meaning.push(para('原词 ' + w.origin, { sz: 16, color: '8A6D3B' }));
           if (withNote && w.note) meaning.push(para('注：' + w.note, { sz: 16, color: '8A6D3B' }));
           out += cell(meaning.join(''), C[part.indexOf(p)], { vcenter: true });
         } else if (p.key === 'ex') {
@@ -276,13 +274,12 @@
     const cols = [];
     if (opts.withIndex !== false) cols.push({ key: 'i', head: '#', w: 460 });
     cols.push({ key: 'word', head: '单词', w: 0 });
-    if (opts.withOrigin) cols.push({ key: 'origin', head: '原词', w: 0 });
     if (opts.withPos !== false) cols.push({ key: 'pos', head: '词性', w: 0 });
     if (opts.withMeaning !== false) cols.push({ key: 'meaning', head: '中文释义', w: 0 });
     if (opts.withExample) cols.push({ key: 'example', head: '例句', w: 0 });
     if (opts.withNote) cols.push({ key: 'note', head: '备注', w: 0 });
 
-    const FLEX = { word: 26, origin: 16, pos: 10, meaning: 34, example: 62, note: 20 };
+    const FLEX = { word: 26, pos: 10, meaning: 34, example: 62, note: 20 };
     let fixed = 0, flexTotal = 0;
     cols.forEach(function (c) { if (c.w) fixed += c.w; else flexTotal += FLEX[c.key] || 10; });
     const rest = Math.max(1200, FULL - fixed);
@@ -303,10 +300,6 @@
       const tds = cols.map(function (c) {
         if (c.key === 'i') return cell(para(String(idx + 1), { sz: 19, align: 'center' }), c.w, { vcenter: true });
         if (c.key === 'word') return cell(para(w.word || '', { bold: true, sz: 21 }), c.w, { vcenter: true });
-        if (c.key === 'origin') {
-          const o = (w.origin || '').trim();
-          return cell(o ? para(o, { sz: 18, color: '8A6D3B' }) : para('—', { sz: 18, color: '9099A8' }), c.w, { vcenter: true });
-        }
         if (c.key === 'pos') return cell(para(w.pos || '', { sz: 18, color: '5A6474' }), c.w, { vcenter: true });
         if (c.key === 'meaning') return cell(para(w.meaning || '—', { sz: 20 }), c.w, { vcenter: true });
         if (c.key === 'example') {
@@ -400,7 +393,7 @@
       title: 'Classic Vocabulary List', docTitle: '收藏的单词', date: nowStr(),
       dateOnly: dateOnly(), columns: 2, perCol: 15,
       withMeaning: true, withPos: true, withNote: false,
-      withExample: false, withOrigin: false, withIndex: true
+      withExample: false, withIndex: true
     }, opts || {});
 
     const list = words.slice();

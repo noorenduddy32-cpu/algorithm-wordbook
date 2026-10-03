@@ -331,7 +331,6 @@
           pos: rec.pos || found.pos,
           meaning: rec.meaning || found.meaning,
           note: rec.note || found.note,
-          origin: rec.origin || found.origin || '',
           examples: merged,
           updated_at: new Date().toISOString()
         }).eq('id', found.id).select();
@@ -342,7 +341,7 @@
       }
       const { data, error } = await db.from('words').update({
         word: rec.word, pos: rec.pos, meaning: rec.meaning,
-        examples: rec.examples, note: rec.note, origin: rec.origin || '',
+        examples: rec.examples, note: rec.note,
         updated_at: new Date().toISOString()
       }).eq('id', rec.id).select();
       if (error) throw error;
@@ -359,7 +358,6 @@
         pos: rec.pos || found.pos,
         meaning: rec.meaning || found.meaning,
         note: rec.note || found.note,
-        origin: rec.origin || found.origin || '',
         examples: merged,
         updated_at: new Date().toISOString()
       }).eq('id', found.id).select();
@@ -369,7 +367,7 @@
     }
     const { error } = await db.from('words').insert({
       word: rec.word, pos: rec.pos, meaning: rec.meaning,
-      examples: rec.examples, note: rec.note, origin: rec.origin || ''
+      examples: rec.examples, note: rec.note
     });
     if (error) {
       if (error.code === '23505') return 'merged';
@@ -667,9 +665,7 @@
     $('dSpeakHint').textContent = '';
 
     // 词库里的中文释义 + 例句
-    $('dMeaning').innerHTML = esc(w.meaning || '—') +
-      (w.origin && normWord(w.origin) !== normWord(word)
-        ? ' <span class="origin-tag">原词 ' + esc(w.origin) + '</span>' : '');
+    $('dMeaning').innerHTML = esc(w.meaning || '—');
     const ex = (w.examples || []).filter(Boolean);
     $('dExampleBlock').hidden = !ex.length;
     $('dExamples').innerHTML = ex.map(function (e) {
@@ -934,7 +930,6 @@
       if (weakOnly && !isWeak(w)) return false;
       if (!q) return true;
       if (w.word.indexOf(q) >= 0) return true;
-      if ((w.origin || '').toLowerCase().indexOf(q) >= 0) return true;
       if ((w.meaning || '').toLowerCase().indexOf(q) >= 0) return true;
       if ((w.note || '').toLowerCase().indexOf(q) >= 0) return true;
       return (w.examples || []).join(' ').toLowerCase().indexOf(q) >= 0;
@@ -946,6 +941,7 @@
     filtered = computeFiltered();
     renderStats();
     renderCards();
+    renderActivity();
   }
 
   function renderStats() {
@@ -963,6 +959,150 @@
     $('statEx').textContent = ex;
     $('statNew').textContent = monthNew;
     $('statUpdate').textContent = fmtDate(newest);
+  }
+
+  /* ---------------- 活跃度热力图（GitHub 贡献图风格） ----------------
+     每天的活跃量 = 当天新增单词数 + 当天编辑数 + 当天背诵次数。
+     前两项来自云端 words 表的 created_at / updated_at（跨设备可见），
+     背诵次数只存在本机 localStorage，所以合在一起算是「这台设备上的努力」。 */
+
+  const LS_ACT = 'wb_activity_v1';
+
+  // 本地背诵活跃：{ 'YYYY-MM-DD': 次数 }
+  let localAct = {};
+  try { localAct = JSON.parse(localStorage.getItem(LS_ACT) || '{}'); } catch (e) { localAct = {}; }
+
+  function bumpActivity(n) {
+    const d = todayKey();
+    localAct[d] = (localAct[d] || 0) + (n || 1);
+    try { localStorage.setItem(LS_ACT, JSON.stringify(localAct)); } catch (e) { /* 配额满了就算了 */ }
+  }
+
+  function todayKey() { return dayKey(new Date()); }
+
+  function dayKey(d) {
+    const p = function (x) { return x < 10 ? '0' + x : '' + x; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  // 把所有来源汇总成 { 'YYYY-MM-DD': 次数 }
+  function activityCounts() {
+    const map = {};
+    const add = function (iso, n) {
+      const d = String(iso || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      map[d] = (map[d] || 0) + n;
+    };
+    all.forEach(function (w) {
+      add(w.created_at, 1);
+      // 同一天新增又编辑只算一次活跃，避免虚高
+      if (String(w.updated_at || '').slice(0, 10) !== String(w.created_at || '').slice(0, 10)) {
+        add(w.updated_at, 1);
+      }
+    });
+    Object.keys(localAct).forEach(function (k) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k)) map[k] = (map[k] || 0) + (Number(localAct[k]) || 0);
+    });
+    return map;
+  }
+
+  // 数量 -> 0~4 档（对数分级，不然某天批量导入 50 个词会全顶格）
+  function actLevel(n) {
+    if (!n) return 0;
+    if (n <= 2) return 1;
+    if (n <= 5) return 2;
+    if (n <= 10) return 3;
+    return 4;
+  }
+
+  function renderActivity() {
+    const grid = $('activityGrid');
+    if (!grid) return;
+
+    const counts = activityCounts();
+
+    // 从「今天所在周的周日」往前推 52 周 + 当周 = 53 列
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(today);
+    end.setDate(end.getDate() + (6 - end.getDay()));   // 本周六
+    const start = new Date(end);
+    start.setDate(start.getDate() - (53 * 7 - 1));      // 往前 370 天
+
+    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    const months = [];
+    let cells = '';
+    let activeDays = 0, totalOps = 0, lastMonth = -1;
+    const cur = new Date(start);
+
+    while (cur <= end) {
+      // 每列的第一天是当月新出现的那一格，记一次月份标签
+      if (cur.getMonth() !== lastMonth) {
+        months.push({ label: monthNames[cur.getMonth()], col: Math.floor((cur - start) / 86400000 / 7) });
+        lastMonth = cur.getMonth();
+      }
+      const key = dayKey(cur);
+      const n = counts[key] || 0;
+      if (n) { activeDays++; totalOps += n; }
+      const future = cur > today;
+      cells += '<i class="act-day lv' + actLevel(n) + (future ? ' future' : '') +
+        '" data-date="' + key + '" data-n="' + n + '" title="' +
+        key + '：' + (n ? n + ' 次' : '无记录') + '"></i>';
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    grid.innerHTML = cells;
+    // 月份标签：只在每个月第一次出现时打一个标签，绝对定位到那一列上方
+    const seen = {};
+    $('activityMonths').innerHTML = months.filter(function (m) {
+      if (seen[m.label]) return false;
+      seen[m.label] = 1;
+      return true;
+    }).map(function (m) {
+      // 每列 12px + 3px 间距 = 15px
+      return '<span style="left:' + (m.col * 15) + 'px">' + m.label + '</span>';
+    }).join('');
+
+    let days = 0;
+    const walk = new Date(today);
+    while (counts[dayKey(walk)]) { days++; walk.setDate(walk.getDate() - 1); }
+
+    $('actStreak').textContent = days;
+    $('actTotal').textContent = totalOps;
+    $('actDays').textContent = activeDays;
+    $('activitySum').textContent = '近一年 ' + activeDays + ' 天有记录 · 连续 ' + days + ' 天';
+    $('actHint').textContent = '统计口径：新增单词 + 编辑单词 + 背诵判词（背诵次数只存在这台设备上）';
+  }
+
+  // 展开 / 收起活跃度面板
+  function bindActivity() {
+    const btn = $('activityToggle');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      const body = $('activityBody');
+      const open = body.hidden;
+      body.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    });
+
+    // 悬停提示：跟随鼠标显示「日期：N 次」
+    let tip = null;
+    $('activityGrid').addEventListener('mousemove', function (e) {
+      const cell = e.target.closest('.act-day');
+      if (!cell) return;
+      if (!tip) {
+        tip = document.createElement('div');
+        tip.id = 'activityTip';
+        document.body.appendChild(tip);
+      }
+      tip.textContent = cell.getAttribute('title').replace('：', ' · ');
+      tip.style.display = 'block';
+      tip.style.left = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 10) + 'px';
+      tip.style.top = (e.clientY - 34) + 'px';
+    });
+    $('activityGrid').addEventListener('mouseleave', function () {
+      if (tip) tip.style.display = 'none';
+    });
   }
 
   function renderCards() {
@@ -1005,8 +1145,6 @@
       '<div class="zh-line">' +
       (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') +
       '<span class="meaning">' + esc(w.meaning || '—') + '</span></div>' +
-      (w.origin && normWord(w.origin) !== normWord(w.word)
-        ? '<div class="origin-tag">原词 ' + esc(w.origin) + '</div>' : '') +
       (ex ? '<ul class="examples">' + ex + '</ul>' : '<ul class="examples"></ul>') +
       (w.note ? '<div class="note">' + esc(w.note) + '</div>' : '') +
       (badges || actions
@@ -1029,7 +1167,6 @@
     editingId = w ? w.id : null;
     $('wordModalTitle').textContent = w ? '编辑单词' : '添加单词';
     $('fWord').value = w ? w.word : '';
-    $('fOrigin').value = w ? (w.origin || '') : '';
     $('fPos').value = w ? (w.pos || '') : '';
     $('fMeaning').value = w ? (w.meaning || '') : '';
     $('fExamples').value = w ? (w.examples || []).join('\n') : '';
@@ -1058,7 +1195,6 @@
     const rec = {
       id: editingId,
       word: word,
-      origin: $('fOrigin').value.trim(),
       pos: $('fPos').value.trim(),
       meaning: $('fMeaning').value.trim(),
       examples: splitExamples(smartJoinLines($('fExamples').value).text),
@@ -1110,7 +1246,7 @@
       try {
         const r = await upsert({
           word: word, pos: parts[1] || '', meaning: parts[2] || '', examples: examples,
-          note: parts[4] || '', origin: parts[5] || ''
+          note: parts[4] || ''
         });
         if (r === 'created') created++; else merged++;
       } catch (err) { failed++; }
@@ -1171,7 +1307,6 @@
       withPos: $('exPos').checked,
       withNote: $('exNote').checked,
       withExample: $('exExample').checked,
-      withOrigin: $('exOrigin').checked,
       withIndex: $('exIndex').checked
     };
     const btn = $('exportForm').querySelector('button[type=submit]');
@@ -1229,8 +1364,7 @@
           pos: it.pos || '',
           meaning: it.meaning || it.cn || '',
           examples: Array.isArray(it.examples) ? it.examples : splitExamples(it.example || ''),
-          note: it.note || '',
-          origin: it.origin || it.original || ''
+          note: it.note || ''
         });
         if (r === 'created') created++; else merged++;
       } catch (err) { failed++; }
@@ -1464,7 +1598,7 @@
       if (!w) continue;
       try {
         const res = await upsert({
-          word: w, origin: r.origin || '', pos: r.pos.trim(), meaning: r.meaning.trim(),
+          word: w, pos: r.pos.trim(), meaning: r.meaning.trim(),
           examples: r.example ? [r.example] : [], note: r.note.trim()
         });
         if (res === 'created') created++; else merged++;
@@ -1545,11 +1679,7 @@
         return '<li>' + esc(blanked) + '</li>';
       }).join('');
     }
-    let tail = w.note ? '注：' + w.note : '';
-    if (w.origin && normWord(w.origin) !== normWord(w.word)) {
-      tail += (tail ? '  ·  ' : '') + '原词 ' + w.origin;
-    }
-    $('recNote').textContent = tail;
+    $('recNote').textContent = w.note ? '注：' + w.note : '';
   }
 
   function recReveal() {
@@ -1564,6 +1694,7 @@
     if (known) { s.k = (s.k || 0) + 1; rec.k++; } else { s.u = (s.u || 0) + 1; rec.u++; }
     stats[w.word] = s;
     localStorage.setItem(LS_STATS, JSON.stringify(stats));
+    bumpActivity(1);
     rec.i++; rec.revealed = false;
     render();
     renderRec();
@@ -1574,6 +1705,7 @@
   function bindUI() {
     $('setupIcon').innerHTML = ICONS.gear;
     applyView();
+    bindActivity();
 
     $('themeBtn').addEventListener('click', function (e) {
       e.stopPropagation();
@@ -1844,7 +1976,7 @@
     ['exScope', 'exSort', 'exDir', 'exLayout', 'exPerCol', 'exCols'].forEach(function (id) {
       $(id).addEventListener('change', updateExportHint);
     });
-    ['exMeaning', 'exPos', 'exNote', 'exExample', 'exOrigin', 'exIndex'].forEach(function (id) {
+    ['exMeaning', 'exPos', 'exNote', 'exExample', 'exIndex'].forEach(function (id) {
       $(id).addEventListener('change', updateExportHint);
     });
     $('exportJsonBtn').addEventListener('click', exportJson);

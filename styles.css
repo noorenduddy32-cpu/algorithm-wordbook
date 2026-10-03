@@ -338,24 +338,46 @@ body.chrome-hidden .chrome { transform: translateY(-100%); opacity: 0; pointer-e
 /* 自动隐藏开启时，内部两栏不再各自吸顶（否则会和 .chrome 打架） */
 body.auto-hide .topbar,
 body.auto-hide .toolbar { position: static; }
-/* 关闭自动隐藏时，.chrome 只作为普通容器 */
-body:not(.auto-hide) .chrome { position: static; }
+/* 关闭自动隐藏时，.chrome 只作为普通容器；
+   里面的 .toolbar 也不能再单独吸顶 —— 否则它会脱离顶栏浮在页面中间盖住单词。 */
+body:not(.auto-hide) .chrome,
+body:not(.auto-hide) .toolbar { position: static; }
+
+/* .chrome 默认垫一层不透明底色：收起 / 淡出的瞬间不该看到下层单词，
+   毛玻璃只负责把手感做出来，遮蔽交给这层。 */
+.chrome { background: var(--bg); }
+
+/* 玻璃主题：顶栏 / 工具栏本身是半透明毛玻璃，滚动时下层单词会透上来，
+   看起来像「被导航遮住」。这里给 .chrome 垫一层完全不透明的底色，
+   只在导航边缘留一道渐隐，让文字是「被盖住」而不是「被穿透」。 */
+[data-theme="glass"] .chrome {
+  background: #0a0f1e;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .38);
+}
+[data-theme="glass-light"] .chrome {
+  background: #f0f4fd;
+  box-shadow: 0 10px 24px rgba(40, 60, 130, .16);
+}
+[data-theme="glass"] .stats-bar { background: linear-gradient(180deg, rgba(255,255,255,.10), #0b1020); }
+[data-theme="glass-light"] .stats-bar { background: linear-gradient(180deg, rgba(255,255,255,.58), #f2f6ff); }
+[data-theme="glass"] .toolbar { background: #0b1020; }
+[data-theme="glass-light"] .toolbar { background: #f2f6ff; }
 
 /* ---------- top bar ---------- */
 /* z-index 必须高于 .toolbar(20)：玻璃主题给 topbar 加了 backdrop-filter，
    会生成新的层叠上下文，主题下拉菜单若不抬高层级会被工具栏盖住 */
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 18px 26px; border-bottom: 1px solid var(--border);
+  padding: 12px 26px; border-bottom: 1px solid var(--border);
   background: var(--panel);
   position: relative; z-index: 50;
 }
 .brand { display: flex; align-items: center; gap: 14px; }
 .logo {
-  height: 42px; flex: none;
+  height: 58px; flex: none;
   display: flex; align-items: center; justify-content: center;
 }
-.logo img { height: 30px; width: auto; display: block; }
+.logo img { height: 46px; width: auto; display: block; }
 .brand-text h1 { font-size: 20px; letter-spacing: .3px; }
 .brand-text p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
 .top-actions { display: flex; gap: 10px; align-items: center; }
@@ -389,8 +411,8 @@ body.nav-collapsed .topbar {
   position: sticky; top: 0; z-index: 40;
 }
 body.nav-collapsed .brand-text { display: none; }
-body.nav-collapsed .logo { height: 32px; }
-body.nav-collapsed .logo img { height: 24px; }
+body.nav-collapsed .logo { height: 44px; }
+body.nav-collapsed .logo img { height: 36px; }
 body.nav-collapsed .stats-bar { display: none; }
 body.nav-collapsed .foot > span:first-child { display: none; }
 .icon-btn.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
@@ -427,6 +449,91 @@ body.nav-collapsed .foot > span:first-child { display: none; }
 .stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .stat span { font-size: 12.5px; color: var(--muted); }
 .stat-hint { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+
+/* ---------- 活跃度热力图（GitHub 贡献图风格） ----------
+   一年 = 53 周 × 7 天，每格一天的活跃量：
+   新增/编辑单词按 created_at、updated_at 落到那一天，
+   背诵记录存在本地，按天累加。 */
+.activity-bar {
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  padding: 0 26px;
+}
+/* 玻璃主题下 --panel 是半透明白，会把下层单词透上来，这里换成不透明底色 */
+[data-theme="glass"] .activity-bar { background: #0e1428; }
+[data-theme="glass-light"] .activity-bar { background: #f4f7fe; }
+.activity-toggle {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  font: inherit; font-size: 13.5px; color: var(--text);
+  background: none; border: 0; cursor: pointer;
+  padding: 10px 0; text-align: left;
+}
+.activity-toggle:hover .activity-sum { color: var(--text); }
+.activity-caret {
+  display: inline-block; transition: transform .18s ease;
+  color: var(--muted); font-size: 11px; width: 12px;
+}
+.activity-toggle[aria-expanded="true"] .activity-caret { transform: rotate(90deg); }
+.activity-toggle b { font-weight: 650; }
+.activity-sum { font-size: 12.5px; color: var(--muted); }
+
+.activity-body { padding: 2px 0 12px; }
+/* 月份标签条：宽度与热力图同宽，标签用绝对定位落到对应列上方 */
+.activity-legend {
+  position: relative; display: flex; align-items: center;
+  height: 16px; margin-bottom: 6px;
+}
+.activity-months {
+  position: relative; display: block;
+  height: 16px; margin-left: 18px; flex: 1 1 auto;
+}
+.activity-months span {
+  position: absolute; top: 0;
+  font-size: 10.5px; color: var(--muted); white-space: nowrap;
+}
+.activity-scale { display: flex; align-items: center; gap: 4px; flex: none; margin-left: 12px; }
+.act-cell {
+  width: 11px; height: 11px; border-radius: 2.5px; display: inline-block;
+  border: 1px solid var(--border);
+}
+.act-cell.l0, .act-day.lv0 { background: var(--panel2); }
+.act-cell.l1, .act-day.lv1 { background: color-mix(in srgb, var(--ok) 28%, var(--panel2)); }
+.act-cell.l2, .act-day.lv2 { background: color-mix(in srgb, var(--ok) 52%, var(--panel2)); }
+.act-cell.l3, .act-day.lv3 { background: color-mix(in srgb, var(--ok) 76%, var(--panel2)); }
+.act-cell.l4, .act-day.lv4 { background: var(--ok); }
+
+.activity-main { display: flex; gap: 6px; align-items: flex-start; }
+.activity-weekdays {
+  display: grid; grid-template-rows: repeat(7, 12px); gap: 3px;
+  font-size: 10px; color: var(--muted); flex: none;
+  width: 12px; line-height: 12px;
+}
+.activity-grid {
+  display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px);
+  gap: 3px; flex: none; overflow-x: auto;
+}
+.act-day {
+  width: 12px; height: 12px; border-radius: 2.5px;
+  border: 1px solid var(--border); cursor: default;
+  transition: transform .1s ease;
+}
+.act-day:hover { transform: scale(1.28); border-color: var(--accent); }
+.act-day.blank { border-color: transparent; background: transparent !important; }
+/* 本周还没到的日子：留个更淡的格子 */
+.act-day.future { opacity: .35; }
+
+.activity-foot {
+  display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap;
+  margin-top: 9px;
+}
+.activity-foot .stat b { font-size: 16px; }
+#activityTip {
+  position: fixed; z-index: 90; pointer-events: none;
+  background: var(--panel3); color: var(--text);
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 5px 9px; font-size: 12px; white-space: nowrap;
+  box-shadow: var(--shadow);
+}
 
 /* ---------- toolbar ---------- */
 .toolbar {
@@ -576,7 +683,6 @@ body.layout-grid.hide-meaning.hide-examples .card { padding: 12px 16px; }
 body.layout-grid .examples li { margin-bottom: 0; word-break: break-word; }
 body.layout-grid .examples li::before { content: "· "; opacity: .6; }
 
-body.layout-grid .origin-tag { flex: 0 0 auto; margin-top: 6px; font-size: 12px; }
 body.layout-grid .note { display: none; }   /* 方块模式省略备注 */
 body.layout-grid .card-foot {
   flex: 0 0 auto; margin-top: 10px; padding-top: 8px;
@@ -615,7 +721,6 @@ body.layout-list .examples {
 }
 body.layout-list .examples li { display: list-item; }
 body.layout-list .examples li + li { display: none; }
-body.layout-list .origin-tag { margin-top: 0; flex: 0 0 auto; }
 body.layout-list .note { margin-top: 0; flex: 0 0 auto; }
 body.layout-list .card-foot {
   margin-top: 0; padding-top: 0; border-top: none;
@@ -670,13 +775,6 @@ body.hide-examples .rec-examples { display: none !important; }
 /* 旧的外链样式（编辑弹窗里那个「去剑桥查」还在用） */
 .dict-link { color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; }
 .dict-link:hover { border-bottom-color: currentColor; }
-.origin-tag {
-  margin-top: 6px; font-size: 12.5px; color: var(--muted);
-  display: inline-flex; align-items: baseline; gap: 5px;
-  background: var(--panel2); border: 1px solid var(--border);
-  border-radius: 6px; padding: 2px 8px;
-}
-.origin-tag .dict-link { font-weight: 700; color: var(--accent); }
 .pos {
   font-size: 12px; color: var(--muted); border: 1px solid var(--border);
   background: var(--panel2); border-radius: 6px; padding: 1px 7px; margin-top: 5px; flex: none;
@@ -868,7 +966,6 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase;
 }
 .detail-meaning { font-size: 16px; line-height: 1.7; }
-.detail-meaning .origin-tag { margin-left: 6px; }
 
 .en-defs { margin: 10px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
 .en-defs li { margin-bottom: 5px; }

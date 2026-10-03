@@ -57,9 +57,40 @@
   <div class="stat-hint" id="statusText">正在连接词库…</div>
 </section>
 
+<!-- 活跃度：GitHub 贡献图那种。数据 = 每天新增单词数 + 当天背诵次数 -->
+<section class="activity-bar" id="activityBar">
+  <button id="activityToggle" class="activity-toggle" aria-expanded="false">
+    <span class="activity-caret" id="activityCaret">▸</span>
+    <b>活跃度</b>
+    <span class="activity-sum" id="activitySum">近一年 0 天有记录</span>
+  </button>
+  <div class="activity-body" id="activityBody" hidden>
+    <div class="activity-legend">
+      <span class="activity-months" id="activityMonths"></span>
+      <span class="activity-scale">
+        <span class="muted small">少</span>
+        <i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i>
+        <span class="muted small">多</span>
+      </span>
+    </div>
+    <div class="activity-main">
+      <div class="activity-weekdays">
+        <span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span>
+      </div>
+      <div class="activity-grid" id="activityGrid"></div>
+    </div>
+    <div class="activity-foot">
+      <span class="stat"><b id="actStreak">0</b><span>天连续</span></span>
+      <span class="stat"><b id="actTotal">0</b><span>次操作</span></span>
+      <span class="stat"><b id="actDays">0</b><span>天活跃</span></span>
+      <span class="muted small" id="actHint"></span>
+    </div>
+  </div>
+</section>
+
 <div class="toolbar">
   <div class="search-wrap">
-    <input id="searchInput" type="search" placeholder="搜索单词 / 原词 / 中文 / 例句" autocomplete="off">
+    <input id="searchInput" type="search" placeholder="搜索单词 / 中文 / 例句" autocomplete="off">
   </div>
   <div class="sort-wrap">
     <select id="sortSelect" title="排序">
@@ -256,9 +287,6 @@
         <span id="wordHint" class="field-hint"></span>
         <a id="fDictLink" class="link-btn" target="_blank" rel="noopener" hidden>在剑桥词典查</a>
       </label>
-      <label>原词（可选：题面 / 笔记里的原始形式，如 indice、errands、proceeds）
-        <input id="fOrigin" placeholder="例：indice">
-      </label>
       <label>词性
         <input id="fPos" list="posList" placeholder="n. / v. / adj. / adv. / phr.">
         <datalist id="posList">
@@ -291,7 +319,7 @@
 <div class="modal" id="batchModal" hidden>
   <div class="modal-box wide">
     <h2>批量添加</h2>
-    <p class="muted small">每行一个单词，用 <code>|</code> 或 Tab 分隔：<code>单词 | 词性 | 中文 | 例句 | 备注 | 原词</code>（后三列可留空）。例句列里可以用 <code>\\</code> 分隔多句。</p>
+    <p class="muted small">每行一个单词，用 <code>|</code> 或 Tab 分隔：<code>单词 | 词性 | 中文 | 例句 | 备注</code>（后两列可留空）。例句列里可以用 <code>\\</code> 分隔多句。</p>
     <textarea id="batchText" rows="12" spellcheck="false" placeholder="submit | v. | 提交 | He submitted the code at 1:59. |&#10;greedy | adj. | 贪心的 | a greedy algorithm"></textarea>
     <div class="modal-actions">
       <button type="button" class="btn ghost" data-close>取消</button>
@@ -400,7 +428,6 @@
         <label class="check"><input type="checkbox" id="exPos" checked> 词性</label>
         <label class="check"><input type="checkbox" id="exNote"> 备注</label>
         <label class="check"><input type="checkbox" id="exExample"> 例句</label>
-        <label class="check"><input type="checkbox" id="exOrigin"> 原词</label>
         <label class="check"><input type="checkbox" id="exIndex" checked> 序号</label>
       </div>
       <p class="muted small" id="exHint"></p>
