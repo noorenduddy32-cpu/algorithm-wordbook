@@ -1,11 +1,14 @@
--- algorithm-wordbook 数据库结构（PostgreSQL）
+-- 算法学习笔记本 数据库结构（PostgreSQL）
 -- 说明：本文件供「自己搭一套」时参考。在 WorkBuddy 云数据库的 SQL 控制台里请**逐条**执行
 --      （单次只能跑一条语句）。建表 + RLS 是两道独立的门，GRANT 和 CREATE POLICY 缺一不可。
+
+-- ============================================================
+-- 1. 词库：单词本用
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS words (
   id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   word        TEXT        NOT NULL UNIQUE,              -- 原形：小写、去多余空格，唯一键
-  origin      TEXT        NOT NULL DEFAULT '',          -- 原词：题面 / 笔记里的原始形式（indice / errands / proceeds / subtracted）
   pos         TEXT        NOT NULL DEFAULT '',          -- 词性：n. v. adj. adv. prep. conj. num. pron. phr.
   meaning     TEXT        NOT NULL DEFAULT '',          -- 中文释义
   examples    JSONB       NOT NULL DEFAULT '[]'::jsonb, -- 例句数组
@@ -14,7 +17,7 @@ CREATE TABLE IF NOT EXISTS words (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE words IS 'algorithm-wordbook：拼写 / 原词 / 词性 / 中文释义 / 例句，word 唯一，重复单词自动合并例句';
+COMMENT ON TABLE words IS '算法学习笔记本 · 词库：拼写 / 词性 / 中文释义 / 例句，word 唯一，重复单词自动合并例句';
 
 -- 公开只读：任何人打开网页都能看到词库；写操作由前端密码兜底（见 config.js 的 editPassword）
 ALTER TABLE words ENABLE ROW LEVEL SECURITY;
@@ -25,3 +28,32 @@ CREATE POLICY words_read_all   ON words FOR SELECT TO authenticated, anon USING 
 CREATE POLICY words_insert_all ON words FOR INSERT TO authenticated, anon WITH CHECK (true);
 CREATE POLICY words_update_all ON words FOR UPDATE TO authenticated, anon USING (true) WITH CHECK (true);
 CREATE POLICY words_delete_all ON words FOR DELETE TO authenticated, anon USING (true);
+
+-- ============================================================
+-- 2. 文章：Markdown 题解 / 笔记用（notes.html）
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notes (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title       TEXT        NOT NULL DEFAULT '',          -- 标题
+  content     TEXT        NOT NULL DEFAULT '',          -- 正文，Markdown 源码
+  summary     TEXT        NOT NULL DEFAULT '',          -- 摘要；留空时前端自动截取正文前 90 字
+  tags        JSONB       NOT NULL DEFAULT '[]'::jsonb, -- 标签数组，如 ["图论","最短路"]
+  category    TEXT        NOT NULL DEFAULT '',          -- 分类（预留）
+  cover       TEXT        NOT NULL DEFAULT '',          -- 封面图 URL（预留）
+  views       BIGINT      NOT NULL DEFAULT 0,           -- 阅读次数，打开文章时 +1
+  top         BOOLEAN     NOT NULL DEFAULT false,      -- 是否置顶（预留）
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE notes IS '算法学习笔记本 · 文章：Markdown 题解 / 思路复盘 / 模板与踩坑记录';
+
+ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.notes TO authenticated, anon;
+
+CREATE POLICY notes_read_all   ON notes FOR SELECT TO authenticated, anon USING (true);
+CREATE POLICY notes_insert_all ON notes FOR INSERT TO authenticated, anon WITH CHECK (true);
+CREATE POLICY notes_update_all ON notes FOR UPDATE TO authenticated, anon USING (true) WITH CHECK (true);
+CREATE POLICY notes_delete_all ON notes FOR DELETE TO authenticated, anon USING (true);

@@ -332,8 +332,10 @@ h1, h2 { margin: 0; font-weight: 650; }
 .chrome {
   position: sticky; top: 0; z-index: 40;
   transition: transform .26s cubic-bezier(.4, 0, .2, 1), opacity .26s ease;
-  will-change: transform;
 }
+/* 不要给 .chrome 加 will-change: transform —— 那会让它自己变成一个层叠上下文，
+   把内部 topbar / 工具栏 / 主题菜单的 z-index 全部关在这个上下文里，
+   下拉菜单和弹窗就再也没法盖到下面的单词上面。 */
 body.chrome-hidden .chrome { transform: translateY(-100%); opacity: 0; pointer-events: none; }
 /* 自动隐藏开启时，内部两栏不再各自吸顶（否则会和 .chrome 打架） */
 body.auto-hide .topbar,
@@ -373,6 +375,25 @@ body:not(.auto-hide) .toolbar { position: static; }
   position: relative; z-index: 50;
 }
 .brand { display: flex; align-items: center; gap: 14px; }
+a.brand { text-decoration: none; color: inherit; }
+a.brand:hover { text-decoration: none; }
+
+/* 顶部三页导航：首页 / 词汇本 / 文章 */
+.top-nav { display: flex; gap: 4px; align-items: center; flex: none; }
+.top-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 10px;
+  color: var(--muted); font-size: 14px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.top-link:hover { background: var(--panel2); color: var(--text); text-decoration: none; }
+.top-link.active {
+  background: var(--accent-soft); color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  font-weight: 600;
+}
 .logo {
   height: 58px; flex: none;
   display: flex; align-items: center; justify-content: center;
@@ -478,20 +499,32 @@ body.nav-collapsed .foot > span:first-child { display: none; }
 .activity-sum { font-size: 12.5px; color: var(--muted); }
 
 .activity-body { padding: 2px 0 12px; }
-/* 月份标签条：宽度与热力图同宽，标签用绝对定位落到对应列上方 */
+
+/* 月份标签行：宽度跟着下面的热力图走（左侧留出星期列的 18px），
+   标签绝对定位到对应列上方；这一行只放月份，不放图例 */
 .activity-legend {
-  position: relative; display: flex; align-items: center;
-  height: 16px; margin-bottom: 6px;
+  position: relative;
+  height: 16px;
+  margin-bottom: 6px;
+  padding-left: 18px;
 }
 .activity-months {
   position: relative; display: block;
-  height: 16px; margin-left: 18px; flex: 1 1 auto;
+  height: 16px; width: 100%;
 }
 .activity-months span {
   position: absolute; top: 0;
   font-size: 10.5px; color: var(--muted); white-space: nowrap;
 }
-.activity-scale { display: flex; align-items: center; gap: 4px; flex: none; margin-left: 12px; }
+
+/* 图例（少 ▢▢▢▢▢ 多）单独占一行，靠右对齐，不再和月份标签抢同一行 */
+.activity-scale {
+  display: flex; align-items: center; gap: 4px;
+  flex: none; margin-top: 10px;
+  font-size: 11.5px; color: var(--muted);
+}
+.activity-scale .muted { font-size: 11.5px; }
+
 .act-cell {
   width: 11px; height: 11px; border-radius: 2.5px; display: inline-block;
   border: 1px solid var(--border);
@@ -502,7 +535,22 @@ body.nav-collapsed .foot > span:first-child { display: none; }
 .act-cell.l3, .act-day.lv3 { background: color-mix(in srgb, var(--ok) 76%, var(--panel2)); }
 .act-cell.l4, .act-day.lv4 { background: var(--ok); }
 
-.activity-main { display: flex; gap: 6px; align-items: flex-start; }
+/* 星期列 + 热力图整体放在一个横向滚动容器里，
+   窄屏时月份标签跟着一起滚，不会错位 */
+.activity-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.activity-scroll::-webkit-scrollbar { height: 6px; }
+.activity-scroll::-webkit-scrollbar-thumb {
+  background: var(--border); border-radius: 3px;
+}
+.activity-main {
+  display: flex; gap: 6px; align-items: flex-start;
+  width: max-content;
+}
 .activity-weekdays {
   display: grid; grid-template-rows: repeat(7, 12px); gap: 3px;
   font-size: 10px; color: var(--muted); flex: none;
@@ -510,7 +558,7 @@ body.nav-collapsed .foot > span:first-child { display: none; }
 }
 .activity-grid {
   display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px);
-  gap: 3px; flex: none; overflow-x: auto;
+  gap: 3px; flex: none;
 }
 .act-day {
   width: 12px; height: 12px; border-radius: 2.5px;
@@ -835,15 +883,27 @@ body.hide-examples .rec-examples { display: none !important; }
 .recite-sum { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 18px; font-size: 13.5px; color: var(--muted); }
 
 /* ---------- modal ---------- */
+/* z-index 必须高于 .chrome(40) 和 .toast(200)：
+   弹窗是全局最上层的，任何导航 / 提示都不该压在它上面 */
 .modal {
   position: fixed; inset: 0; background: rgba(5, 8, 14, .6);
-  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+  display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
 }
 .modal-box {
   background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
   padding: 24px; width: 520px; max-width: 100%; max-height: 90vh; overflow: auto;
   box-shadow: var(--shadow);
 }
+/* 玻璃主题的 --panel 是半透明白，直接拿来当弹窗底色会透出后面的单词，
+   这里换成实心底色 */
+[data-theme="glass"] .modal-box,
+[data-theme="glass"] .theme-menu { background: #10162b; }
+[data-theme="glass-light"] .modal-box,
+[data-theme="glass-light"] .theme-menu { background: #f7f9ff; }
+[data-theme="glass"] .toast,
+[data-theme="glass"] #activityTip { background: #18203a; }
+[data-theme="glass-light"] .toast,
+[data-theme="glass-light"] #activityTip { background: #ffffff; }
 .modal-box.wide { width: 680px; }
 .modal-box.narrow { width: 380px; }
 .modal-box h2 { font-size: 18px; margin-bottom: 14px; }
@@ -908,7 +968,11 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 .toast {
   position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%);
   background: var(--panel); border: 1px solid var(--border); color: var(--text);
-  padding: 11px 20px; border-radius: 11px; box-shadow: var(--shadow); z-index: 200; font-size: 14px;
+.toast {
+  position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+  background: var(--panel3); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 11px 20px; border-radius: 11px; box-shadow: var(--shadow); z-index: 1100; font-size: 14px;
 }
 .toast.err { border-color: var(--bad); color: var(--bad); }
 
