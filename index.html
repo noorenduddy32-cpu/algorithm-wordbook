@@ -126,7 +126,16 @@
 
 <div id="toast" class="toast" hidden></div>
 
+<!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
+     下面的脚本同步加载它，并在 404 时同步回退到入库的 config.example.js。
+     注意必须同步：后两个脚本（common.js / home.js）依赖 APP_CONFIG 已就绪。 -->
 <script src="config.js"></script>
+<script>
+  // config.js 404 时，浏览器不会创建 window.APP_CONFIG，这里补上模板配置
+  if (!window.APP_CONFIG) {
+    document.write('<script src="config.example.js"><\/script>');
+  }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script src="common.js"></script>
 <script src="home.js"></script>

@@ -373,7 +373,7 @@
 <div class="modal" id="setupModal" hidden>
   <div class="modal-box">
     <h2>关于</h2>
-    <p class="muted small">增删改单词已不需要任何 Token 或 API Key——解锁编辑模式（密码 <code>yqx</code>）即可直接操作。</p>
+    <p class="muted small">增删改单词已不需要任何 Token 或 API Key——解锁编辑模式即可直接操作。</p>
     <p class="muted small">「从句中选词」的自动识别走<b>站点自带的云端大模型</b>，同样无需你配置任何接口，点「识别」就能直接出词性+中文释义。</p>
     <p class="muted small">以上都不需要你填任何密钥，纯前端即可用。</p>
     <div class="modal-actions">
@@ -472,7 +472,14 @@
 <div id="toast" class="toast" hidden></div>
 
 <script src="vendor/jszip.min.js"></script>
+<!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
+     404 时同步回退到入库的 config.example.js -->
 <script src="config.js"></script>
+<script>
+  if (!window.APP_CONFIG) {
+    document.write('<script src="config.example.js"><\/script>');
+  }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script src="docx.js"></script>
 <script src="app.js"></script>

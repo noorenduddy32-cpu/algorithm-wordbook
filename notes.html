@@ -207,7 +207,14 @@
 
 <div id="toast" class="toast" hidden></div>
 
+<!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
+     404 时同步回退到入库的 config.example.js -->
 <script src="config.js"></script>
+<script>
+  if (!window.APP_CONFIG) {
+    document.write('<script src="config.example.js"><\/script>');
+  }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
