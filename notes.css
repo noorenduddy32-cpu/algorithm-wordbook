@@ -273,6 +273,47 @@
 .tb:hover { background: var(--panel3); color: var(--text); }
 .tb:active { transform: translateY(1px); }
 
+/* ---------- 表格插入网格选择器（CSDN 风格） ---------- */
+.tb-dropdown { position: relative; display: inline-block; }
+.table-picker-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  padding: 10px 12px;
+  min-width: 150px;
+  user-select: none;
+}
+.table-picker-label {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text);
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+.table-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 16px);
+  grid-template-rows: repeat(6, 16px);
+  gap: 3px;
+}
+.table-picker-cell {
+  width: 16px; height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel2);
+  cursor: pointer;
+  transition: background .08s, border-color .08s;
+}
+.table-picker-cell.hovered {
+  background: #ffb07c;
+  border-color: #ff9a5b;
+}
+
 .ed-panes {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -387,15 +387,20 @@
     ul: function () { exec('insertUnorderedList'); },
     ol: function () { exec('insertOrderedList'); },
     quote: function () { exec('formatBlock', 'BLOCKQUOTE'); },
-    table: function () {
-      insertHTML('<table class="md-table"><thead><tr><th>左列</th><th>中列</th><th>右列</th></tr></thead>' +
-        '<tbody><tr><td> </td><td> </td><td> </td></tr><tr><td> </td><td> </td><td> </td></tr></tbody></table><p><br></p>');
-    },
+    table: function () { toggleTablePicker(); },
     hr: function () { insertHTML('<hr><p><br></p>'); },
     formula: function () { const s = getSelText(); insertHTML('<code class="math">$' + esc(s || '公式') + '$</code>'); },
     link: function () { askLink('link'); },
     image: function () { askLink('image'); }
   };
+
+  function insertTable(rows, cols) {
+    let ths = '', tds = '';
+    for (let i = 0; i < cols; i++) { ths += '<th> </th>'; tds += '<td> </td>'; }
+    const body = [];
+    for (let i = 0; i < rows - 1; i++) body.push('<tr>' + tds + '</tr>');
+    insertHTML('<table class="md-table"><thead><tr>' + ths + '</tr></thead><tbody>' + body.join('') + '</tbody></table><p><br></p>');
+  }
 
   function askLink(kind) {
     const s = getSelText();
