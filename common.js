@@ -5,13 +5,8 @@
 (function () {
   'use strict';
 
-  // config.js 不入库（gitignore），GitHub Pages 上取不到。
-  // 这里同步补一条 <script> 指向入库的 config.example.js，
-  // 保证线上也能连上云端数据库；本地有 config.js 时不会走到这步。
-  if (!window.APP_CONFIG) {
-    document.write('<script src="config.example.js"><\/script>');
-  }
-
+  // 注：config.js 不入库，线上取不到时由 HTML 里的同步脚本回退到
+  // config.example.js（必须在 common.js 之前完成），这里直接读即可。
   const cfg = window.APP_CONFIG || {};
   // 与单词本原有 key 保持一致，这样三个页面共用同一份主题 / 解锁状态
   const LS_THEME = 'wb_theme_v2';
