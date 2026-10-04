@@ -13,7 +13,7 @@
     active: 'visits',
     nav: [
       { key: 'home', label: '首页', href: 'index.html', icon: AN.ICONS.home },
-      { key: 'wordbook', label: '词汇本', href: 'wordbook.html', icon: AN.ICONS.book },
+      { key: 'wordbook', label: '词汇', href: 'wordbook.html', icon: AN.ICONS.book },
       { key: 'notes', label: '文章', href: 'notes.html', icon: AN.ICONS.pen }
     ]
   });
