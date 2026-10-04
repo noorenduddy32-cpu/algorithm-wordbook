@@ -19,7 +19,7 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
   - 算法标签改为彩色圆角胶囊
   - 移除独立阅读页，点开文章直接进入编辑器；管理员可编辑，访客（icpc）只读，访客视图自动隐藏编辑工具栏与元信息
   - 文章列表增加「已发布 / 草稿箱」tab，仅管理员可见草稿箱
-  - 发布时可选「公开 · 输入访客密码 icpc 可见」或「私密 · 仅管理员 yqx 可见」
+  - 发布时可选「访客模式」或「管理员模式」
   - 新增访问记录页（visits.html，仅管理员）：记录来访者角色、IP、地区、设备、浏览文章、停留时长；访问记录不可删除
 - 修复 DB builder 的 `.insert(rec).select()` 会把 `op.action` 覆盖成 `select` 的 bug，导致本地写文章/加单词时返回 200 但实际上没有写入云端；现在 `.select()` 在 insert/update/delete 后仅表示「返回写入后的行」，不再改变 action
 - 修复从句中选词弹窗里「隐藏基础词」被遮挡：.modal-box 的 `input { width:100% }` 把复选框撑成大块，覆盖文字；现在 `.pick-actions .check input` 恢复 `width:auto`，并对 label 强制 `display:inline-flex`、`white-space:nowrap`，文字完整显示
