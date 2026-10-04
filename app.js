@@ -1817,10 +1817,31 @@
       openSetup();
     });
 
-    $('passForm').addEventListener('submit', function (e) {
+    $('passForm').addEventListener('submit', async function (e) {
       e.preventDefault();
-      if ($('passInput').value === cfg.editPassword) {
-        const act = pending;
+      const pw = $('passInput').value;
+      const act = pending;
+      // 本地有后端：解锁 = 用管理员密码登录升级为 admin（cookie 生效，云端写操作才放行）
+      if (window.AN_HAS_BACKEND) {
+        try {
+          const role = await Auth.login(pw);
+          if (role !== 'admin') {
+            toast('这是访客密码，增删改需管理员密码', true);
+            return;
+          }
+          if (window.syncRole) await window.syncRole();   // 刷新角色门 / 显示添加按钮 / unlocked=true
+          closeModals();
+          updateLockBtn();
+          toast('已升级为管理员，可以增删改了');
+          if (act === '添加单词') openWordModal(null);
+          else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }
+        } catch (err) {
+          toast('密码不正确', true);
+        }
+        return;
+      }
+      // 纯静态部署：靠 config.js 的编辑密码解锁
+      if (pw === cfg.editPassword) {
         unlocked = true;
         localStorage.setItem(LS_LOCK, '1');
         closeModals();

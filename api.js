@@ -260,4 +260,12 @@
 
   // 暴露给页面脚本：重新弹出访问门（本地有后端时，点编辑模式按钮用它升级为管理员）
   window.reopenGate = function () { buildGate(); };
+
+  // 暴露给页面脚本：用已设置的角色 cookie 刷新 UI（本地有后端时，
+  // 在解锁编辑模式弹窗里输管理员密码升级后，调用它让角色门 / 添加按钮即时生效）
+  window.syncRole = async function () {
+    const r = await Auth.me();
+    if (r) onAuthed(r, true);
+    return r;
+  };
 })();
