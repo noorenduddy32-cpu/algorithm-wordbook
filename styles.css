@@ -690,14 +690,14 @@ body.layout-grid .word {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 body.layout-grid .mini-speak {
-  font-size: 22px;                  /* 跟单词同号，圆圈直径 ≈ 1.15 倍字号，与英文上下对齐 */
+  font-size: 24px;                  /* 跟单词同号，圆圈直径 ≈ 1.15 倍字号，与英文上下对齐 */
   width: 1.15em; height: 1.15em;
   background: transparent;
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
   color: var(--accent);
   vertical-align: middle;
 }
-body.layout-grid .mini-speak svg { width: 58%; height: 58%; }
+body.layout-grid .mini-speak svg { width: 72%; height: 72%; }
 
 /* 第 2 行：词性 + 中文 */
 body.layout-grid .zh-line {
@@ -1022,7 +1022,7 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   transition: transform .12s, background .12s, box-shadow .12s, color .12s, border-color .12s;
   vertical-align: middle;
 }
-#detailModal .detail-box .speak-btn svg { width: 56%; height: 56%; }
+#detailModal .detail-box .speak-btn svg { width: 64%; height: 64%; }
 #detailModal .detail-box .speak-btn:hover {
   color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft); box-shadow: 0 0 0 4px var(--accent-soft);
@@ -1120,7 +1120,7 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
   color: var(--muted); transition: color .12s, border-color .12s, background .12s;
 }
-#detailModal .detail-box .ex-speak svg { width: 50%; height: 50%; }
+#detailModal .detail-box .ex-speak svg { width: 62%; height: 62%; }
 #detailModal .detail-box .ex-speak:hover {
   color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   background: var(--accent-soft);
