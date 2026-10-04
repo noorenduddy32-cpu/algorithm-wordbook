@@ -3,7 +3,7 @@
 个人算法学习用的在线笔记本，两块内容：
 
 1. **算法词汇本** —— Codeforces / ICPC 高频词，按原形收录，配词性、中文释义和原题例句
-2. **我的文章** —— 仿 CSDN 的写作体验（所见即所得富文本），写题解、思路复盘、模板与踩坑记录
+2. **我的文章** —— 所见即所得富文本编辑器，写题解、思路复盘、模板与踩坑记录；支持公开/私密发布、草稿箱、访问记录
 
 在线站点（2026-10-04 已下架）：原只读分享站 **https://algorithm-wordbook.app.workbuddy.host/** 已取消发布，链接失效。日常使用请在本机打开 **http://127.0.0.1:8787/index.html**（也可直接进 /wordbook.html；需先启动 `_dev.js` 本地服务），用管理员密码 `yqx` 进入即可增删改。
 GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
@@ -12,6 +12,14 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 ## 最近更新
 
+- 文章系统整体重做：
+  - 代码块改为深色卡片 + 语言标签 + 行号 + 折叠/换行按钮，并用 `codeText()` 修复 contenteditable 里 Enter 产生嵌套 `<div>` 导致行号错乱的 bug
+  - 算法标签改为彩色圆角胶囊
+  - 移除独立阅读页，点开文章直接进入编辑器；管理员可编辑，访客（icpc）只读，访客视图自动隐藏编辑工具栏与元信息
+  - 文章列表增加「已发布 / 草稿箱」tab，仅管理员可见草稿箱
+  - 发布时可选「公开 · 输入访客密码 icpc 可见」或「私密 · 仅管理员 yqx 可见」
+  - 新增访问记录页（visits.html，仅管理员）：记录来访者角色、IP、地区、设备、浏览文章、停留时长；访问记录不可删除
+- 修复 DB builder 的 `.insert(rec).select()` 会把 `op.action` 覆盖成 `select` 的 bug，导致本地写文章/加单词时返回 200 但实际上没有写入云端；现在 `.select()` 在 insert/update/delete 后仅表示「返回写入后的行」，不再改变 action
 - 修复从句中选词弹窗里「隐藏基础词」被遮挡：.modal-box 的 `input { width:100% }` 把复选框撑成大块，覆盖文字；现在 `.pick-actions .check input` 恢复 `width:auto`，并对 label 强制 `display:inline-flex`、`white-space:nowrap`，文字完整显示
 - 单词详情页的「在剑桥词典查」链接移到弹窗底部，并加虚线顶边分隔，视觉更干净
 - 文章编辑器改为单栏 WYSIWYG：去掉默认分栏，只留「编辑 / 预览」两个单栏视图，编辑区就是最终效果；同时收窄最大宽度到 960px，阅读更舒适

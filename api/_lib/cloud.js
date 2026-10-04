@@ -27,12 +27,23 @@ function buildQs(op) {
   }
   const filters = op.filters || {};
   Object.keys(filters).forEach(function (k) { p.set(k, 'eq.' + filters[k]); });
+  if (Array.isArray(op.and) && op.and.length) {
+    p.set('and', '(' + op.and.map(function (c) { return c.col + '.' + (c.op || 'eq') + '.' + c.val; }).join(',') + ')');
+  }
   return p.toString();
 }
 
 async function handleDb(op, role) {
   if (!role) return { status: 401, error: '请先登录' };
   const isWrite = op.action === 'insert' || op.action === 'update' || op.action === 'delete';
+
+  // 访客只能读取已发布且公开的文章
+  if (role === 'visitor' && op.action === 'select' && op.table === 'notes') {
+    op.and = op.and || [];
+    op.and.push({ col: 'status', op: 'eq', val: 'published' });
+    op.and.push({ col: 'visibility', op: 'eq', val: 'public' });
+  }
+
   if (isWrite && role !== 'admin') {
     // 阅读量自增例外：任意已登录角色都允许（纯副作用，不改内容），照常执行
     const viewsOnly = op.action === 'update' && op.table === 'notes' &&

@@ -15,7 +15,16 @@
       const op = { table: table || null, action: null, columns: '*', filters: {}, order: null, limit: null, data: null, single: false };
       const a = {
         from: function (t) { op.table = t; return a; },
-        select: function (c) { op.action = 'select'; op.columns = (c || '*'); return a; },
+        select: function (c) {
+          // 链式：insert/update/delete 之后的 .select() 表示“返回写入后的行”（Supabase 语义），
+          // 不能把 action 覆盖成 select。
+          if (op.action && op.action !== 'select') {
+            op.returning = true;
+            if (c) op.columns = c;
+            return a;
+          }
+          op.action = 'select'; op.columns = (c || '*'); return a;
+        },
         insert: function (rows) { op.action = 'insert'; op.data = rows; return a; },
         update: function (o) { op.action = 'update'; op.data = o; return a; },
         delete: function () { op.action = 'delete'; return a; },

@@ -201,11 +201,14 @@
 
   /* ---------------- 顶栏 ---------------- */
 
-  // nav: [{href,label,key,icon}]
+  // nav: [{href,label,key,icon,adminOnly}]
   function renderTopbar(o) {
     const host = $('topbar');
     if (!host) return;
-    const links = (o.nav || []).map(function (n) {
+    const isAdmin = window.AN_ROLE === 'admin';
+    const links = (o.nav || []).filter(function (n) {
+      return !n.adminOnly || isAdmin;
+    }).map(function (n) {
       return '<a class="top-link' + (n.key === o.active ? ' active' : '') + '" href="' + n.href + '">' +
         (n.icon || '') + '<span>' + n.label + '</span></a>';
     }).join('');

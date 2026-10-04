@@ -32,6 +32,11 @@
     </div>
   </div>
 
+  <div class="notes-tabs" id="notesTabs" hidden>
+    <button class="tab-btn active" data-tab="published">已发布</button>
+    <button class="tab-btn" data-tab="draft">草稿箱</button>
+  </div>
+
   <div class="filter-row" id="tagFilter"></div>
 
   <div id="noteList" class="note-list"></div>
@@ -41,28 +46,6 @@
     <p class="muted">点右上角「写文章」开始记第一篇</p>
   </div>
 
-</main>
-
-<!-- ============ 阅读视图 ============ -->
-<main id="readView" class="reader" hidden>
-  <div class="reader-bar">
-    <button id="backToList" class="btn ghost">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
-      返回列表
-    </button>
-    <div class="spacer"></div>
-    <div class="reader-actions" id="readerActions" hidden>
-      <button id="editNoteBtn" class="btn" data-admin>编辑</button>
-      <button id="delNoteBtn" class="btn ghost" data-admin>删除</button>
-    </div>
-  </div>
-
-  <article class="reader-body">
-    <h1 id="rTitle"></h1>
-    <div class="reader-meta" id="rMeta"></div>
-    <div id="rTags" class="reader-tags"></div>
-    <div id="rContent" class="md-body"></div>
-  </article>
 </main>
 
 <!-- ============ 编辑器 ============ -->
@@ -80,6 +63,7 @@
       <button class="seg-btn active" data-mode="edit" title="直接编辑">编辑</button>
       <button class="seg-btn" data-mode="preview" title="查看效果">预览</button>
     </div>
+      <button id="delNoteBtn" class="btn ghost" data-admin hidden>删除</button>
       <button id="saveDraftBtn" class="btn ghost" data-admin>存草稿</button>
       <button id="publishBtn" class="btn primary" data-admin>发布</button>
   </div>
@@ -89,6 +73,10 @@
   <div class="ed-meta-row">
     <input id="edSummary" placeholder="摘要：写一句概括，会显示在文章列表（可留空自动生成）" autocomplete="off">
     <input id="edTags" placeholder="标签，逗号分隔：如 图论, 最短路, CF1900" list="tagList" autocomplete="off">
+    <select id="edVisibility" class="ed-visibility" title="发布后谁可见">
+      <option value="public">公开 · 输入访客密码 icpc 可见</option>
+      <option value="private">私密 · 仅管理员 yqx 可见</option>
+    </select>
   </div>
   <datalist id="tagList">
     <option value="动态规划"></option><option value="图论"></option><option value="最短路"></option>

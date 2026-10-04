@@ -1,0 +1,84 @@
+/* ============================================================
+   visits.css —— 访问日志
+   ============================================================ */
+
+.visits-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 34px 22px 70px;
+}
+
+.visits-head { margin-bottom: 22px; }
+.visits-head h1 { margin: 0 0 4px; font-size: 30px; font-weight: 800; }
+.visits-head p { margin: 0; font-size: 14px; }
+
+.filter-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.fbtn {
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--muted);
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.fbtn:hover { color: var(--text); border-color: var(--accent); }
+.fbtn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.visits-list { display: flex; flex-direction: column; gap: 12px; }
+
+.visit-row {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.visit-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.visit-role {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 500;
+}
+.visit-role.admin { background: #2fa65c; }
+.visit-role.visitor { background: #4a90d9; }
+.visit-role.anon { background: #8b949e; }
+.visit-when { color: var(--text); font-weight: 500; }
+.visit-duration { color: var(--accent); font-weight: 600; }
+
+.visit-where {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+.visit-note {
+  margin-top: 8px;
+  font-size: 13.5px;
+}
+.visit-note a { color: var(--accent); text-decoration: none; }
+.visit-note a:hover { text-decoration: underline; }
+
+.empty { text-align: center; padding: 70px 20px; }
+.empty p { margin: 4px 0; }
+.empty a { color: var(--accent); }

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>访问记录 · 算法学习笔记本</title>
+<meta name="description" content="算法学习笔记本的访问日志：谁、从哪来、看了哪篇、看了多久。仅管理员可见。">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="visits.css">
+</head>
+<body>
+
+<div class="aurora-bg" aria-hidden="true"></div>
+
+<header id="topbar" class="topbar"></header>
+
+<main id="visitsView" class="visits-wrap">
+  <div class="visits-head">
+    <div>
+      <h1>访问记录</h1>
+      <p class="muted" id="visitsSub">谁在什么时间、从哪来、看了哪篇、停留多久。</p>
+    </div>
+  </div>
+
+  <div id="visitsDeny" class="empty" hidden>
+    <p>需要管理员权限</p>
+    <p class="muted">返回 <a href="index.html">首页</a> 或 <a href="notes.html">文章</a></p>
+  </div>
+
+  <div id="visitsBox" hidden>
+    <div class="filter-row" id="visitsFilter">
+      <button class="fbtn active" data-filter="">全部</button>
+      <button class="fbtn" data-filter="admin">管理员</button>
+      <button class="fbtn" data-filter="visitor">访客</button>
+      <button class="fbtn" data-filter="anon">未登录</button>
+    </div>
+    <div id="visitsList" class="visits-list"></div>
+  </div>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script>
+  if (!window.APP_CONFIG) {
+    document.write('<script src="config.example.js"><\/script>');
+  }
+</script>
+<script src="common.js"></script>
+<script src="api.js"></script>
+<script src="visits.js"></script>
+</body>
+</html>

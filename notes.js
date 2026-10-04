@@ -19,7 +19,8 @@
     nav: [
       { key: 'home', label: '首页', href: 'index.html', icon: AN.ICONS.home },
       { key: 'wordbook', label: '词汇本', href: 'wordbook.html', icon: AN.ICONS.book },
-      { key: 'notes', label: '文章', href: 'notes.html', icon: AN.ICONS.pen }
+      { key: 'notes', label: '文章', href: 'notes.html', icon: AN.ICONS.pen },
+      { key: 'visits', label: '访问记录', href: 'visits.html', icon: AN.ICONS.file, adminOnly: true }
     ]
   });
 
@@ -30,6 +31,41 @@
   let editing = null;
   let mode = 'edit';
   let tagFilter = '';
+  let listTab = 'published';   // published | draft
+  let readOnly = false;
+
+  /* ---------------- 访问统计 ---------------- */
+  let visitStart = Date.now();
+  let visitNoteId = null;
+  let visitNoteTitle = '';
+
+  function reportVisit(duration, noteId, noteTitle) {
+    duration = Math.max(0, Math.round((duration || 0) / 1000));
+    const payload = JSON.stringify({
+      path: location.pathname + location.search,
+      note_id: noteId || null,
+      note_title: noteTitle || '',
+      duration: duration
+    });
+    const url = location.origin + '/api/visits';
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+      } else {
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true });
+      }
+    } catch (e) {}
+  }
+
+  function startVisit(noteId, noteTitle) {
+    const now = Date.now();
+    if (visitNoteId !== null && visitNoteId !== noteId) {
+      reportVisit(now - visitStart, visitNoteId, visitNoteTitle);
+    }
+    visitStart = now;
+    visitNoteId = noteId;
+    visitNoteTitle = noteTitle || '';
+  }
 
   const md = window.marked || null;
   if (md && md.use) {
@@ -102,13 +138,29 @@
     return out;
   }
 
+  // 把 <code>（可能含 contenteditable 产生的嵌套 div/p）还原成带换行的纯文本
+  function codeText(el) {
+    let out = '';
+    el.childNodes.forEach(function (n) {
+      if (n.nodeType === 3) out += n.nodeValue || '';
+      else if (n.nodeName === 'BR') out += '\n';
+      else if (n.nodeType === 1) {
+        const tag = n.nodeName.toLowerCase();
+        const inner = codeText(n);
+        out += (tag === 'div' || tag === 'p' || tag === 'li') ? (inner + '\n') : inner;
+      }
+    });
+    return out;
+  }
+
   // 代码块增强：行号 + 超 10 行收起 + 过宽换行
   function enhanceCodeBlocks(root) {
     (root || document).querySelectorAll('pre').forEach(function (pre) {
       if (pre.dataset.enh) return;
       pre.dataset.enh = '1';
       const code = pre.querySelector('code') || pre;
-      const raw = code.textContent.replace(/\n+$/, '');
+      const raw = codeText(code).replace(/\n+$/, '').replace(/^\n+/, '');
+      code.textContent = raw;   // 规整为带换行的纯文本，配合 white-space:pre 正常显示
       const lines = raw.split('\n');
       let lang = (code.className.match(/language-([\w+-]+)/) || [])[1] ||
         (pre.className.match(/lang-([\w+-]+)/) || [])[1] || 'code';
@@ -151,6 +203,9 @@
     const { data, error } = await db.from('notes').select('*').order('updated_at', { ascending: false });
     if (error) { $('notesSub').textContent = '读取失败：' + (error.message || ''); return; }
     all = data || [];
+    $('notesTabs').hidden = !isAdmin();
+    // 非管理员只看已发布
+    if (!isAdmin()) listTab = 'published';
     updateSub();
     renderList();
     renderTagFilter();
@@ -168,6 +223,12 @@
     updateSub();
     const kw = ($('noteSearch').value || '').trim().toLowerCase();
     let list = all;
+    // 草稿箱仅管理员可见；访客/普通用户永远只看已发布
+    if (isAdmin()) {
+      list = list.filter(function (x) { return (x.status || 'draft') === listTab; });
+    } else {
+      list = list.filter(function (x) { return (x.status || 'draft') === 'published'; });
+    }
     if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
     if (kw) {
       list = list.filter(function (x) {
@@ -179,38 +240,51 @@
     }
     const box = $('noteList');
     if (!list.length) {
-      $('notesEmpty').hidden = !(all.length === 0);
-      box.innerHTML = all.length ? '<p class="muted" style="padding:26px 0">没有匹配的文章</p>' : '';
+      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published'); }).length === 0;
+      $('notesEmpty').hidden = !totallyEmpty;
+      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的文章</p>' : '';
       return;
     }
     $('notesEmpty').hidden = true;
     box.innerHTML = list.map(function (x) {
       const tags = arr(x.tags);
       const sum = x.summary || autoSummary(x.content);
-      return '<article class="note-card" data-id="' + x.id + '">' +
-        '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
+      const isDraft = (x.status || 'draft') === 'draft';
+      const isPrivate = (x.visibility || 'private') === 'private';
+      return '<article class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
+        '<div class="note-title-row">' +
+          '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
+          '<span class="note-badge ' + (isDraft ? 'draft' : isPrivate ? 'private' : 'public') + '">' +
+            (isDraft ? '草稿' : isPrivate ? '私密' : '公开') +
+          '</span>' +
+        '</div>' +
         (sum ? '<p class="note-sum">' + esc(sum) + '</p>' : '') +
         '<div class="note-meta">' +
           '<span class="nm-time">' + AN.relTime(x.updated_at || x.created_at) + '</span>' +
           '<span class="nm-words">' + countWords(x.content) + ' 字</span>' +
-          (x.category ? '<span class="nm-cat">' + esc(x.category) + '</span>' : '') +
+          '<span class="nm-views">' + (x.views || 0) + ' 阅读</span>' +
         '</div>' +
-        (tags.length ? '<div class="note-tags">' + tags.map(function (t) {
-          return '<span class="ntag" data-tag="' + esc(t) + '"># ' + esc(t) + '</span>';
+        (tags.length ? '<div class="note-tags">' + tags.map(function (t, idx) {
+          return '<span class="ntag ntag-' + tagColorIndex(t) + '" data-tag="' + esc(t) + '">' + esc(t) + '</span>';
         }).join('') + '</div>' : '') +
       '</article>';
     }).join('');
   }
 
   function renderTagFilter() {
+    // 过滤统计只看当前 tab 下的文章
+    const visible = all.filter(function (x) {
+      if (!isAdmin()) return (x.status || 'draft') === 'published';
+      return (x.status || 'draft') === listTab;
+    });
     const cnt = {};
-    all.forEach(function (x) { arr(x.tags).forEach(function (t) { cnt[t] = (cnt[t] || 0) + 1; }); });
+    visible.forEach(function (x) { arr(x.tags).forEach(function (t) { cnt[t] = (cnt[t] || 0) + 1; }); });
     const keys = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
     const box = $('tagFilter');
     if (!keys.length) { box.innerHTML = ''; return; }
-    box.innerHTML = '<button class="fbtn' + (tagFilter ? '' : ' active') + '" data-tag="">全部 ' + all.length + '</button>' +
+    box.innerHTML = '<button class="fbtn' + (tagFilter ? '' : ' active') + '" data-tag="">全部 ' + visible.length + '</button>' +
       keys.map(function (k) {
-        return '<button class="fbtn' + (tagFilter === k ? ' active' : '') + '" data-tag="' + esc(k) + '"># ' + esc(k) + ' ' + cnt[k] + '</button>';
+        return '<button class="fbtn ntag-' + tagColorIndex(k) + (tagFilter === k ? ' active' : '') + '" data-tag="' + esc(k) + '">' + esc(k) + ' ' + cnt[k] + '</button>';
       }).join('');
   }
 
@@ -220,50 +294,23 @@
     return [];
   }
 
+  // 算法标签颜色：按标签名稳定映射到 0-7 色阶，对应 notes.css 的 ntag-0..7
+  const TAG_SEED = 'an-tag-color-v1';
+  function tagColorIndex(t) {
+    let h = 0;
+    for (let i = 0; i < String(t).length; i++) {
+      h = ((h << 5) - h) + String(t).charCodeAt(i); h |= 0;
+    }
+    return Math.abs(h) % 8;
+  }
+
   /* ---------------- 视图切换 ---------------- */
 
   function show(which) {
     $('listView').hidden = which !== 'list';
-    $('readView').hidden = which !== 'read';
     $('editView').hidden = which !== 'edit';
+    if (which === 'list') startVisit(null);
     window.scrollTo(0, 0);
-  }
-
-  /* ---------------- 阅读 ---------------- */
-
-  function openRead(id) {
-    const x = all.find(function (n) { return String(n.id) === String(id); });
-    if (!x) { AN.toast('文章不存在', true); return; }
-    $('rTitle').textContent = x.title || '无标题';
-    $('rContent').innerHTML = renderContent(toHtml(x.content));
-    enhanceCodeBlocks($('rContent'));
-    $('rMeta').innerHTML =
-      '<span>更新于 ' + AN.fmtDate(x.updated_at || x.created_at) + '</span>' +
-      '<span>' + countWords(x.content) + ' 字</span>' +
-      '<span>阅读 ' + (x.views || 0) + '</span>' +
-      (x.category ? '<span>' + esc(x.category) + '</span>' : '');
-    const tags = arr(x.tags);
-    $('rTags').innerHTML = tags.map(function (t) { return '<span class="ntag"># ' + esc(t) + '</span>'; }).join('');
-    $('rTags').hidden = !tags.length;
-    $('readerActions').hidden = !isAdmin();
-    $('readerActions').dataset.id = x.id;
-    current = x;
-    show('read');
-    history.replaceState(null, '', '#n' + x.id);
-    bumpView(x.id);
-  }
-
-  let current = null;
-
-  async function bumpView(id) {
-    const db = AN.getDb();
-    if (!db) return;
-    try {
-      const x = all.find(function (n) { return String(n.id) === String(id); });
-      const nv = (x && x.views ? x.views : 0) + 1;
-      await db.from('notes').update({ views: nv }).eq('id', id);
-      if (x) x.views = nv;
-    } catch (e) {}
   }
 
   /* ---------------- 编辑器（富文本） ---------------- */
@@ -288,18 +335,49 @@
     saveDraftLocal();
   }
 
-  function openEditor(rec) {
+  function openEditor(rec, opts) {
+    opts = opts || {};
     editing = rec || null;
+    readOnly = !!opts.readOnly;
+
     $('edTitle').value = rec ? (rec.title || '') : '';
     $('edSummary').value = rec ? (rec.summary || '') : '';
     $('edTags').value = rec ? arr(rec.tags).join(', ') : '';
+    $('edVisibility').value = rec ? (rec.visibility || 'private') : 'private';
     edBody().innerHTML = rec ? toHtml(rec.content) : '';
-    $('edStatus').textContent = rec ? ('编辑 · ' + (AN.fmtDate(rec.updated_at) || '旧文章')) : '新文章';
+    if (readOnly) enhanceCodeBlocks(edBody());
+
+    // 只读模式：标题、摘要、正文不可改；工具栏、保存/发布按钮隐藏
+    const editable = !readOnly;
+    $('edTitle').readOnly = !editable;
+    $('edSummary').readOnly = !editable;
+    $('edTags').readOnly = !editable;
+    $('edVisibility').disabled = !editable;
+    edBody().contentEditable = editable ? 'true' : 'false';
+    $('edToolbar').hidden = readOnly;
+    $('saveDraftBtn').hidden = readOnly;
+    $('publishBtn').hidden = readOnly;
+    $('delNoteBtn').hidden = readOnly || !(rec && rec.id);
+    $('edMode').hidden = readOnly;
+    document.body.classList.toggle('read-only', readOnly);
+
+    if (readOnly) {
+      $('edStatus').textContent = '只读预览 · ' + ((rec && rec.visibility === 'public') ? '公开文章' : '私密文章');
+    } else if (rec) {
+      const st = (rec.status || 'draft') === 'draft' ? '草稿' : '已发布';
+      const vis = (rec.visibility || 'private') === 'public' ? '公开' : '私密';
+      $('edStatus').textContent = '编辑 · ' + st + ' · ' + vis;
+    } else {
+      $('edStatus').textContent = '新文章';
+    }
+
     if (!rec) restoreDraft();
-    setMode(localStorage.getItem(LS_MODE) || 'edit');
+    setMode(readOnly ? 'preview' : (localStorage.getItem(LS_MODE) || 'edit'));
     updatePreview();
     show('edit');
-    if (!rec) setTimeout(function () { edBody().focus(); }, 60);
+    if (rec) startVisit(rec.id, rec.title);
+    else startVisit(null);
+    if (!rec && !readOnly) setTimeout(function () { edBody().focus(); }, 60);
   }
 
   function restoreDraft() {
@@ -343,17 +421,15 @@
   }
   function insertHTML(html) {
     edBody().focus();
-    let ok = false;
-    try { ok = document.execCommand('insertHTML', false, html); } catch (e) {}
-    if (!ok) {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        const frag = document.createRange().createContextualFragment(html);
-        range.insertNode(frag);
-        sel.collapseToEnd();
-      }
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const frag = document.createRange().createContextualFragment(html);
+      range.insertNode(frag);
+      sel.collapseToEnd();
+    } else {
+      edBody().insertAdjacentHTML('beforeend', html);
     }
     updatePreview();
   }
@@ -383,6 +459,17 @@
     codeblock: function () {
       const s = getSelText();
       insertHTML('<pre><code class="language-cpp">' + esc(s || '// 在这里写代码') + '</code></pre><p><br></p>');
+      // 把光标放进刚插入的代码块里，方便直接写代码
+      const pres = edBody().querySelectorAll('pre.code-enh, pre');
+      const last = pres[pres.length - 1];
+      const codeEl = last && last.querySelector('code');
+      if (codeEl) {
+        const range = document.createRange();
+        range.selectNodeContents(codeEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+      }
+      updatePreview();
     },
     ul: function () { exec('insertUnorderedList'); },
     ol: function () { exec('insertOrderedList'); },
@@ -469,6 +556,7 @@
   /* ---------------- 保存 / 发布 ---------------- */
 
   async function saveNote(publish) {
+    if (readOnly) { AN.toast('只读模式不能保存', true); return; }
     const db = AN.getDb();
     if (!db) { AN.toast('云端未连接，无法保存', true); return; }
     const title = $('edTitle').value.trim();
@@ -485,6 +573,8 @@
       content: content,
       summary: $('edSummary').value.trim() || autoSummary(content),
       tags: parseTags(),
+      status: publish ? 'published' : 'draft',
+      visibility: $('edVisibility').value || 'private',
       updated_at: new Date().toISOString()
     };
 
@@ -505,8 +595,10 @@
       try { localStorage.removeItem(LS_DRAFT); } catch (e) {}
       AN.toast(publish ? '已发布' : '草稿已保存');
       editing = null;
+      listTab = rec.status;
+      document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
       renderList(); renderTagFilter();
-      openRead(rec.id);
+      show('list');
     } catch (e) {
       AN.toast('保存失败：' + (e && e.message ? e.message : e), true);
     } finally {
@@ -515,15 +607,17 @@
   }
 
   async function delNote() {
-    if (!current) return;
-    if (!confirm('确定删除《' + (current.title || '无标题') + '》？删了就找不回来了。')) return;
+    const target = editing;
+    if (!target || !target.id) return;
+    if (readOnly) { AN.toast('只读模式不能删除', true); return; }
+    if (!confirm('确定删除《' + (target.title || '无标题') + '》？删了就找不回来了。')) return;
     const db = AN.getDb();
     if (!db) return;
-    const { error } = await db.from('notes').delete().eq('id', current.id);
+    const { error } = await db.from('notes').delete().eq('id', target.id);
     if (error) { AN.toast('删除失败：' + (error.message || ''), true); return; }
-    all = all.filter(function (n) { return String(n.id) !== String(current.id); });
+    all = all.filter(function (n) { return String(n.id) !== String(target.id); });
     AN.toast('已删除');
-    current = null;
+    editing = null;
     history.replaceState(null, '', 'notes.html');
     renderList(); renderTagFilter();
     show('list');
@@ -654,31 +748,35 @@
       const tag = e.target.closest('.ntag');
       if (tag) { tagFilter = tag.dataset.tag || ''; renderTagFilter(); renderList(); return; }
       const card = e.target.closest('.note-card');
-      if (card) openRead(card.dataset.id);
-    });
-
-    $('backToList').addEventListener('click', function () {
-      history.replaceState(null, '', 'notes.html');
-      show('list');
-    });
-
-    $('editNoteBtn').addEventListener('click', function () {
-      const id = $('readerActions').dataset.id;
+      if (!card) return;
+      const id = card.dataset.id;
       const x = all.find(function (n) { return String(n.id) === String(id); });
-      if (x) openEditor(x);
+      if (!x) return;
+      // 管理员且是草稿/已发布 -> 可编辑；访客/管理员看他人公开文章 -> 只读
+      const canEdit = isAdmin();
+      openEditor(x, { readOnly: !canEdit });
     });
 
-    $('delNoteBtn').addEventListener('click', delNote);
+    $('notesTabs').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-tab]');
+      if (!b) return;
+      listTab = b.dataset.tab;
+      document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
+      tagFilter = '';
+      renderTagFilter(); renderList();
+    });
 
     $('edBack').addEventListener('click', function () {
-      if (getHtml().trim() && !editing) {
+      if (!readOnly && getHtml().trim() && !editing) {
         if (!confirm('还没发布，确定离开吗？（内容会留在草稿里）')) return;
       }
+      history.replaceState(null, '', 'notes.html');
       show('list');
     });
 
     $('publishBtn').addEventListener('click', function () { saveNote(true); });
     $('saveDraftBtn').addEventListener('click', function () { saveNote(false); });
+    $('delNoteBtn').addEventListener('click', delNote);
 
     $('edMode').addEventListener('click', function (e) {
       const b = e.target.closest('[data-mode]');
@@ -781,12 +879,6 @@
       $('aiRun').disabled = false; $('aiHint').textContent = '';
     });
     $('aiRun').addEventListener('click', runAI);
-
-    // 阅读页内锚点跳转
-    $('rContent').addEventListener('click', function (e) {
-      const a = e.target.closest('a[href^="#"]');
-      if (a) { e.preventDefault(); location.hash = a.getAttribute('href'); }
-    });
   }
 
   /* ---------------- 启动 ---------------- */
@@ -797,13 +889,17 @@
     if (location.hash) {
       const m = location.hash.match(/#n(\d+)/);
       if (m) {
-        const tryOpen = function () { if (all.length) openRead(m[1]); };
+        const tryOpen = function () {
+          const x = all.find(function (n) { return String(n.id) === String(m[1]); });
+          if (x) openEditor(x, { readOnly: !isAdmin() });
+        };
         setTimeout(tryOpen, 400);
         setTimeout(tryOpen, 1400);
       }
     }
     window.addEventListener('beforeunload', function () {
-      if (!$('editView').hidden && getHtml().trim()) saveDraftLocal();
+      if (!$('editView').hidden && getHtml().trim() && !readOnly) saveDraftLocal();
+      reportVisit(Date.now() - visitStart, visitNoteId, visitNoteTitle);
     });
   }
 
