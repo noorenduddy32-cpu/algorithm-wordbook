@@ -170,7 +170,7 @@
 /* ---------------- 编辑器 ---------------- */
 
 .editor {
-  max-width: 1400px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 18px 20px 40px;
 }
@@ -310,13 +310,12 @@
   transition: background .08s, border-color .08s;
 }
 .table-picker-cell.hovered {
-  background: #ffb07c;
-  border-color: #ff9a5b;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  border-color: var(--accent);
 }
 
 .ed-panes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: block;
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 12px 12px;
@@ -324,18 +323,15 @@
   min-height: 62vh;
   background: var(--panel);
 }
-.ed-panes.mode-edit { grid-template-columns: 1fr; }
-.ed-panes.mode-preview { grid-template-columns: 1fr; }
 .ed-panes.mode-edit .ed-preview { display: none; }
 .ed-panes.mode-preview .ed-input { display: none; }
 
 .ed-input {
   border: none;
-  border-right: 1px solid var(--border);
   border-radius: 0;
   background: var(--panel);
   color: var(--text);
-  padding: 20px 22px;
+  padding: 22px 26px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, sans-serif;
   font-size: 15.5px;
   line-height: 1.9;
@@ -351,9 +347,8 @@
 }
 
 .ed-preview {
-  padding: 20px 26px;
+  padding: 22px 26px;
   overflow-y: auto;
-  max-height: 78vh;
   min-height: 62vh;
 }
 

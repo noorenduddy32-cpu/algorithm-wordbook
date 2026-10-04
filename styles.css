@@ -927,7 +927,13 @@ body.hide-examples .rec-examples { display: none !important; }
 code { background: var(--panel2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; }
 
 /* ---------- 从句中选词 ---------- */
-.pick-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.pick-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.pick-actions .check {
+  display: inline-flex !important; align-items: center; gap: 6px;
+  white-space: nowrap; min-width: max-content; flex: none;
+}
+.pick-actions .check input { flex: none; width: auto; min-width: auto; margin: 0; }
+.pick-actions .spacer { flex: 1; min-width: 10px; }
 .chips {
   display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
   max-height: 230px; overflow: auto; padding: 10px;
@@ -1049,7 +1055,7 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   color: var(--muted); cursor: pointer;
 }
 #detailModal .detail-box .detail-dict-link {
-  flex: 1 1 auto; text-align: right;
+  display: inline-block;
   font-size: 12px; color: var(--muted);
   text-decoration: none; border-bottom: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent);
   transition: color .12s, border-color .12s;
@@ -1058,6 +1064,12 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   color: var(--accent); border-bottom-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 #detailModal .detail-box .detail-dict-link .dict-word { color: var(--muted); }
+
+#detailModal .detail-box .detail-foot {
+  margin-top: 24px; padding-top: 16px;
+  border-top: 1px dashed var(--border);
+  text-align: center;
+}
 
 #detailModal .detail-box .detail-pos {
   margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;

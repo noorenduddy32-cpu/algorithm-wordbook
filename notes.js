@@ -28,7 +28,7 @@
 
   let all = [];
   let editing = null;
-  let mode = 'split';
+  let mode = 'edit';
   let tagFilter = '';
 
   const md = window.marked || null;
@@ -296,7 +296,7 @@
     edBody().innerHTML = rec ? toHtml(rec.content) : '';
     $('edStatus').textContent = rec ? ('编辑 · ' + (AN.fmtDate(rec.updated_at) || '旧文章')) : '新文章';
     if (!rec) restoreDraft();
-    setMode(localStorage.getItem(LS_MODE) || 'split');
+    setMode(localStorage.getItem(LS_MODE) || 'edit');
     updatePreview();
     show('edit');
     if (!rec) setTimeout(function () { edBody().focus(); }, 60);
@@ -399,7 +399,50 @@
     for (let i = 0; i < cols; i++) { ths += '<th> </th>'; tds += '<td> </td>'; }
     const body = [];
     for (let i = 0; i < rows - 1; i++) body.push('<tr>' + tds + '</tr>');
-    insertHTML('<table class="md-table"><thead><tr>' + ths + '</tr></thead><tbody>' + body.join('') + '</tbody></table><p><br></p>');
+    insertNodes('<table class="md-table"><thead><tr>' + ths + '</tr></thead><tbody>' + body.join('') + '</tbody></table><p><br></p>');
+  }
+
+  function insertNodes(html) {
+    edBody().focus();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const frag = document.createRange().createContextualFragment(html);
+    range.insertNode(frag);
+    sel.collapseToEnd();
+    updatePreview();
+  }
+
+  const TABLE_PICKER_ROWS = 6, TABLE_PICKER_COLS = 8;
+  function toggleTablePicker() {
+    const pop = $('tablePickerPop');
+    pop.hidden = !pop.hidden;
+    if (!pop.hidden) {
+      renderTablePickerGrid();
+      pop.focus();
+    }
+  }
+  function renderTablePickerGrid() {
+    const grid = $('tablePickerGrid');
+    grid.innerHTML = '';
+    for (let r = 1; r <= TABLE_PICKER_ROWS; r++) {
+      for (let c = 1; c <= TABLE_PICKER_COLS; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'table-picker-cell';
+        cell.dataset.r = r; cell.dataset.c = c;
+        grid.appendChild(cell);
+      }
+    }
+    highlightTablePicker(3, 2);
+  }
+  function highlightTablePicker(rows, cols) {
+    const cells = document.querySelectorAll('.table-picker-cell');
+    cells.forEach(function (cell) {
+      const r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
+      cell.classList.toggle('hovered', r <= rows && c <= cols);
+    });
+    $('tablePickerLabel').textContent = rows + ' 行 × ' + cols + ' 列 表格';
   }
 
   function askLink(kind) {
@@ -647,6 +690,24 @@
       if (!b) return;
       const fn = CMDS[b.dataset.cmd];
       if (fn) fn();
+    });
+
+    // 表格选择器：hover 高亮，点击插入
+    $('tablePickerGrid').addEventListener('mouseover', function (e) {
+      const cell = e.target.closest('.table-picker-cell');
+      if (!cell) return;
+      highlightTablePicker(parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+    });
+    $('tablePickerGrid').addEventListener('click', function (e) {
+      const cell = e.target.closest('.table-picker-cell');
+      if (!cell) return;
+      insertTable(parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+      $('tablePickerPop').hidden = true;
+    });
+    document.addEventListener('click', function (e) {
+      if (!$('tablePickerPop').hidden && !e.target.closest('#tablePickerWrap')) {
+        $('tablePickerPop').hidden = true;
+      }
     });
 
     $('insertTplBtn').addEventListener('click', function () {
