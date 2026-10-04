@@ -1014,7 +1014,7 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 /* 朗读按钮 */
 #detailModal .detail-box .speak-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; flex: 0 0 auto;
+  width: 30px; height: 30px; flex: 0 0 auto;
   border-radius: 50%; cursor: pointer;
   background: color-mix(in srgb, var(--text) 5%, transparent);
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
@@ -1022,7 +1022,7 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   transition: transform .12s, background .12s, box-shadow .12s, color .12s, border-color .12s;
   vertical-align: middle;
 }
-#detailModal .detail-box .speak-btn svg { width: 26%; height: 26%; }
+#detailModal .detail-box .speak-btn svg { width: 56%; height: 56%; }
 #detailModal .detail-box .speak-btn:hover {
   color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft); box-shadow: 0 0 0 4px var(--accent-soft);
