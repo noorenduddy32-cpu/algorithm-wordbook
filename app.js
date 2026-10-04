@@ -227,7 +227,7 @@
     const t = THEMES.some(function (x) { return x.id === name; }) ? name : 'dark';
     document.documentElement.setAttribute('data-theme', t);
     localStorage.setItem(LS_THEME, t);
-    $('themeIcon').innerHTML = ICONS.moon;
+    $('themeIcon').innerHTML = ICONS.sun;
     $('themeBtn').title = '主题：' + (THEMES.find(function (x) { return x.id === t; }) || {}).name;
     renderThemeMenu(t);
   }
@@ -247,7 +247,7 @@
     const btn = $('lockBtn');
     btn.className = 'icon-btn ' + (unlocked ? 'unlocked' : 'locked');
     $('lockIcon').innerHTML = unlocked ? ICONS.unlock : ICONS.lock;
-    $('lockLabel').textContent = unlocked ? '编辑模式 · 已解锁' : '编辑模式';
+    $('lockLabel').textContent = unlocked ? '已解锁' : '编辑模式';
     // 添加按钮保持可用：点它再弹密码框，符合第一版直觉
     $('batchBtn').disabled = !unlocked;
     $('pickBtn').disabled = !unlocked;
@@ -918,9 +918,12 @@
       b.classList.toggle('active', !!view['hide' + (b.dataset.hide === 'meaning' ? 'Meaning' : 'Examples')]);
     });
     const nt = $('navToggle');
-    nt.classList.toggle('on', view.autoHide);
-    $('navToggleIcon').innerHTML = ICONS.eye;
-    nt.querySelector('.btn-label').textContent = view.autoHide ? '自动隐藏·开' : '自动隐藏·关';
+    if (nt) {
+      nt.classList.toggle('on', view.autoHide);
+      $('navToggleIcon').innerHTML = ICONS.eye;
+      const ntLabel = nt.querySelector('.btn-label');
+      if (ntLabel) ntLabel.textContent = view.autoHide ? '自动隐藏·开' : '自动隐藏·关';
+    }
 
     // 排序方向
     $('sortDirIcon').innerHTML = view.sortDir === 'asc' ? ICONS.arrowUp : ICONS.arrowDown;
@@ -1719,7 +1722,8 @@
   /* ---------------- 事件绑定 ---------------- */
 
   function bindUI() {
-    $('setupIcon').innerHTML = ICONS.gear;
+    const setupIcon = $('setupIcon');
+    if (setupIcon) setupIcon.innerHTML = ICONS.gear;
     applyView();
 
     $('themeBtn').addEventListener('click', function (e) {
@@ -1737,15 +1741,18 @@
       if (!e.target.closest('.theme-wrap')) $('themeMenu').hidden = true;
     });
 
-    $('navToggle').addEventListener('click', function () {
-      view.autoHide = !view.autoHide;
-      saveView();
-      applyView();
-      if (!view.autoHide) {
-        clearTimeout(navHoldTimer);
-        document.body.classList.remove('chrome-hidden');
-      }
-    });
+    const navToggle = $('navToggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function () {
+        view.autoHide = !view.autoHide;
+        saveView();
+        applyView();
+        if (!view.autoHide) {
+          clearTimeout(navHoldTimer);
+          document.body.classList.remove('chrome-hidden');
+        }
+      });
+    }
 
     // 排序方向：每次点一下就翻转
     $('sortDir').addEventListener('click', function () {
@@ -1813,9 +1820,12 @@
     });
 
     // 设置 / 关于：无需任何配置，打开说明弹窗即可
-    $('setupBtn').addEventListener('click', function () {
-      openSetup();
-    });
+    const setupBtn = $('setupBtn');
+    if (setupBtn) {
+      setupBtn.addEventListener('click', function () {
+        openSetup();
+      });
+    }
 
     $('passForm').addEventListener('submit', async function (e) {
       e.preventDefault();

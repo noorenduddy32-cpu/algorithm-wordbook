@@ -12,6 +12,7 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 ## 最近更新
 
+- 词汇本顶部导航精简为与首页一致：移除「设置」和「自动隐藏」按钮，主题按钮改为图标-only，编辑模式解锁后显示「已解锁」，减少顶部图标拥挤
 - 文章系统整体重做：
   - 代码块改为深色卡片 + 语言标签 + 行号 + 折叠/换行按钮，并用 `codeText()` 修复 contenteditable 里 Enter 产生嵌套 `<div>` 导致行号错乱的 bug
   - 算法标签改为彩色圆角胶囊
