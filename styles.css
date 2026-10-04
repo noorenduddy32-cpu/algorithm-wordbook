@@ -408,8 +408,9 @@ a.brand:hover { text-decoration: none; }
    菜单必须在它内部也保持最高层，否则会被下面的 .toolbar 盖住点不到 */
 .theme-wrap { position: relative; z-index: 70; }
 .theme-menu {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 71;
-  min-width: 176px; padding: 6px;
+  position: absolute; right: 0; top: calc(100% + 16px); z-index: 71;
+  min-width: 176px; max-width: 260px; padding: 6px;
+  max-height: 170px; overflow-y: auto;
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 12px; box-shadow: var(--shadow);
 }
@@ -417,13 +418,17 @@ a.brand:hover { text-decoration: none; }
   display: flex; align-items: center; gap: 9px; width: 100%;
   font: inherit; font-size: 13.5px; color: var(--text);
   background: transparent; border: none; border-radius: 8px;
-  padding: 8px 10px; cursor: pointer; text-align: left;
+  padding: 7px 10px; cursor: pointer; text-align: left;
 }
 .theme-menu button:hover { background: var(--panel2); }
 .theme-menu button.on { color: var(--accent); font-weight: 600; }
 .theme-swatch {
   width: 15px; height: 15px; border-radius: 5px; flex: none;
   border: 1px solid var(--border);
+}
+/* 打开主题菜单时把顶栏下方内容顶下去，避免菜单盖住操作栏（菜单绝对定位，自身位置不变） */
+.topbar:has(.theme-menu:not([hidden])) {
+  margin-bottom: 240px;
 }
 
 /* ---------- 导航栏收起 ---------- */
