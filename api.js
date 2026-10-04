@@ -221,7 +221,7 @@
       if (bar) bar.remove();
       return;
     }
-    // 右上角角色徽标 + 退出
+    // 右上角角色徽标（纯文本，无操作按钮）
     let bar = document.getElementById('roleBar');
     if (!bar) {
       bar = el('<div class="role-bar" id="roleBar"></div>');
@@ -229,16 +229,7 @@
       if (host) host.appendChild(bar);
     }
     if (bar) {
-      bar.innerHTML =
-        '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理员模式' : '访客模式') + '</span>' +
-        (admin
-          ? '<button id="logoutBtn" class="icon-btn" title="退出登录，回到访客只读">退出</button>'
-          : '');
-      const logoutBtn = bar.querySelector('#logoutBtn');
-      if (logoutBtn) logoutBtn.addEventListener('click', async function () {
-        await Auth.logout();
-        location.reload();
-      });
+      bar.innerHTML = '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理模式' : '访客模式') + '</span>';
     }
   }
 

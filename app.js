@@ -245,9 +245,12 @@
 
   function updateLockBtn() {
     const btn = $('lockBtn');
+    if (!btn) return;
     btn.className = 'icon-btn ' + (unlocked ? 'unlocked' : 'locked');
-    $('lockIcon').innerHTML = unlocked ? ICONS.unlock : ICONS.lock;
-    $('lockLabel').textContent = unlocked ? '已解锁' : '编辑模式';
+    const ic = $('lockIcon');
+    if (ic) ic.innerHTML = unlocked ? ICONS.unlock : ICONS.lock;
+    const lbl = $('lockLabel');
+    if (lbl) lbl.textContent = unlocked ? '已解锁' : '编辑模式';
     // 添加按钮保持可用：点它再弹密码框，符合第一版直觉
     $('batchBtn').disabled = !unlocked;
     $('pickBtn').disabled = !unlocked;
@@ -260,10 +263,16 @@
   function requireUnlock(action) {
     if (unlocked) return true;
     pending = action;
-    $('passModal').hidden = false;
-    $('passInput').value = '';
-    $('passInput').focus();
-    toast('「' + action + '」需要先解锁编辑模式');
+    const modal = $('passModal');
+    const input = $('passInput');
+    if (modal && input) {
+      modal.hidden = false;
+      input.value = '';
+      input.focus();
+      toast('「' + action + '」需要先解锁编辑模式');
+    } else {
+      toast('「' + action + '」需管理员权限，请刷新页面以管理员密码进入', true);
+    }
     return false;
   }
 
@@ -1792,7 +1801,8 @@
       applyView();
     });
 
-    $('lockBtn').addEventListener('click', function () {
+    const lockBtn = $('lockBtn');
+    if (lockBtn) lockBtn.addEventListener('click', function () {
       // 本地有后端：编辑模式 = 管理员角色（由访问门密码决定）
       if (window.AN_HAS_BACKEND) {
         if (window.AN_ROLE === 'admin') {
@@ -1813,9 +1823,13 @@
         updateLockBtn();
         toast('已锁定编辑模式');
       } else {
-        $('passModal').hidden = false;
-        $('passInput').value = '';
-        $('passInput').focus();
+        const modal = $('passModal');
+        const input = $('passInput');
+        if (modal && input) {
+          modal.hidden = false;
+          input.value = '';
+          input.focus();
+        }
       }
     });
 
@@ -1827,9 +1841,12 @@
       });
     }
 
-    $('passForm').addEventListener('submit', async function (e) {
+    const passForm = $('passForm');
+    if (passForm) passForm.addEventListener('submit', async function (e) {
       e.preventDefault();
-      const pw = $('passInput').value;
+      const input = $('passInput');
+      if (!input) return;
+      const pw = input.value;
       const act = pending;
       // 本地有后端：解锁 = 用管理员密码登录升级为 admin（cookie 生效，云端写操作才放行）
       if (window.AN_HAS_BACKEND) {
