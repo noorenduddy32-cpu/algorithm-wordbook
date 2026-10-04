@@ -233,16 +233,11 @@
         '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理员模式' : '访客模式') + '</span>' +
         (admin
           ? '<button id="logoutBtn" class="icon-btn" title="退出登录，回到访客只读">退出</button>'
-          : '<button id="upgradeBtn" class="icon-btn" title="输入管理员密码升级，获得增删改权限">升级</button>');
+          : '');
       const logoutBtn = bar.querySelector('#logoutBtn');
       if (logoutBtn) logoutBtn.addEventListener('click', async function () {
         await Auth.logout();
         location.reload();
-      });
-      const upgradeBtn = bar.querySelector('#upgradeBtn');
-      if (upgradeBtn) upgradeBtn.addEventListener('click', function () {
-        if (window.reopenGate) window.reopenGate();
-        else location.reload();
       });
     }
   }
