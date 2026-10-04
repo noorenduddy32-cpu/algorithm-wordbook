@@ -204,6 +204,7 @@
     applyRole(role, backendMode !== false);
     window.AN_ROLE = role;
     window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: role } }));
+    if (role === 'admin') window.dispatchEvent(new CustomEvent('an:admin', { detail: { role: role } }));
   }
 
   function applyRole(role, backendMode) {
@@ -230,6 +231,19 @@
     }
     if (bar) {
       bar.innerHTML = '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理模式' : '访客模式') + '</span>';
+      // 访客模式：点击角色徽标重新弹出访问门，输管理员密码进入管理模式（顶栏图标真正可用）
+      if (admin) {
+        bar.classList.remove('clickable');
+        bar.removeAttribute('title');
+        bar.onclick = null;
+      } else {
+        bar.classList.add('clickable');
+        bar.title = '点击以管理员密码进入管理模式';
+        bar.onclick = function () {
+          if (window.reopenGate) window.reopenGate();
+          else location.reload();
+        };
+      }
     }
   }
 

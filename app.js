@@ -263,6 +263,12 @@
   function requireUnlock(action) {
     if (unlocked) return true;
     pending = action;
+    // 本地有后端：访客点需要权限的操作 → 重新弹出访问门，输管理员密码升级为管理员
+    if (window.AN_HAS_BACKEND) {
+      if (window.reopenGate) window.reopenGate();
+      else location.reload();
+      return false;
+    }
     const modal = $('passModal');
     const input = $('passInput');
     if (modal && input) {
@@ -274,6 +280,15 @@
       toast('「' + action + '」需管理员权限，请刷新页面以管理员密码进入', true);
     }
     return false;
+  }
+
+  // 访客升级为管理员后，自动续做之前被拦截的操作
+  function runAction(name) {
+    if (name === '添加单词') { openWordModal(null); }
+    else if (name === '批量添加') { const t = $('batchText'); if (t) t.value = ''; const m = $('batchModal'); if (m) m.hidden = false; }
+    else if (name === '从句中选词') { const m = $('pickModal'); if (m) m.hidden = false; const t = $('pickText'); if (t) t.focus(); }
+    else if (name === '导入 JSON') { const f = $('fileInput'); if (f) f.click(); }
+    else if (name === '加入单词') { const m = $('pickModal'); if (m) m.hidden = false; }
   }
 
   // 打开设置 / 关于弹窗（无需任何配置，仅说明）
@@ -302,6 +317,13 @@
     window.addEventListener('an:authed', function (e) {
       unlocked = (e.detail.role === 'admin');
       updateLockBtn();
+    });
+    // 访客点管理操作 → 弹访问门输密码升级；登录成功后自动续做刚才pending的动作
+    window.addEventListener('an:admin', function () {
+      const act = pending;
+      if (!act) return;
+      pending = null;
+      setTimeout(function () { runAction(act); }, 80);
     });
     updateLockBtn();
     window.whenAuthed(loadWords);

@@ -532,6 +532,10 @@ select option { background: var(--panel); color: var(--text); }
 .role-bar {
   display: inline-flex; align-items: center; gap: 8px; margin-left: 6px;
 }
+.role-bar.clickable { cursor: pointer; }
+.role-bar.clickable .role-tag { transition: filter .15s ease, transform .15s ease; }
+.role-bar.clickable:hover .role-tag { filter: brightness(1.25); transform: translateY(-1px); }
+.role-bar.clickable:active .role-tag { transform: translateY(0); }
 .role-tag {
   font-size: 12px; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
   border: 1px solid var(--border, #2a3142);
