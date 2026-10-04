@@ -24,6 +24,10 @@
       <p class="muted" id="notesSub">题解、思路复盘、模板与踩坑记录，都存在云端。</p>
     </div>
     <div class="notes-head-actions">
+      <div class="view-seg" id="viewSeg" title="列表 / 分栏视图">
+        <button class="seg-btn active" data-view="list">列表</button>
+        <button class="seg-btn" data-view="board">分栏</button>
+      </div>
       <input id="noteSearch" type="search" placeholder="搜索标题 / 摘要 / 标签" autocomplete="off">
       <button id="newNoteBtn" class="btn primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></svg>
@@ -37,9 +41,19 @@
     <button class="tab-btn" data-tab="draft">草稿箱</button>
   </div>
 
+  <div class="board-bar" id="boardBar" hidden>
+    <div class="seg" id="boardBySeg" title="分栏依据">
+      <button class="seg-btn active" data-by="column">自定义栏</button>
+      <button class="seg-btn" data-by="tag">按标签</button>
+    </div>
+    <button id="manageColBtn" class="btn ghost" data-admin>管理栏</button>
+    <span class="board-hint muted small" id="boardHint"></span>
+  </div>
+
   <div class="filter-row" id="tagFilter"></div>
 
   <div id="noteList" class="note-list"></div>
+  <div id="boardView" class="board" hidden></div>
 
   <div id="notesEmpty" class="empty" hidden>
     <p>还没有文章</p>
@@ -73,6 +87,9 @@
   <div class="ed-meta-row">
     <input id="edSummary" placeholder="摘要：写一句概括，会显示在文章列表（可留空自动生成）" autocomplete="off">
     <input id="edTags" placeholder="标签，逗号分隔：如 图论, 最短路, CF1900" list="tagList" autocomplete="off">
+    <select id="edColumn" class="ed-col" title="所属分栏（自定义栏模式下生效；可在「管理栏」里增删）">
+      <option value="">未分栏</option>
+    </select>
     <select id="edVisibility" class="ed-visibility" title="发布后谁可见">
       <option value="public">访客模式</option>
       <option value="private">管理员模式</option>
@@ -200,6 +217,22 @@
     <div class="modal-actions">
       <button type="button" class="btn ghost" data-close>取消</button>
       <button type="button" class="btn primary" id="linkOk">插入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理分栏 -->
+<div class="modal" id="colModal" hidden>
+  <div class="modal-box">
+    <h2>管理分栏</h2>
+    <p class="muted small">「自定义栏」模式下，文章按这里的栏名归类（每篇属于一个栏）。删除某栏会把它名下的文章移回「未分栏」。</p>
+    <ul id="colList" class="col-list"></ul>
+    <div class="col-add">
+      <input id="colNewName" placeholder="新栏名，如 题解 / 模板 / 复盘" maxlength="20" autocomplete="off">
+      <button id="colAddBtn" class="btn">添加</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-close>关闭</button>
     </div>
   </div>
 </div>

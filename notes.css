@@ -206,6 +206,139 @@
 .fbtn.ntag-6.active,
 .fbtn.ntag-7.active { filter: brightness(1.15); box-shadow: 0 0 0 2px color-mix(in srgb, #fff 35%, transparent); }
 
+/* ---------------- 分栏（看板） ---------------- */
+
+.view-seg,
+.seg {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.view-seg .seg-btn,
+.seg .seg-btn {
+  border: none;
+  background: var(--panel2);
+  color: var(--muted);
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.view-seg .seg-btn:last-child,
+.seg .seg-btn:last-child { border-right: none; }
+.view-seg .seg-btn.active,
+.seg .seg-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+[data-theme="eye"] .view-seg .seg-btn.active,
+[data-theme="eye-green"] .view-seg .seg-btn.active,
+[data-theme="ink"] .view-seg .seg-btn.active,
+[data-theme="eye"] .seg .seg-btn.active,
+[data-theme="eye-green"] .seg .seg-btn.active,
+[data-theme="ink"] .seg .seg-btn.active { color: #fff; }
+
+.board-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.board-hint { font-size: 12.5px; }
+/* 按分栏模式隐藏「管理栏」（data-admin 的 hidden 属性归角色控制，不冲突） */
+.hide-by-mode { display: none !important; }
+
+.board {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 16px;
+}
+.board-col {
+  flex: 0 0 272px;
+  max-width: 272px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+.board-col.uncat { border-style: dashed; }
+.board-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 2px;
+}
+.board-col-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.board-col-count {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel3);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.board-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 64px;
+  border-radius: 10px;
+  transition: background .15s, box-shadow .15s;
+}
+.board-col-body.drag-over {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.board .note-card {
+  padding: 14px 15px;
+  background: var(--panel);
+}
+.board .note-card:hover { transform: none; }
+.board .note-card.dragging { opacity: .45; }
+.board .note-title { font-size: 16px; }
+.board .note-sum { -webkit-line-clamp: 3; margin-bottom: 8px; font-size: 13px; }
+
+/* 管理分栏弹窗 */
+.col-list { list-style: none; margin: 12px 0; padding: 0; }
+.col-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  margin-bottom: 7px;
+  background: var(--panel2);
+}
+.col-name { flex: 1; font-size: 14px; font-weight: 600; }
+.col-cnt { font-size: 12px; color: var(--muted); }
+.col-ops { display: flex; gap: 5px; }
+.mini {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1;
+}
+.mini:hover { color: var(--text); border-color: var(--accent); }
+.mini.danger:hover { color: #e05a5a; border-color: #e05a5a; }
+.col-add { display: flex; gap: 8px; margin-top: 4px; }
+.col-add input { flex: 1; }
+
 .empty { text-align: center; padding: 70px 20px; }
 .empty p { margin: 4px 0; }
 
@@ -297,12 +430,13 @@
 
 .ed-meta-row {
   display: grid;
-  grid-template-columns: 1fr 260px 200px;
+  grid-template-columns: 1fr 190px 140px 165px;
   gap: 12px;
   padding: 14px 0;
 }
 .ed-meta-row input,
 .ed-meta-row select { font-size: 13.5px; }
+.ed-col,
 .ed-visibility {
   background: var(--panel);
   color: var(--text);
@@ -311,6 +445,7 @@
   padding: 8px 10px;
   font-family: inherit;
 }
+.ed-col:disabled,
 .ed-visibility:disabled { opacity: .6; background: var(--panel2); }
 
 body.read-only .ed-meta-row,

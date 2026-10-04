@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS notes (
   content     TEXT        NOT NULL DEFAULT '',          -- 正文，HTML 所见即所得
   summary     TEXT        NOT NULL DEFAULT '',          -- 摘要；留空时前端自动截取正文前 90 字
   tags        JSONB       NOT NULL DEFAULT '[]'::jsonb, -- 标签数组，如 ["图论","最短路"]
-  category    TEXT        NOT NULL DEFAULT '',          -- 分类（预留）
+  category    TEXT        NOT NULL DEFAULT '',          -- 自定义分栏的栏名（看板「自定义栏」模式按此归类；空 = 未分栏）
   cover       TEXT        NOT NULL DEFAULT '',          -- 封面图 URL（预留）
   views       BIGINT      NOT NULL DEFAULT 0,           -- 阅读次数，打开文章时 +1
   top         BOOLEAN     NOT NULL DEFAULT false,       -- 是否置顶（预留）

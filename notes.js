@@ -34,6 +34,22 @@
   let listTab = 'published';   // published | draft
   let readOnly = false;
 
+  // 分栏（看板）状态
+  let viewMode = localStorage.getItem('an_note_view') || 'board';   // list | board
+  let boardBy = localStorage.getItem('an_note_boardby') || 'column'; // column(自定义栏) | tag(按标签)
+  let colOrder = loadColOrder();   // 自定义栏顺序（localStorage）
+  let draggedId = null;
+
+  const LS_VIEW = 'an_note_view';
+  const LS_BOARD_BY = 'an_note_boardby';
+  const LS_COLS = 'an_note_cols';
+
+  function loadColOrder() {
+    try { const a = JSON.parse(localStorage.getItem(LS_COLS) || 'null'); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+  }
+  function saveColOrder() { try { localStorage.setItem(LS_COLS, JSON.stringify(colOrder)); } catch (e) {} }
+
   /* ---------------- 访问统计 ---------------- */
   let visitStart = Date.now();
   let visitNoteId = null;
@@ -206,8 +222,7 @@
     $('notesTabs').hidden = !isAdmin();
     // 非管理员只看已发布
     if (!isAdmin()) listTab = 'published';
-    updateSub();
-    renderList();
+    renderView();
     renderTagFilter();
   }
 
@@ -219,17 +234,16 @@
 
   /* ---------------- 列表 ---------------- */
 
-  function renderList() {
-    updateSub();
+  // 状态 + 搜索过滤：列表与分栏共用
+  function getFiltered() {
     const kw = ($('noteSearch').value || '').trim().toLowerCase();
     let list = all;
-    // 草稿箱仅管理员可见；访客/普通用户永远只看已发布
+    // 草稿箱仅管理员可见；访客永远只看已发布
     if (isAdmin()) {
       list = list.filter(function (x) { return (x.status || 'draft') === listTab; });
     } else {
       list = list.filter(function (x) { return (x.status || 'draft') === 'published'; });
     }
-    if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
     if (kw) {
       list = list.filter(function (x) {
         return (x.title || '').toLowerCase().indexOf(kw) >= 0 ||
@@ -238,6 +252,38 @@
           arr(x.tags).join(' ').toLowerCase().indexOf(kw) >= 0;
       });
     }
+    return list;
+  }
+
+  // 列表与分栏共用同一张卡片
+  function cardHtml(x) {
+    const tags = arr(x.tags);
+    const sum = x.summary || autoSummary(x.content);
+    const isDraft = (x.status || 'draft') === 'draft';
+    const isPrivate = (x.visibility || 'private') === 'private';
+    return '<article class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
+      '<div class="note-title-row">' +
+        '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
+        '<span class="note-badge ' + (isDraft ? 'draft' : isPrivate ? 'private' : 'public') + '">' +
+          (isDraft ? '草稿' : isPrivate ? '私密' : '公开') +
+        '</span>' +
+      '</div>' +
+      (sum ? '<p class="note-sum">' + esc(sum) + '</p>' : '') +
+      '<div class="note-meta">' +
+        '<span class="nm-time">' + AN.relTime(x.updated_at || x.created_at) + '</span>' +
+        '<span class="nm-words">' + countWords(x.content) + ' 字</span>' +
+        '<span class="nm-views">' + (x.views || 0) + ' 阅读</span>' +
+      '</div>' +
+      (tags.length ? '<div class="note-tags">' + tags.map(function (t) {
+        return '<span class="ntag ntag-' + tagColorIndex(t) + '" data-tag="' + esc(t) + '">' + esc(t) + '</span>';
+      }).join('') + '</div>' : '') +
+    '</article>';
+  }
+
+  function renderList() {
+    updateSub();
+    let list = getFiltered();
+    if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
     const box = $('noteList');
     if (!list.length) {
       const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published'); }).length === 0;
@@ -246,29 +292,177 @@
       return;
     }
     $('notesEmpty').hidden = true;
-    box.innerHTML = list.map(function (x) {
-      const tags = arr(x.tags);
-      const sum = x.summary || autoSummary(x.content);
-      const isDraft = (x.status || 'draft') === 'draft';
-      const isPrivate = (x.visibility || 'private') === 'private';
-      return '<article class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
-        '<div class="note-title-row">' +
-          '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
-          '<span class="note-badge ' + (isDraft ? 'draft' : isPrivate ? 'private' : 'public') + '">' +
-            (isDraft ? '草稿' : isPrivate ? '私密' : '公开') +
-          '</span>' +
-        '</div>' +
-        (sum ? '<p class="note-sum">' + esc(sum) + '</p>' : '') +
-        '<div class="note-meta">' +
-          '<span class="nm-time">' + AN.relTime(x.updated_at || x.created_at) + '</span>' +
-          '<span class="nm-words">' + countWords(x.content) + ' 字</span>' +
-          '<span class="nm-views">' + (x.views || 0) + ' 阅读</span>' +
-        '</div>' +
-        (tags.length ? '<div class="note-tags">' + tags.map(function (t, idx) {
-          return '<span class="ntag ntag-' + tagColorIndex(t) + '" data-tag="' + esc(t) + '">' + esc(t) + '</span>';
-        }).join('') + '</div>' : '') +
-      '</article>';
+    box.innerHTML = list.map(cardHtml).join('');
+  }
+
+  // 视图调度：列表 / 分栏
+  function renderView() {
+    const board = viewMode === 'board';
+    $('noteList').hidden = board;
+    $('boardView').hidden = !board;
+    $('tagFilter').hidden = board;   // 分栏模式用分栏本身代替标签过滤
+    $('boardBar').hidden = !board;
+    document.querySelectorAll('#viewSeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === viewMode); });
+    document.querySelectorAll('#boardBySeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.by === boardBy); });
+    // data-admin 已按角色控制显隐，这里只按分栏模式追加隐藏（class 避免和 hidden 属性打架）
+    $('manageColBtn').classList.toggle('hide-by-mode', boardBy !== 'column');
+    $('boardHint').textContent = boardBy === 'tag'
+      ? '按标签自动分栏：一篇有多个标签会出现在多个栏里'
+      : (colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」新建几个栏目，再把卡片拖进去');
+    if (board) renderBoard(); else renderList();
+  }
+
+  // 自定义栏的栏名与顺序：管理里定义的顺序在前，文章里实际用到的补在后面
+  function boardColumnNames() {
+    const used = {};
+    all.forEach(function (x) { const c = (x.category || '').trim(); if (c) used[c] = 1; });
+    const names = colOrder.slice();
+    Object.keys(used).forEach(function (c) { if (names.indexOf(c) < 0) names.push(c); });
+    return names;
+  }
+
+  // 分栏（看板）：自定义栏 或 按标签自动分栏
+  function renderBoard() {
+    updateSub();
+    const list = getFiltered();
+    const box = $('boardView');
+    if (!list.length) {
+      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published'); }).length === 0;
+      $('notesEmpty').hidden = !totallyEmpty;
+      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的文章</p>' : '';
+      return;
+    }
+    $('notesEmpty').hidden = true;
+    let cols = [];
+    if (boardBy === 'tag') {
+      const map = {};
+      list.forEach(function (x) {
+        arr(x.tags).forEach(function (t) { (map[t] = map[t] || []).push(x); });
+      });
+      const keys = Object.keys(map).sort(function (a, b) { return map[b].length - map[a].length; });
+      cols = keys.map(function (k) { return { name: k, items: map[k], tag: true }; });
+    } else {
+      const names = boardColumnNames();
+      cols = names.map(function (n) {
+        return { name: n, items: list.filter(function (x) { return (x.category || '').trim() === n; }) };
+      });
+      cols.push({
+        name: '未分栏',
+        items: list.filter(function (x) {
+          const c = (x.category || '').trim();
+          return !c || names.indexOf(c) < 0;
+        }),
+        uncat: true
+      });
+    }
+    box.innerHTML = cols.map(function (col) {
+      const head = col.tag
+        ? '<span class="ntag ntag-' + tagColorIndex(col.name) + '">' + esc(col.name) + '</span>'
+        : '<span class="board-col-name">' + esc(col.name) + '</span>';
+      return '<div class="board-col' + (col.uncat ? ' uncat' : '') + '">' +
+        '<div class="board-col-head">' + head + '<span class="board-col-count">' + col.items.length + '</span></div>' +
+        '<div class="board-col-body" data-col="' + esc(col.name) + '">' + col.items.map(cardHtml).join('') + '</div>' +
+      '</div>';
     }).join('');
+    // 仅管理员在「自定义栏」模式下可拖动换栏
+    if (isAdmin() && boardBy === 'column') {
+      box.querySelectorAll('.note-card').forEach(function (c) { c.setAttribute('draggable', 'true'); });
+    }
+  }
+
+  // 拖动卡片换栏：写回云端 category
+  async function moveToColumn(id, col) {
+    const db = AN.getDb();
+    if (!db) { AN.toast('云端未连接，无法换栏', true); return; }
+    const cat = col === '未分栏' ? '' : col;
+    const { error } = await db.from('notes').update({ category: cat, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { AN.toast('换栏失败：' + (error.message || ''), true); return; }
+    const x = all.find(function (n) { return String(n.id) === String(id); });
+    if (x) { x.category = cat; x.updated_at = new Date().toISOString(); }
+    AN.toast('已移到「' + (cat || '未分栏') + '」');
+    AN.bumpActivity(1);
+    renderBoard();
+  }
+
+  /* ---------------- 分栏管理 ---------------- */
+
+  function fillColumnSelect() {
+    const sel = $('edColumn');
+    const cur = sel.value;
+    const names = boardColumnNames();
+    sel.innerHTML = '<option value="">未分栏</option>' +
+      names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+    sel.value = (cur && names.indexOf(cur) >= 0) ? cur : '';
+  }
+
+  function openColModal() {
+    if (!isAdmin()) return;
+    renderColList();
+    $('colModal').hidden = false;
+    setTimeout(function () { $('colNewName').focus(); }, 40);
+  }
+
+  function renderColList() {
+    const box = $('colList');
+    if (!colOrder.length) {
+      box.innerHTML = '<li class="muted small">还没有自定义栏，在下面输入名字添加一个</li>';
+      return;
+    }
+    box.innerHTML = colOrder.map(function (n, i) {
+      const cnt = all.filter(function (x) { return (x.category || '').trim() === n; }).length;
+      return '<li class="col-item">' +
+        '<span class="col-name">' + esc(n) + '</span>' +
+        '<span class="col-cnt">' + cnt + ' 篇</span>' +
+        '<span class="col-ops">' +
+          '<button type="button" class="mini" data-act="up" data-i="' + i + '" title="上移">↑</button>' +
+          '<button type="button" class="mini" data-act="down" data-i="' + i + '" title="下移">↓</button>' +
+          '<button type="button" class="mini danger" data-act="del" data-i="' + i + '" title="删除该栏">×</button>' +
+        '</span></li>';
+    }).join('');
+  }
+
+  function addColumn() {
+    const inp = $('colNewName');
+    const name = (inp.value || '').trim();
+    if (!name) { AN.toast('先输入栏名', true); return; }
+    if (colOrder.indexOf(name) >= 0) { AN.toast('这个栏已经有了', true); return; }
+    colOrder.push(name); saveColOrder();
+    inp.value = '';
+    renderColList(); fillColumnSelect(); renderBoard();
+    AN.toast('已添加栏「' + name + '」');
+  }
+
+  async function delColumn(i) {
+    const name = colOrder[i];
+    if (!name) return;
+    const cnt = all.filter(function (x) { return (x.category || '').trim() === name; }).length;
+    if (!confirm('删除栏「' + name + '」？' + (cnt ? '该栏下 ' + cnt + ' 篇文章会移回「未分栏」。' : ''))) return;
+    colOrder.splice(i, 1); saveColOrder();
+    if (cnt) {
+      const db = AN.getDb();
+      const rows = all.filter(function (x) { return (x.category || '').trim() === name; });
+      if (db) {
+        let failed = 0;
+        for (let k = 0; k < rows.length; k++) {
+          const { error } = await db.from('notes')
+            .update({ category: '', updated_at: new Date().toISOString() })
+            .eq('id', rows[k].id);
+          if (error) failed++; else rows[k].category = '';
+        }
+        if (failed) AN.toast('有 ' + failed + ' 篇没能移回未分栏', true);
+      } else {
+        rows.forEach(function (n) { n.category = ''; });
+      }
+    }
+    renderColList(); fillColumnSelect(); renderBoard();
+    AN.toast('已删除栏「' + name + '」');
+  }
+
+  function moveCol(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= colOrder.length) return;
+    const t = colOrder[i]; colOrder[i] = colOrder[j]; colOrder[j] = t;
+    saveColOrder(); renderColList(); renderBoard();
   }
 
   function renderTagFilter() {
@@ -344,6 +538,8 @@
     $('edSummary').value = rec ? (rec.summary || '') : '';
     $('edTags').value = rec ? arr(rec.tags).join(', ') : '';
     $('edVisibility').value = rec ? (rec.visibility || 'private') : 'private';
+    fillColumnSelect();
+    $('edColumn').value = rec ? (rec.category || '') : '';
     edBody().innerHTML = rec ? toHtml(rec.content) : '';
     if (readOnly) enhanceCodeBlocks(edBody());
 
@@ -353,6 +549,7 @@
     $('edSummary').readOnly = !editable;
     $('edTags').readOnly = !editable;
     $('edVisibility').disabled = !editable;
+    $('edColumn').disabled = !editable;
     edBody().contentEditable = editable ? 'true' : 'false';
     $('edToolbar').hidden = readOnly;
     $('saveDraftBtn').hidden = readOnly;
@@ -573,6 +770,7 @@
       content: content,
       summary: $('edSummary').value.trim() || autoSummary(content),
       tags: parseTags(),
+      category: $('edColumn').value || '',
       status: publish ? 'published' : 'draft',
       visibility: $('edVisibility').value || 'private',
       updated_at: new Date().toISOString()
@@ -597,7 +795,7 @@
       editing = null;
       listTab = rec.status;
       document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
-      renderList(); renderTagFilter();
+      renderTagFilter(); renderView();
       show('list');
     } catch (e) {
       AN.toast('保存失败：' + (e && e.message ? e.message : e), true);
@@ -619,7 +817,7 @@
     AN.toast('已删除');
     editing = null;
     history.replaceState(null, '', 'notes.html');
-    renderList(); renderTagFilter();
+    renderTagFilter(); renderView();
     show('list');
   }
 
@@ -733,13 +931,90 @@
   /* ---------------- 事件绑定 ---------------- */
 
   function bind() {
-    $('noteSearch').addEventListener('input', renderList);
+    $('noteSearch').addEventListener('input', renderView);
 
     $('tagFilter').addEventListener('click', function (e) {
       const b = e.target.closest('[data-tag]');
       if (!b) return;
       tagFilter = b.dataset.tag || '';
-      renderTagFilter(); renderList();
+      renderTagFilter(); renderView();
+    });
+
+    // 视图切换：列表 / 分栏
+    $('viewSeg').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-view]');
+      if (!b) return;
+      viewMode = b.dataset.view;
+      try { localStorage.setItem(LS_VIEW, viewMode); } catch (err) {}
+      renderView();
+    });
+
+    // 分栏依据：自定义栏 / 按标签
+    $('boardBySeg').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-by]');
+      if (!b) return;
+      boardBy = b.dataset.by;
+      try { localStorage.setItem(LS_BOARD_BY, boardBy); } catch (err) {}
+      renderView();
+    });
+
+    // 管理分栏
+    $('manageColBtn').addEventListener('click', openColModal);
+    $('colAddBtn').addEventListener('click', addColumn);
+    $('colNewName').addEventListener('keydown', function (e) { if (e.key === 'Enter') addColumn(); });
+    $('colList').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      const i = parseInt(b.dataset.i, 10);
+      if (b.dataset.act === 'up') moveCol(i, -1);
+      else if (b.dataset.act === 'down') moveCol(i, 1);
+      else if (b.dataset.act === 'del') delColumn(i);
+    });
+
+    // 分栏：点卡片打开文章
+    $('boardView').addEventListener('click', function (e) {
+      const card = e.target.closest('.note-card');
+      if (!card) return;
+      const x = all.find(function (n) { return String(n.id) === String(card.dataset.id); });
+      if (!x) return;
+      openEditor(x, { readOnly: !isAdmin() });
+    });
+
+    // 分栏：拖动卡片换栏
+    const bv = $('boardView');
+    bv.addEventListener('dragstart', function (e) {
+      const card = e.target.closest('.note-card');
+      if (!card) return;
+      draggedId = card.dataset.id;
+      card.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain', draggedId); e.dataTransfer.effectAllowed = 'move'; } catch (err) {}
+    });
+    bv.addEventListener('dragend', function (e) {
+      const card = e.target.closest('.note-card');
+      if (card) card.classList.remove('dragging');
+      bv.querySelectorAll('.drag-over').forEach(function (el) { el.classList.remove('drag-over'); });
+    });
+    bv.addEventListener('dragover', function (e) {
+      const body = e.target.closest('.board-col-body');
+      if (!body) return;
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch (err) {}
+      body.classList.add('drag-over');
+    });
+    bv.addEventListener('dragleave', function (e) {
+      const body = e.target.closest('.board-col-body');
+      if (!body || body.contains(e.relatedTarget)) return;
+      body.classList.remove('drag-over');
+    });
+    bv.addEventListener('drop', function (e) {
+      const body = e.target.closest('.board-col-body');
+      if (!body) return;
+      e.preventDefault();
+      body.classList.remove('drag-over');
+      let id = draggedId;
+      if (!id && e.dataTransfer) { try { id = e.dataTransfer.getData('text/plain'); } catch (err) {} }
+      if (!id) return;
+      moveToColumn(id, body.dataset.col || '未分栏');
     });
 
     $('newNoteBtn').addEventListener('click', function () { openEditor(null); });
@@ -763,7 +1038,7 @@
       listTab = b.dataset.tab;
       document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
       tagFilter = '';
-      renderTagFilter(); renderList();
+      renderTagFilter(); renderView();
     });
 
     $('edBack').addEventListener('click', function () {
