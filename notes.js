@@ -682,21 +682,33 @@
   ].join('');
 
   const CMDS = {
-    h2: function () { exec('formatBlock', 'H2'); },
-    h3: function () { exec('formatBlock', 'H3'); },
+    h1: function () { exec('formatBlock', 'H1'); closeAllPickers(); },
+    h2: function () { exec('formatBlock', 'H2'); closeAllPickers(); },
+    h3: function () { exec('formatBlock', 'H3'); closeAllPickers(); },
+    p: function () { exec('formatBlock', 'P'); closeAllPickers(); },
     bold: function () { exec('bold'); },
-    italic: function () { exec('italic'); },
-    strike: function () { exec('strikeThrough'); },
-    code: function () { const s = getSelText(); insertHTML('<code>' + esc(s || '代码') + '</code>'); },
-    codeblock: function () { toggleLangPicker(); },
-    ul: function () { exec('insertUnorderedList'); },
-    ol: function () { exec('insertOrderedList'); },
-    quote: function () { exec('formatBlock', 'BLOCKQUOTE'); },
+    italic: function () { exec('italic'); closeAllPickers(); },
+    underline: function () { exec('underline'); closeAllPickers(); },
+    strike: function () { exec('strikeThrough'); closeAllPickers(); },
+    clear: function () { exec('removeFormat'); closeAllPickers(); },
+    code: function () { const s = getSelText(); insertHTML('<code>' + esc(s || '代码') + '</code>'); closeAllPickers(); },
+    codeblock: function () { closeAllPickers(); toggleLangPicker(); },
+    ul: function () { exec('insertUnorderedList'); closeAllPickers(); },
+    ol: function () { exec('insertOrderedList'); closeAllPickers(); },
+    quote: function () { exec('formatBlock', 'BLOCKQUOTE'); closeAllPickers(); },
     table: function () { toggleTablePicker(); },
-    hr: function () { insertHTML('<hr><p><br></p>'); },
-    formula: function () { const s = getSelText(); insertHTML('<code class="math">$' + esc(s || '公式') + '$</code>'); },
-    link: function () { askLink('link'); },
-    image: function () { askLink('image'); }
+    hr: function () { insertHTML('<hr><p><br></p>'); closeAllPickers(); },
+    formula: function () { const s = getSelText(); insertHTML('<code class="math">$' + esc(s || '公式') + '$</code>'); closeAllPickers(); },
+    link: function () { askLink('link'); closeAllPickers(); },
+    image: function () { askLink('image'); closeAllPickers(); },
+    undo: function () { exec('undo'); },
+    redo: function () { exec('redo'); },
+    history: function () { showHistory(); },
+    foreColor: function (color) { exec('foreColor', color); closeAllPickers(); },
+    hiliteColor: function (color) { exec('hiliteColor', color); closeAllPickers(); },
+    justifyLeft: function () { exec('justifyLeft'); closeAllPickers(); },
+    justifyCenter: function () { exec('justifyCenter'); closeAllPickers(); },
+    justifyRight: function () { exec('justifyRight'); closeAllPickers(); }
   };
 
   function insertTable(rows, cols) {
@@ -748,6 +760,66 @@
       cell.classList.toggle('hovered', r <= rows && c <= cols);
     });
     $('tablePickerLabel').textContent = rows + ' 行 × ' + cols + ' 列 表格';
+  }
+
+  /* ---------------- 工具栏下拉 / 颜色 / 历史 ---------------- */
+
+  const COLOR_PRESETS = [
+    '#f85149', '#ff7b72', '#ffa657', '#d29922', '#3fb950', '#56d364', '#58a6ff', '#79c0ff',
+    '#a371f7', '#d2a8ff', '#f778ba', '#ff9bce', '#8b949e', '#b1bac4', '#f0f6fc', '#ffffff',
+    '#21262d', '#30363d', '#484f58', '#6e7681', '#0d1117', '#000000'
+  ];
+
+  function closeAllPickers() {
+    ['formatPickerPop', 'colorPickerPop', 'bgPickerPop', 'moreFormatPop',
+     'listPickerPop', 'alignPickerPop', 'codePickerPop', 'resPickerPop',
+     'tablePickerPop', 'langPickerPop'].forEach(function (id) {
+      const el = $(id);
+      if (el) el.hidden = true;
+    });
+  }
+  function togglePicker(id, render) {
+    const el = $(id);
+    const wasOpen = el && !el.hidden;
+    closeAllPickers();
+    if (!wasOpen && el) {
+      if (render) render();
+      el.hidden = false;
+    }
+  }
+  function toggleFormatPicker() { togglePicker('formatPickerPop'); }
+  function toggleColorPicker() { togglePicker('colorPickerPop', renderColorPicker); }
+  function toggleBgPicker() { togglePicker('bgPickerPop', renderBgPicker); }
+  function toggleMoreFormat() { togglePicker('moreFormatPop'); }
+  function toggleListPicker() { togglePicker('listPickerPop'); }
+  function toggleAlignPicker() { togglePicker('alignPickerPop'); }
+  function toggleCodePicker() { togglePicker('codePickerPop'); }
+  function toggleResPicker() { togglePicker('resPickerPop'); }
+
+  function renderColorGrid(gridId, cmdName) {
+    const grid = $(gridId);
+    if (!grid || grid.dataset.ready) return;
+    grid.innerHTML = '';
+    COLOR_PRESETS.forEach(function (c) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'color-cell';
+      b.title = c;
+      b.style.backgroundColor = c;
+      b.dataset.color = c;
+      b.dataset.cmd = cmdName;
+      grid.appendChild(b);
+    });
+    grid.dataset.ready = '1';
+  }
+  function renderColorPicker() { renderColorGrid('colorPickerGrid', 'foreColor'); }
+  function renderBgPicker() { renderColorGrid('bgPickerGrid', 'hiliteColor'); }
+
+  function showHistory() {
+    if (!editing) { AN.toast('新文章，尚未保存'); return; }
+    const created = editing.created_at ? new Date(editing.created_at).toLocaleString('zh-CN') : '未知';
+    const updated = editing.updated_at ? new Date(editing.updated_at).toLocaleString('zh-CN') : '未知';
+    AN.toast('创建：' + created + '；更新：' + updated);
   }
 
   /* ---------------- 代码块语言选择 ---------------- */
@@ -1124,10 +1196,27 @@
     });
 
     $('edToolbar').addEventListener('click', function (e) {
+      const d = e.target.closest('[data-dropdown]');
+      if (d) {
+        const map = {
+          format: toggleFormatPicker, color: toggleColorPicker, bg: toggleBgPicker,
+          moreFormat: toggleMoreFormat, list: toggleListPicker, align: toggleAlignPicker,
+          code: toggleCodePicker, res: toggleResPicker
+        };
+        const fn = map[d.dataset.dropdown];
+        if (fn) fn();
+        return;
+      }
       const b = e.target.closest('[data-cmd]');
       if (!b) return;
-      const fn = CMDS[b.dataset.cmd];
-      if (fn) fn();
+      const cmd = b.dataset.cmd;
+      if (cmd === 'foreColor' || cmd === 'hiliteColor') {
+        const fn = CMDS[cmd];
+        if (fn) fn(b.dataset.color);
+      } else {
+        const fn = CMDS[cmd];
+        if (fn) fn();
+      }
     });
 
     // 表格选择器：hover 高亮，点击插入
@@ -1143,12 +1232,8 @@
       $('tablePickerPop').hidden = true;
     });
     document.addEventListener('click', function (e) {
-      if (!$('tablePickerPop').hidden && !e.target.closest('#tablePickerWrap')) {
-        $('tablePickerPop').hidden = true;
-      }
-      if (!$('langPickerPop').hidden && !e.target.closest('#langPickerWrap')) {
-        $('langPickerPop').hidden = true;
-      }
+      const inside = e.target.closest('#tablePickerWrap, #langPickerWrap, #formatPickerWrap, #colorPickerWrap, #bgPickerWrap, #moreFormatWrap, #listPickerWrap, #alignPickerWrap, #codePickerWrap, #resPickerWrap');
+      if (!inside) closeAllPickers();
     });
     $('langPickerList').addEventListener('click', function (e) {
       const b = e.target.closest('.lang-pick-item');

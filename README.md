@@ -12,7 +12,7 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 ## 最近更新
 
-- 代码块右上角加复制图标：每个增强代码块（`pre.code-enh`）的工具栏右侧新增复制按钮（剪贴板图标），点击复制整段代码纯文本（忽略高亮 span），走 `navigator.clipboard` 异步 API、失败降级 `execCommand`；复制成功后图标变绿、tooltip 显示「已复制」1.5 秒后恢复。按钮样式 `.code-copy`/`.code-copy.copied` 加在 `notes.css`
+- 文章编辑器工具栏按「图标在上 / 文字在下」的 CSDN 风格重排：分为历史（撤消/重做/历史）、格式（格式下拉/加粗/颜色/背景/其他下拉）、段落（列表/对齐/水平线/块引用）、插入（代码/资源/表格）四组，右侧保留 AI/模板/导入/导出 辅助按钮。补齐撤消/重做、文字颜色、背景色、对齐、H1/H2/H3/正文格式、斜体/下划线/删除线、清除格式等命令；颜色点开后弹 22 色色板。`notes.html` 重排工具栏结构，`notes.js` 新增 `CMDS` 命令与下拉交互，`notes.css` 重写 `.tb`/`.tb-group`/`.tb-popover`/颜色网格样式
 - 修复文章代码块行号不对齐 + 没有语法高亮：根因是行号栏 `.ln-gutter` 字体大小（12.5px）与代码区（13.5px）不一致，导致行号与代码行不在同一水平线；同时页面只引入了 `highlight.min.js` 没引入主题 CSS，所以高亮不生效。`notes.css` 把 `.ln-gutter` 改成与代码完全相同的 `font-size:13.5px`/`line-height:1.75`；`notes.html` 在头部引入 `github-dark` 主题样式，让 C++ 等代码显示关键字/字符串/注释颜色
 - 插入代码块可选语言：工具栏「代码块」按钮点击后弹出语言选择器（C++/C/Python/Java/Go/Rust/JS/TS/SQL/Bash/JSON/HTML/XML/纯文本），选中即插入带对应 `language-xxx` 的代码块，预览/阅读自动按该语言高亮；选中正文文字插入时会带进代码块。复用表格选择器的 popover 交互模式
 - 文章列表新增**分栏（看板）视图**：顶部「列表 / 分栏」切换，两种分栏依据
