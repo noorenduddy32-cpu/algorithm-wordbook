@@ -107,6 +107,82 @@
 }
 
 .note-list { display: flex; flex-direction: column; gap: 14px; }
+.note-list.layout-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: stretch;
+}
+.note-list.layout-grid[data-cols] {
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+}
+/* 方块模式：卡片更紧凑、统一高度，标题/摘要/标签照常显示 */
+.note-list.layout-grid .note-card { padding: 18px 20px; display: flex; flex-direction: column; }
+.note-list.layout-grid .note-sum { -webkit-line-clamp: 3; }
+.note-list.layout-grid .note-meta { margin-top: auto; }
+.note-list.layout-list .note-card { display: flex; flex-direction: column; }
+
+/* 卡片上的导出勾选框 */
+.sel-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+}
+.sel-check input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent); }
+.note-card { position: relative; }
+.note-card:hover .sel-check { opacity: 1; }
+.sel-check { opacity: .55; transition: opacity .14s; }
+
+/* ---------------- 列表工具条（排序 / 每行 / 全选 / 导出） ---------------- */
+.notes-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.notes-toolbar .tb-spacer { flex: 1 1 auto; }
+.sort-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.sort-wrap select,
+.notes-toolbar .col-select {
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.sort-dir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .14s, color .14s, border-color .14s;
+}
+.sort-dir:hover { color: var(--text); border-color: var(--accent); }
+.sort-dir.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+.cols-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.cols-check .col-select { padding: 6px 8px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.check input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+.sel-all { font-size: 13px; }
+.sel-count { font-size: 12.5px; }
+
+/* 分栏（看板）模式下不显示卡片勾选框 */
+.board .note-card .sel-check { display: none; }
 
 .note-card {
   background: var(--panel);

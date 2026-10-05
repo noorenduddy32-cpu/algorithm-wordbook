@@ -35,9 +35,13 @@
   let readOnly = false;
 
   // 分栏（看板）状态
-  let viewMode = localStorage.getItem('an_note_view') || 'board';   // list | board
+  let viewMode = localStorage.getItem('an_note_view') || 'grid';    // grid | list | board
   let boardBy = localStorage.getItem('an_note_boardby') || 'column'; // column(自定义栏) | tag(按标签)
   let colOrder = loadColOrder();   // 自定义栏顺序（localStorage）
+  let listCols = localStorage.getItem('an_note_cols') || 'auto';    // 方块模式每行个数
+  let sortMode = localStorage.getItem('an_note_sort') || 'time';    // time(创建) | updated(修改) | views(浏览)
+  let sortDir = localStorage.getItem('an_note_sortdir') || 'desc';  // asc | desc
+  const selected = new Set();     // 导出 Word 时勾选的文章 id
   let draggedId = null;
 
   const LS_VIEW = 'an_note_view';
@@ -304,7 +308,9 @@
     const sum = x.summary || autoSummary(x.content);
     const isDraft = (x.status || 'draft') === 'draft';
     const isPrivate = (x.visibility || 'private') === 'private';
+    const checked = selected.has(String(x.id)) ? ' checked' : '';
     return '<article class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
+      '<span class="sel-check" title="选入导出 Word"><input type="checkbox" data-sel="' + x.id + '"' + checked + '></span>' +
       '<div class="note-title-row">' +
         '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
         '<span class="note-badge ' + (isDraft ? 'draft' : isPrivate ? 'private' : 'public') + '">' +
@@ -327,7 +333,10 @@
     updateSub();
     let list = getFiltered();
     if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
+    list = sortNotes(list, sortMode, sortDir);
     const box = $('noteList');
+    box.className = 'note-list layout-' + (viewMode === 'list' ? 'list' : 'grid');
+    applyColsToList();
     if (!list.length) {
       const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published'); }).length === 0;
       $('notesEmpty').hidden = !totallyEmpty;
@@ -336,15 +345,99 @@
     }
     $('notesEmpty').hidden = true;
     box.innerHTML = list.map(cardHtml).join('');
+    box.querySelectorAll('[data-sel]').forEach(function (cb) { cb.checked = selected.has(cb.dataset.sel); });
   }
 
-  // 视图调度：列表 / 分栏
+  // 每行几个：写到 #noteList 上的 CSS 变量 + data-cols，grid 模板直接用它
+  function applyColsToList() {
+    const n = Number(listCols);
+    const box = $('noteList');
+    if (listCols === 'auto' || !n || n < 1) {
+      box.style.removeProperty('--cols');
+      box.removeAttribute('data-cols');
+    } else {
+      box.style.setProperty('--cols', String(n));
+      box.setAttribute('data-cols', String(n));
+    }
+  }
+
+  // 排序：时间(创建) / 修改(updated_at) / 浏览(views)，升降序
+  function sortNotes(list, mode, dir) {
+    const s = dir === 'asc' ? -1 : 1;
+    const a = list.slice();
+    if (mode === 'updated') {
+      a.sort(function (x, y) { return s * String(y.updated_at || '').localeCompare(String(x.updated_at || '')); });
+    } else if (mode === 'views') {
+      a.sort(function (x, y) { return s * ((Number(x.views) || 0) - (Number(y.views) || 0)); });
+    } else {
+      a.sort(function (x, y) { return s * String(y.created_at || '').localeCompare(String(x.created_at || '')); });
+    }
+    return a;
+  }
+
+  // 勾选 / 取消勾选某篇（用于导出 Word）
+  function toggleSel(id, on) {
+    if (on) selected.add(String(id)); else selected.delete(String(id));
+    updateSelCount();
+  }
+
+  // 导出选中的文章为 Word；未勾选则导出当前视图全部
+  async function exportSelected() {
+    let list = getFiltered();
+    if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
+    list = sortNotes(list, sortMode, sortDir);
+    if (selected.size) {
+      const ids = selected;
+      list = list.filter(function (x) { return ids.has(String(x.id)); });
+    }
+    if (!list.length) { AN.toast('没有可导出的文章', true); return; }
+    if (typeof DocxExport === 'undefined' || !DocxExport.exportNotesDocx) {
+      AN.toast('导出模块未加载', true); return;
+    }
+    try {
+      AN.toast('正在生成 Word…');
+      const blob = await DocxExport.exportNotesDocx(list, {
+        title: '算法学习笔记本 · 文章导出',
+        count: list.length,
+        date: (function () {
+          const d = new Date(); const p = function (n) { return n < 10 ? '0' + n : '' + n; };
+          return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+        })()
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '算法文章_' + (function () {
+        const d = new Date(); const p = function (n) { return n < 10 ? '0' + n : '' + n; };
+        return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+      })() + '.docx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      AN.toast('已导出 ' + list.length + ' 篇文章');
+    } catch (err) {
+      AN.toast('导出失败：' + (err && err.message || err), true);
+    }
+  }
+
+  const ARROW_UP = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+  const ARROW_DOWN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+
+  function updateSelCount() {
+    const el = $('selCount');
+    if (!el) return;
+    el.textContent = selected.size ? ('已选 ' + selected.size + ' 篇') : '';
+    const sa = $('selAll');
+    if (sa) sa.checked = false;
+  }
+
+  // 视图调度：方块 / 列表 / 分栏
   function renderView() {
     const board = viewMode === 'board';
     $('noteList').hidden = board;
     $('boardView').hidden = !board;
     $('tagFilter').hidden = board;   // 分栏模式用分栏本身代替标签过滤
     $('boardBar').hidden = !board;
+    $('notesToolbar').hidden = board; // 排序 / 每行 / 全选 / 导出 只在方块·列表模式显示
     document.querySelectorAll('#viewSeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === viewMode); });
     document.querySelectorAll('#boardBySeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.by === boardBy); });
     // data-admin 已按角色控制显隐，这里只按分栏模式追加隐藏（class 避免和 hidden 属性打架）
@@ -352,6 +445,12 @@
     $('boardHint').textContent = boardBy === 'tag'
       ? '按标签自动分栏：一篇有多个标签会出现在多个栏里'
       : (colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」新建几个栏目，再把卡片拖进去');
+    // 同步控件条状态
+    $('noteCols').value = listCols;
+    $('noteSort').value = sortMode;
+    $('noteSortDirIcon').innerHTML = sortDir === 'asc' ? ARROW_UP : ARROW_DOWN;
+    $('noteSortDir').title = sortDir === 'asc' ? '当前：升序，点一下换成降序' : '当前：降序，点一下换成升序';
+    updateSelCount();
     if (board) renderBoard(); else renderList();
   }
 
@@ -1085,7 +1184,7 @@
       renderTagFilter(); renderView();
     });
 
-    // 视图切换：列表 / 分栏
+    // 视图切换：方块 / 列表 / 分栏
     $('viewSeg').addEventListener('click', function (e) {
       const b = e.target.closest('[data-view]');
       if (!b) return;
@@ -1093,6 +1192,37 @@
       try { localStorage.setItem(LS_VIEW, viewMode); } catch (err) {}
       renderView();
     });
+
+    // 排序：时间 / 修改 / 浏览
+    $('noteSort').addEventListener('change', function () {
+      sortMode = $('noteSort').value;
+      try { localStorage.setItem('an_note_sort', sortMode); } catch (err) {}
+      if (viewMode !== 'board') renderList();
+    });
+    // 升降序
+    $('noteSortDir').addEventListener('click', function () {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      try { localStorage.setItem('an_note_sortdir', sortDir); } catch (err) {}
+      $('noteSortDirIcon').innerHTML = sortDir === 'asc' ? ARROW_UP : ARROW_DOWN;
+      $('noteSortDir').title = sortDir === 'asc' ? '当前：升序，点一下换成降序' : '当前：降序，点一下换成升序';
+      if (viewMode !== 'board') renderList();
+    });
+    // 每行几个
+    $('noteCols').addEventListener('change', function () {
+      listCols = $('noteCols').value;
+      try { localStorage.setItem('an_note_cols', listCols); } catch (err) {}
+      if (viewMode !== 'board') { applyColsToList(); renderList(); }
+    });
+    // 全选当前视图
+    $('selAll').addEventListener('change', function () {
+      const on = $('selAll').checked;
+      let list = getFiltered();
+      if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
+      list.forEach(function (x) { if (on) selected.add(String(x.id)); else selected.delete(String(x.id)); });
+      renderList();
+    });
+    // 导出 Word
+    $('exportDocxBtn').addEventListener('click', exportSelected);
 
     // 分栏依据：自定义栏 / 按标签
     $('boardBySeg').addEventListener('click', function (e) {
@@ -1165,6 +1295,15 @@
     $('newNoteBtn').addEventListener('click', function () { openEditor(null); });
 
     $('noteList').addEventListener('click', function (e) {
+      const cb = e.target.closest('.sel-check');
+      if (cb) {
+        e.stopPropagation();
+        const box = cb.querySelector('[data-sel]');
+        if (!box) return;
+        if (e.target !== box) box.checked = !box.checked; // 点到方框空白处也切换
+        toggleSel(box.dataset.sel, box.checked);
+        return;
+      }
       const tag = e.target.closest('.ntag');
       if (tag) { tagFilter = tag.dataset.tag || ''; renderTagFilter(); renderList(); return; }
       const card = e.target.closest('.note-card');
