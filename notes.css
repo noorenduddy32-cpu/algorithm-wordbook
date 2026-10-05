@@ -728,7 +728,7 @@ pre.code-enh:not(.expanded) .code-area::after {
   user-select: none;
   border-right: 1px solid #30363d;
   background: #0d1117;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.75;
 }
 .code-area > code {
