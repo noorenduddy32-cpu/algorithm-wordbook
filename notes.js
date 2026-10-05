@@ -45,6 +45,69 @@
   const LS_VIEW = 'an_note_view';
   const LS_COLS = 'an_note_cols';
 
+  /* ---------------- 内置常用标签库（写文章时直接点选） ---------------- */
+  // 分类罗列算法竞赛常见名词：动态规划 / 图论 / 数论 / 字符串 / 数据结构 / 数学
+  // 搜索枚举 / 贪心构造思维 / 博弈 / 语言实现 / 比赛难度。用户后续可自行挑选删减。
+  const TAG_LIBRARY = [
+    { cat: '动态规划', items: [
+      '动态规划','线性DP','区间DP','树形DP','状压DP','数位DP','背包DP','背包','计数DP','概率DP','期望DP',
+      '博弈DP','插头DP','轮廓线DP','斜率优化','单调队列优化','四边形不等式','矩阵加速','记忆化搜索',
+      '最长上升子序列','最长公共子序列','编辑距离','序列DP','换根DP'
+    ]},
+    { cat: '图论', items: [
+      '图论','最短路','Dijkstra','Bellman-Ford','SPFA','Floyd','最小生成树','Kruskal','Prim','次小生成树',
+      '生成树','拓扑排序','差分约束','强连通分量','缩点','Tarjan','双连通分量','点双连通','边双连通',
+      '割点','桥','2-SAT','LCA','树上倍增','倍增','树链剖分','重链剖分','虚树','欧拉回路','欧拉路径',
+      '哈密顿回路','网络流','最大流','最小割','费用流','上下界网络流','二分图匹配','匈牙利算法','最大权匹配',
+      'KM算法','二分图','一般图匹配','带花树','最短路计数','同余最短路'
+    ]},
+    { cat: '数论', items: [
+      '数论','素数筛','埃氏筛','欧拉筛','线性筛','欧拉函数','素因数分解','同余','扩展欧几里得','裴蜀定理',
+      '中国剩余定理','同余方程','逆元','费马小定理','欧拉定理','快速幂','矩阵快速幂','大步小步','BSGS',
+      '原根','高斯消元','行列式','莫比乌斯反演','莫比乌斯函数','狄利克雷卷积','杜教筛','米勒拉宾','素性测试',
+      'Pollard-Rho','卢卡斯定理','威尔逊定理','卡特兰数','容斥原理','整除分块','类欧几里得'
+    ]},
+    { cat: '字符串', items: [
+      '字符串','KMP','字符串哈希','哈希','前缀函数','扩展KMP','Manacher','回文自动机','回文树','Trie',
+      '字典树','AC自动机','自动机','后缀数组','后缀自动机','后缀树','Z函数','后缀LCP','字符串匹配','最小表示法'
+    ]},
+    { cat: '数据结构', items: [
+      '数据结构','栈','队列','链表','数组','堆','优先队列','二叉堆','单调栈','单调队列','线段树','树状数组',
+      '分块','莫队','平衡树','Treap','无旋Treap','Splay','红黑树','替罪羊树','主席树','可持久化',
+      '可持久化线段树','并查集','线段树合并','线段树分裂','笛卡尔树','左偏树','可并堆','树套树','二维线段树',
+      '猫树','二进制分组','珂朵莉树','划分树','跳跃表','ST表','根号平衡'
+    ]},
+    { cat: '数学', items: [
+      '数学','组合数学','排列组合','二项式定理','生成函数','斯特林数','第一类斯特林数','第二类斯特林数',
+      '伯努利数','多项式','FFT','NTT','FWT','快速傅里叶变换','线性代数','矩阵','概率','期望','单纯形',
+      '线性规划','凸包','旋转卡壳','计算几何','向量','点积','叉积','扫描线','半平面交','辛普森积分','数值积分','几何'
+    ]},
+    { cat: '搜索 / 枚举', items: [
+      '搜索','DFS','BFS','回溯','剪枝','迭代加深','IDA*','A*','双向搜索','启发式搜索','状态压缩','位运算','枚举'
+    ]},
+    { cat: '贪心 / 构造 / 思维', items: [
+      '贪心','构造','思维','模拟','二分','二分答案','分治','CDQ分治','整体二分','离线','双指针','滑动窗口',
+      '前缀和','差分','离散化','规律','找规律','三分'
+    ]},
+    { cat: '博弈', items: [
+      '博弈','Nim','SG函数','巴什博弈','威佐夫博弈','阶梯博弈','公平组合游戏','博弈论'
+    ]},
+    { cat: '语言 / 实现', items: [
+      'C++','Python','Java','模板','STL','语法','调试','输入输出','快读','高精度','对拍','随机数','构造函数'
+    ]},
+    { cat: '比赛 / 难度', items: [
+      'Codeforces','AtCoder','ICPC','蓝桥杯','洛谷','牛客','CF','div1','div2','NOIP','NOI','省选',
+      '入门','提高','普及组','提高组','CF1900','CF2100','CF2200','CF2300','CF2400'
+    ]}
+  ];
+  // 去重：同一标签只保留首次出现的分类
+  (function dedupeTagLibrary() {
+    const seen = {};
+    TAG_LIBRARY.forEach(function (g) {
+      g.items = g.items.filter(function (t) { if (seen[t]) return false; seen[t] = true; return true; });
+    });
+  })();
+
   function loadColOrder() {
     try { const a = JSON.parse(localStorage.getItem(LS_COLS) || 'null'); return Array.isArray(a) ? a : []; }
     catch (e) { return []; }
@@ -638,6 +701,7 @@
     $('edTitle').value = rec ? (rec.title || '') : '';
     $('edSummary').value = rec ? (rec.summary || '') : '';
     $('edTags').value = rec ? arr(rec.tags).join(', ') : '';
+    renderTagPicker();
     $('edVisibility').value = rec ? (rec.visibility || 'private') : 'private';
     fillColumnSelect();
     $('edColumn').value = rec ? (rec.category || '') : '';
@@ -704,6 +768,47 @@
     return String($('edTags').value || '')
       .split(/[,，、\s]+/).map(function (s) { return s.trim().replace(/^#/, ''); })
       .filter(Boolean).slice(0, 8);
+  }
+
+  /* ---------------- 标签库选择器 ---------------- */
+  function renderTagPicker() {
+    const body = $('tagPickerBody');
+    if (!body) return;
+    const kw = ($('tagFilterInput').value || '').trim().toLowerCase();
+    const sel = parseTags();
+    const selSet = {};
+    sel.forEach(function (t) { selSet[t] = true; });
+    let total = 0;
+    let html = '';
+    TAG_LIBRARY.forEach(function (group) {
+      const items = group.items.filter(function (t) { return !kw || t.toLowerCase().indexOf(kw) >= 0; });
+      if (!items.length) return;
+      total += items.length;
+      html += '<div class="tag-group">' +
+        '<div class="tag-group-head">' + esc(group.cat) + '</div>' +
+        '<div class="tag-chips">' +
+        items.map(function (t) {
+          const on = selSet[t] ? ' on' : '';
+          return '<button type="button" class="tag-chip' + on + '" data-tag="' + esc(t) + '">' + esc(t) + '</button>';
+        }).join('') +
+        '</div></div>';
+    });
+    body.innerHTML = html || '<p class="muted small" style="padding:10px 2px">没有匹配的标签</p>';
+    const cnt = $('tagPickerCount');
+    if (cnt) cnt.textContent = sel.length ? ('已选 ' + sel.length + ' / 8') : '';
+  }
+
+  function toggleTag(t) {
+    let cur = parseTags();
+    const i = cur.indexOf(t);
+    if (i >= 0) {
+      cur.splice(i, 1);
+    } else {
+      if (cur.length >= 8) return;   // 与 parseTags 上限一致
+      cur.push(t);
+    }
+    $('edTags').value = cur.join(', ');
+    renderTagPicker();
   }
 
   /* ---------------- 富文本插入 ---------------- */
@@ -1359,6 +1464,19 @@
       pv.scrollTop = ratio * Math.max(0, pv.scrollHeight - pv.clientHeight);
     });
     $('edTitle').addEventListener('input', saveDraftLocal);
+
+    // 标签库选择器
+    const picker = $('tagPicker');
+    if (picker) picker.classList.add('open');
+    $('tagPickerToggle').addEventListener('click', function () {
+      $('tagPicker').classList.toggle('open');
+    });
+    $('tagFilterInput').addEventListener('input', renderTagPicker);
+    $('edTags').addEventListener('input', renderTagPicker);   // 手输时同步高亮
+    $('tagPickerBody').addEventListener('click', function (e) {
+      const b = e.target.closest('[data-tag]');
+      if (b) toggleTag(b.dataset.tag);
+    });
 
     // 快捷键
     edBody().addEventListener('keydown', function (e) {

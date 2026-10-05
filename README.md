@@ -12,6 +12,7 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 ## 最近更新
 
+- 文章编辑器内置常用标签库：在 `notes.js` 新增 `TAG_LIBRARY` 常量，按动态规划、图论、数论、字符串、数据结构、数学、搜索/枚举、贪心/构造/思维、博弈、语言/实现、比赛/难度 11 个类别预设 **266 个常见算法/数据结构/语言标签**（如 动态规划、KMP、欧拉筛、线段树、C++、Codeforces 等）；`notes.html` 将原先单薄的 `<datalist>` 替换为可折叠的「常用标签库」面板，按分类渲染为可点击的芯片（chip），点选即添加/取消到 `#edTags`，支持顶部输入框实时筛选，也可继续手输自定义标签；`notes.css` 新增 `.tag-picker` / `.tag-group` / `.tag-chip` 样式。只读模式下自动隐藏标签库
 - 文章标签清理与分栏精简：移除「按标签自动分栏」视图，分栏模式只保留「自定义栏」；同时删除列表/方块模式下的标签筛选条（`filter-row` / `.fbtn`）。`notes.html` 删除 `boardBySeg` 与 `tagFilter`；`notes.js` 删除 `boardBy`、`tagFilter`、`renderTagFilter` 及相关事件；`notes.css` 删除 `.filter-row`/`.fbtn` 样式。并**清空云端 `public.notes.tags` 中 128 篇被文章标题/章节名/日期污染的旧标签**，后续新标签由用户在编辑器手动输入规范算法/数据结构/语言标签
 - 主题菜单改为浮层覆盖：删除 `base.css` 里 `.topbar:has(.theme-menu:not([hidden])) { margin-bottom: 240px }` 规则，选择主题时页面内容不再被整体下推，主题选择框直接以 `z-index: 120` 浮在页面上方
 - 首页移除「最近写的」模块：`index.html` 删除 `recentWrap`/`recentList` 区块；`home.js` 删除 `renderRecent` 函数与调用，只保留统计数字和活跃度热力图；`home.css` 删除 `.recent`/`.recent-head`/`.recent-list`/`.recent-card`/`.recent-meta` 全部样式

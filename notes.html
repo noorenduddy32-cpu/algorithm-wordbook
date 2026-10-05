@@ -130,22 +130,19 @@
       <option value="private">管理员模式</option>
     </select>
   </div>
-  <datalist id="tagList">
-    <option value="动态规划"></option><option value="图论"></option><option value="最短路"></option>
-    <option value="网络流"></option><option value="树形DP"></option><option value="贪心"></option>
-    <option value="字符串"></option><option value="数学"></option><option value="数论"></option>
-    <option value="组合数学"></option><option value="数据结构"></option><option value="线段树"></option>
-    <option value="树状数组"></option><option value="平衡树"></option><option value="搜索"></option>
-    <option value="二分答案"></option><option value="分治"></option><option value="构造"></option>
-    <option value="模拟"></option><option value="位运算"></option><option value="思维"></option>
-    <option value="计算几何"></option><option value="博弈"></option><option value="差分约束"></option>
-    <option value="最小生成树"></option><option value="拓扑排序"></option><option value="倍增"></option>
-    <option value="DP优化"></option><option value="状压DP"></option><option value="概率期望"></option>
-    <option value="前缀和"></option><option value="双指针"></option><option value="滑动窗口"></option>
-    <option value="哈希"></option><option value="莫队"></option><option value="后缀数组"></option>
-    <option value="CF1900"></option><option value="CF2100"></option><option value="CF2300"></option>
-    <option value="Codeforces"></option><option value="ICPC"></option><option value="NOIP"></option>
-  </datalist>
+  <!-- 常用标签库：写文章时点选即可，也可手输自定义标签 -->
+  <div class="tag-picker" id="tagPicker">
+    <div class="tag-picker-bar">
+      <button type="button" class="tag-picker-toggle" id="tagPickerToggle" title="展开 / 收起标签库">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        常用标签库
+        <span class="tag-picker-count" id="tagPickerCount"></span>
+      </button>
+      <input id="tagFilterInput" class="tag-filter" placeholder="筛选标签（如 树 / 图 / 数论 / C++）" autocomplete="off">
+      <span class="muted small tag-picker-tip">点芯片即添加 / 取消，也可手输自定义标签</span>
+    </div>
+    <div class="tag-picker-body" id="tagPickerBody"></div>
+  </div>
 
   <!-- 工具栏：图标在上，文字在下，分组排列 -->
   <div class="ed-toolbar" id="edToolbar" data-admin>
