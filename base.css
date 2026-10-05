@@ -485,10 +485,6 @@ select option { background: var(--panel); color: var(--text); }
   flex: none;
   border: 1px solid var(--border);
 }
-/* 打开主题菜单时把顶栏下方内容顶下去，避免下拉盖住下方内容 */
-.topbar:has(.theme-menu:not([hidden])) {
-  margin-bottom: 240px;
-}
 
 /* ---------------- 响应式 ---------------- */
 
