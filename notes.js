@@ -169,6 +169,32 @@
     return out;
   }
 
+  // 复制文本到剪贴板（优先 navigator.clipboard 异步 API，失败降级到 execCommand）
+  function copyToClipboard(text, btn) {
+    const mark = function () {
+      if (!btn) return;
+      btn.classList.add('copied');
+      btn.title = '已复制';
+      setTimeout(function () { btn.classList.remove('copied'); btn.title = '复制代码'; }, 1500);
+    };
+    const fallback = function () {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); mark(); } catch (e) {}
+      document.body.removeChild(ta);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(mark).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
   // 代码块增强：行号 + 超 10 行收起 + 过宽换行
   function enhanceCodeBlocks(root) {
     (root || document).querySelectorAll('pre').forEach(function (pre) {
@@ -186,6 +212,9 @@
       const gutter = lines.map(function (_, i) { return i + 1; }).join('\n');
       const bar = '<div class="code-bar"><span class="code-lang">' + esc(lang) + '</span>' +
         '<span class="code-btns">' +
+        '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/></svg>' +
+        '</button>' +
         (lines.length > 10 ? '<button type="button" class="code-toggle">展开</button>' : '') +
         '<button type="button" class="code-wrap">换行</button></span></div>';
       const area = '<div class="code-area"><span class="ln-gutter">' + gutter + '</span>' + code.outerHTML + '</div>';
@@ -202,6 +231,12 @@
         b.addEventListener('click', function () {
           pre.classList.toggle('wrapped');
           b.textContent = pre.classList.contains('wrapped') ? '不换行' : '换行';
+        });
+      });
+      pre.querySelectorAll('.code-copy').forEach(function (b) {
+        b.addEventListener('click', function () {
+          const text = codeText(code).replace(/\n+$/, '').replace(/^\n+/, '');
+          copyToClipboard(text, b);
         });
       });
     });

@@ -748,6 +748,22 @@ pre.code-enh {
   transition: background .12s, color .12s, border-color .12s;
 }
 .code-toggle:hover, .code-wrap:hover { color: #f0f6fc; border-color: #58a6ff; background: #30363d; }
+.code-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #8b949e;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.code-copy:hover { color: #f0f6fc; border-color: #58a6ff; background: #30363d; }
+.code-copy.copied { color: #3fb950; border-color: #3fb950; background: #18331f; }
 
 .code-area {
   position: relative;
