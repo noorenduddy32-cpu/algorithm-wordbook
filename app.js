@@ -209,8 +209,6 @@
   const ICONS = {
     moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
     sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>',
-    lock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
-    unlock: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.9"/></svg>',
     gear: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>',
     collapse: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 15l7-7 7 7"/></svg>',
     expand: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 9l-7 7-7-7"/></svg>',
@@ -246,17 +244,8 @@
     }).join('');
   }
 
-  function updateLockBtn() {
-    const btn = $('lockBtn');
-    if (!btn) return;
-    btn.className = 'icon-btn ' + (unlocked ? 'unlocked' : 'locked');
-    const ic = $('lockIcon');
-    if (ic) ic.innerHTML = unlocked ? ICONS.unlock : ICONS.lock;
-    const lbl = $('lockLabel');
-    if (lbl) lbl.textContent = unlocked ? '已解锁' : '编辑模式';
-    // 合并后的添加按钮组：主按钮需要解锁，箭头只负责展开菜单
-    const addBtn = $('addBtn');
-    if (addBtn) addBtn.disabled = !unlocked;
+  // 登录态变化后刷新卡片（让编辑/删除按钮随 unlocked 状态出现或消失）
+  function refreshEditUI() {
     render();
   }
 
@@ -351,7 +340,7 @@
     if (window.AN_ROLE === 'admin') unlocked = true;
     window.addEventListener('an:authed', function (e) {
       unlocked = (e.detail.role === 'admin');
-      updateLockBtn();
+      refreshEditUI();
     });
     // 访客点管理操作 → 弹访问门输密码升级；登录成功后自动续做刚才pending的动作
     window.addEventListener('an:admin', function () {
@@ -360,7 +349,7 @@
       pending = null;
       setTimeout(function () { runAction(act); }, 80);
     });
-    updateLockBtn();
+    refreshEditUI();
     window.whenAuthed(loadWords);
   }
 
@@ -1858,38 +1847,6 @@
       applyView();
     });
 
-    const lockBtn = $('lockBtn');
-    if (lockBtn) lockBtn.addEventListener('click', function () {
-      // 本地有后端：编辑模式 = 管理员角色（由访问门密码决定）
-      if (window.AN_HAS_BACKEND) {
-        if (window.AN_ROLE === 'admin') {
-          if (window.Auth && window.Auth.logout) {
-            window.Auth.logout().then(function () { location.reload(); });
-          } else { location.reload(); }
-        } else {
-          // 访客 → 重新弹出访问门，输管理员密码升级
-          if (window.reopenGate) window.reopenGate();
-          else location.reload();
-        }
-        return;
-      }
-      // 纯静态部署：靠 config.js 的编辑密码解锁
-      if (unlocked) {
-        unlocked = false;
-        localStorage.removeItem(LS_LOCK);
-        updateLockBtn();
-        toast('已锁定编辑模式');
-      } else {
-        const modal = $('passModal');
-        const input = $('passInput');
-        if (modal && input) {
-          modal.hidden = false;
-          input.value = '';
-          input.focus();
-        }
-      }
-    });
-
     // 设置 / 关于：无需任何配置，打开说明弹窗即可
     const setupBtn = $('setupBtn');
     if (setupBtn) {
@@ -1915,7 +1872,7 @@
           }
           if (window.syncRole) await window.syncRole();   // 刷新角色门 / 显示添加按钮 / unlocked=true
           closeModals();
-          updateLockBtn();
+          refreshEditUI();
           toast('已升级为管理员，可以增删改了');
           if (act === '添加单词') openWordModal(null);
           else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }
@@ -1929,7 +1886,7 @@
         unlocked = true;
         localStorage.setItem(LS_LOCK, '1');
         closeModals();
-        updateLockBtn();
+        refreshEditUI();
         toast('已解锁，可以增删改了');
         if (act === '添加单词') openWordModal(null);
         else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }

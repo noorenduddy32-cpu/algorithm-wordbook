@@ -29,8 +29,6 @@
   const ICONS = {
     theme: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg>',
     home: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 10.5 12 3.4l8.8 7.1"/><path d="M5.4 9.4V20h13.2V9.4"/><path d="M9.8 20v-5.6h4.4V20"/></svg>',
-    lockOpen: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V7.6a4 4 0 0 1 7.7-1.4"/></svg>',
-    lockShut: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9"/></svg>',
     pen: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20.2h4.2L20 8.4 15.8 4.2 4 16z"/><path d="M14.2 5.8 18.4 10"/></svg>',
     book: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6h6a2.6 2.6 0 0 1 2 2.4v12a2 2 0 0 0-2-1.6H4z"/><path d="M20 4.6h-6a2.6 2.6 0 0 0-2 2.4v12a2 2 0 0 1 2-1.6h6z"/></svg>',
     file: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13.5 3.5V9H19"/><path d="M8.6 13.4h6.8M8.6 16.6h4.6"/></svg>'
@@ -48,10 +46,6 @@
       if (ic) ic.innerHTML = ICONS.theme;
       btn.title = '主题：' + ((THEMES.find(function (x) { return x.id === t; }) || {}).name || '');
     }
-    const lbl = $('lockLabel');
-    if (lbl) lbl.textContent = unlocked ? '已解锁' : '编辑';
-    const li = $('lockIcon');
-    if (li) li.innerHTML = unlocked ? ICONS.lockOpen : ICONS.lockShut;
   }
 
   function buildThemeMenu() {
@@ -184,21 +178,6 @@
     }
   }
 
-  function initLock() {
-    const btn = $('lockBtn');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      if (unlocked) {
-        unlocked = false;
-        try { localStorage.removeItem(LS_LOCK); } catch (e) {}
-        applyTheme(document.documentElement.getAttribute('data-theme'));
-        toast('已锁定');
-      } else {
-        askPassword(function () {});
-      }
-    });
-  }
-
   /* ---------------- 顶栏 ---------------- */
 
   // nav: [{href,label,key,icon,adminOnly}]
@@ -225,8 +204,6 @@
           '<button id="themeBtn" class="icon-btn" title="切换主题"><span id="themeIcon"></span></button>' +
           '<div id="themeMenu" class="theme-menu" hidden></div>' +
         '</div>' +
-        (o.lock === false ? '' :
-          '<button id="lockBtn" class="icon-btn" title="编辑模式"><span id="lockIcon"></span><span id="lockLabel">编辑模式</span></button>') +
       '</div>';
   }
 
@@ -316,7 +293,6 @@
     initTheme();
     initAurora();
     initModals();
-    initLock();
     initCloud();
   }
 

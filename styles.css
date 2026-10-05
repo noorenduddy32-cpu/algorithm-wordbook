@@ -461,8 +461,6 @@ body.nav-collapsed .foot > span:first-child { display: none; }
 .btn.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
 .btn.success { background: var(--ok); border-color: var(--ok); color: #fff; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.icon-btn.locked { color: var(--muted); }
-.icon-btn.unlocked { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
 .link-btn { background: none; border: none; color: var(--muted); cursor: pointer; font: inherit; font-size: 13px; text-decoration: underline; padding: 0; }
 
 /* 分割按钮：主按钮 + 右侧箭头下拉 */

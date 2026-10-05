@@ -222,14 +222,12 @@
   function applyRole(role, backendMode) {
     role = role || Auth.role;
     const admin = role === 'admin';
-    // 有后端（本地 _dev.js）才按角色隐藏管理按钮；纯静态部署让 lockBtn 编辑模式自己控制
+    // 有后端（本地 _dev.js）才按角色隐藏管理按钮；纯静态部署没有角色徽标，
+    // 仍靠编辑密码弹窗控制写权限
     if (backendMode) {
       document.querySelectorAll('[data-admin]').forEach(function (n) {
         n.style.display = admin ? '' : 'none';
       });
-      // 本地有后端时权限由角色决定，隐藏「编辑模式」锁按钮，避免与角色徽标重复
-      const lb = document.getElementById('lockBtn');
-      if (lb) lb.style.display = 'none';
     }
     // 角色徽标只在本地有后端时显示；纯静态站点没有登录态，不显示访客/管理员标签
     if (!backendMode) {
