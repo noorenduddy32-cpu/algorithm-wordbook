@@ -53,12 +53,8 @@
   </div>
 
   <div class="board-bar" id="boardBar" hidden>
-    <div class="seg" id="boardBySeg" title="分栏依据">
-      <button class="seg-btn active" data-by="column">自定义栏</button>
-      <button class="seg-btn" data-by="tag">按标签</button>
-    </div>
+    <span class="board-hint muted small" id="boardHint">拖动卡片到别的栏即可换栏</span>
     <button id="manageColBtn" class="btn ghost" data-admin>管理栏</button>
-    <span class="board-hint muted small" id="boardHint"></span>
   </div>
 
   <div class="notes-toolbar" id="notesToolbar">
@@ -90,8 +86,6 @@
     </button>
     <span class="sel-count muted small" id="selCount"></span>
   </div>
-
-  <div class="filter-row" id="tagFilter"></div>
 
   <div id="noteList" class="note-list"></div>
   <div id="boardView" class="board" hidden></div>

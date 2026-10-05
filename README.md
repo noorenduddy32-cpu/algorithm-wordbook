@@ -12,6 +12,7 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 ## 最近更新
 
+- 文章标签清理与分栏精简：移除「按标签自动分栏」视图，分栏模式只保留「自定义栏」；同时删除列表/方块模式下的标签筛选条（`filter-row` / `.fbtn`）。`notes.html` 删除 `boardBySeg` 与 `tagFilter`；`notes.js` 删除 `boardBy`、`tagFilter`、`renderTagFilter` 及相关事件；`notes.css` 删除 `.filter-row`/`.fbtn` 样式。并**清空云端 `public.notes.tags` 中 128 篇被文章标题/章节名/日期污染的旧标签**，后续新标签由用户在编辑器手动输入规范算法/数据结构/语言标签
 - 主题菜单改为浮层覆盖：删除 `base.css` 里 `.topbar:has(.theme-menu:not([hidden])) { margin-bottom: 240px }` 规则，选择主题时页面内容不再被整体下推，主题选择框直接以 `z-index: 120` 浮在页面上方
 - 首页移除「最近写的」模块：`index.html` 删除 `recentWrap`/`recentList` 区块；`home.js` 删除 `renderRecent` 函数与调用，只保留统计数字和活跃度热力图；`home.css` 删除 `.recent`/`.recent-head`/`.recent-list`/`.recent-card`/`.recent-meta` 全部样式
 - 顶部导航栏移除「编辑模式」锁按钮：编辑/访客切换完全由右上角「管理 / 访客」角色徽标负责（访客点徽标输 `yqx` 进入管理；管理点徽标免密切回访客）。`common.js` 的 `renderTopbar` 不再生成 `lockBtn`，`initLock` 与 `applyTheme` 中对锁图标的引用一并清理；`app.js` 删除 `updateLockBtn` 与锁按钮点击事件，改为 `refreshEditUI()` 在登录态变化时刷新卡片；`api.js` 去掉后端模式下隐藏锁按钮的冗余逻辑；`styles.css` 删除 `.icon-btn.locked`/`.unlocked` 样式

@@ -30,13 +30,11 @@
   let all = [];
   let editing = null;
   let mode = 'edit';
-  let tagFilter = '';
   let listTab = 'published';   // published | draft
   let readOnly = false;
 
   // 分栏（看板）状态
   let viewMode = localStorage.getItem('an_note_view') || 'grid';    // grid | list | board
-  let boardBy = localStorage.getItem('an_note_boardby') || 'column'; // column(自定义栏) | tag(按标签)
   let colOrder = loadColOrder();   // 自定义栏顺序（localStorage）
   let listCols = localStorage.getItem('an_note_cols') || 'auto';    // 方块模式每行个数
   let sortMode = localStorage.getItem('an_note_sort') || 'time';    // time(创建) | updated(修改) | views(浏览)
@@ -45,7 +43,6 @@
   let draggedId = null;
 
   const LS_VIEW = 'an_note_view';
-  const LS_BOARD_BY = 'an_note_boardby';
   const LS_COLS = 'an_note_cols';
 
   function loadColOrder() {
@@ -270,7 +267,6 @@
     // 非管理员只看已发布
     if (!isAdmin()) listTab = 'published';
     renderView();
-    renderTagFilter();
   }
 
   function updateSub() {
@@ -332,7 +328,6 @@
   function renderList() {
     updateSub();
     let list = getFiltered();
-    if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
     list = sortNotes(list, sortMode, sortDir);
     const box = $('noteList');
     box.className = 'note-list layout-' + (viewMode === 'list' ? 'list' : 'grid');
@@ -384,7 +379,6 @@
   // 导出选中的文章为 Word；未勾选则导出当前视图全部
   async function exportSelected() {
     let list = getFiltered();
-    if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
     list = sortNotes(list, sortMode, sortDir);
     if (selected.size) {
       const ids = selected;
@@ -435,16 +429,10 @@
     const board = viewMode === 'board';
     $('noteList').hidden = board;
     $('boardView').hidden = !board;
-    $('tagFilter').hidden = board;   // 分栏模式用分栏本身代替标签过滤
     $('boardBar').hidden = !board;
     $('notesToolbar').hidden = board; // 排序 / 每行 / 全选 / 导出 只在方块·列表模式显示
     document.querySelectorAll('#viewSeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === viewMode); });
-    document.querySelectorAll('#boardBySeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.by === boardBy); });
-    // data-admin 已按角色控制显隐，这里只按分栏模式追加隐藏（class 避免和 hidden 属性打架）
-    $('manageColBtn').classList.toggle('hide-by-mode', boardBy !== 'column');
-    $('boardHint').textContent = boardBy === 'tag'
-      ? '按标签自动分栏：一篇有多个标签会出现在多个栏里'
-      : (colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」新建几个栏目，再把卡片拖进去');
+    $('boardHint').textContent = colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」新建几个栏目，再把卡片拖进去';
     // 同步控件条状态
     $('noteCols').value = listCols;
     $('noteSort').value = sortMode;
@@ -475,39 +463,27 @@
       return;
     }
     $('notesEmpty').hidden = true;
-    let cols = [];
-    if (boardBy === 'tag') {
-      const map = {};
-      list.forEach(function (x) {
-        arr(x.tags).forEach(function (t) { (map[t] = map[t] || []).push(x); });
-      });
-      const keys = Object.keys(map).sort(function (a, b) { return map[b].length - map[a].length; });
-      cols = keys.map(function (k) { return { name: k, items: map[k], tag: true }; });
-    } else {
-      const names = boardColumnNames();
-      cols = names.map(function (n) {
-        return { name: n, items: list.filter(function (x) { return (x.category || '').trim() === n; }) };
-      });
-      cols.push({
-        name: '未分栏',
-        items: list.filter(function (x) {
-          const c = (x.category || '').trim();
-          return !c || names.indexOf(c) < 0;
-        }),
-        uncat: true
-      });
-    }
+    const names = boardColumnNames();
+    let cols = names.map(function (n) {
+      return { name: n, items: list.filter(function (x) { return (x.category || '').trim() === n; }) };
+    });
+    cols.push({
+      name: '未分栏',
+      items: list.filter(function (x) {
+        const c = (x.category || '').trim();
+        return !c || names.indexOf(c) < 0;
+      }),
+      uncat: true
+    });
     box.innerHTML = cols.map(function (col) {
-      const head = col.tag
-        ? '<span class="ntag ntag-' + tagColorIndex(col.name) + '">' + esc(col.name) + '</span>'
-        : '<span class="board-col-name">' + esc(col.name) + '</span>';
+      const head = '<span class="board-col-name">' + esc(col.name) + '</span>';
       return '<div class="board-col' + (col.uncat ? ' uncat' : '') + '">' +
         '<div class="board-col-head">' + head + '<span class="board-col-count">' + col.items.length + '</span></div>' +
         '<div class="board-col-body" data-col="' + esc(col.name) + '">' + col.items.map(cardHtml).join('') + '</div>' +
       '</div>';
     }).join('');
-    // 仅管理员在「自定义栏」模式下可拖动换栏
-    if (isAdmin() && boardBy === 'column') {
+    // 仅管理员可拖动换栏
+    if (isAdmin()) {
       box.querySelectorAll('.note-card').forEach(function (c) { c.setAttribute('draggable', 'true'); });
     }
   }
@@ -605,23 +581,6 @@
     if (j < 0 || j >= colOrder.length) return;
     const t = colOrder[i]; colOrder[i] = colOrder[j]; colOrder[j] = t;
     saveColOrder(); renderColList(); renderBoard();
-  }
-
-  function renderTagFilter() {
-    // 过滤统计只看当前 tab 下的文章
-    const visible = all.filter(function (x) {
-      if (!isAdmin()) return (x.status || 'draft') === 'published';
-      return (x.status || 'draft') === listTab;
-    });
-    const cnt = {};
-    visible.forEach(function (x) { arr(x.tags).forEach(function (t) { cnt[t] = (cnt[t] || 0) + 1; }); });
-    const keys = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; });
-    const box = $('tagFilter');
-    if (!keys.length) { box.innerHTML = ''; return; }
-    box.innerHTML = '<button class="fbtn' + (tagFilter ? '' : ' active') + '" data-tag="">全部 ' + visible.length + '</button>' +
-      keys.map(function (k) {
-        return '<button class="fbtn ntag-' + tagColorIndex(k) + (tagFilter === k ? ' active' : '') + '" data-tag="' + esc(k) + '">' + esc(k) + ' ' + cnt[k] + '</button>';
-      }).join('');
   }
 
   function arr(v) {
@@ -1039,7 +998,7 @@
       editing = null;
       listTab = rec.status;
       document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
-      renderTagFilter(); renderView();
+      renderView();
       show('list');
     } catch (e) {
       AN.toast('保存失败：' + (e && e.message ? e.message : e), true);
@@ -1061,7 +1020,7 @@
     AN.toast('已删除');
     editing = null;
     history.replaceState(null, '', 'notes.html');
-    renderTagFilter(); renderView();
+    renderView();
     show('list');
   }
 
@@ -1177,13 +1136,6 @@
   function bind() {
     $('noteSearch').addEventListener('input', renderView);
 
-    $('tagFilter').addEventListener('click', function (e) {
-      const b = e.target.closest('[data-tag]');
-      if (!b) return;
-      tagFilter = b.dataset.tag || '';
-      renderTagFilter(); renderView();
-    });
-
     // 视图切换：方块 / 列表 / 分栏
     $('viewSeg').addEventListener('click', function (e) {
       const b = e.target.closest('[data-view]');
@@ -1217,21 +1169,11 @@
     $('selAll').addEventListener('change', function () {
       const on = $('selAll').checked;
       let list = getFiltered();
-      if (tagFilter) list = list.filter(function (x) { return arr(x.tags).indexOf(tagFilter) >= 0; });
       list.forEach(function (x) { if (on) selected.add(String(x.id)); else selected.delete(String(x.id)); });
       renderList();
     });
     // 导出 Word
     $('exportDocxBtn').addEventListener('click', exportSelected);
-
-    // 分栏依据：自定义栏 / 按标签
-    $('boardBySeg').addEventListener('click', function (e) {
-      const b = e.target.closest('[data-by]');
-      if (!b) return;
-      boardBy = b.dataset.by;
-      try { localStorage.setItem(LS_BOARD_BY, boardBy); } catch (err) {}
-      renderView();
-    });
 
     // 管理分栏
     $('manageColBtn').addEventListener('click', openColModal);
@@ -1304,8 +1246,6 @@
         toggleSel(box.dataset.sel, box.checked);
         return;
       }
-      const tag = e.target.closest('.ntag');
-      if (tag) { tagFilter = tag.dataset.tag || ''; renderTagFilter(); renderList(); return; }
       const card = e.target.closest('.note-card');
       if (!card) return;
       const id = card.dataset.id;
@@ -1321,8 +1261,7 @@
       if (!b) return;
       listTab = b.dataset.tab;
       document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
-      tagFilter = '';
-      renderTagFilter(); renderView();
+      renderView();
     });
 
     $('edBack').addEventListener('click', function () {
