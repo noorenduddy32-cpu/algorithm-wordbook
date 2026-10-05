@@ -653,21 +653,7 @@
     italic: function () { exec('italic'); },
     strike: function () { exec('strikeThrough'); },
     code: function () { const s = getSelText(); insertHTML('<code>' + esc(s || '代码') + '</code>'); },
-    codeblock: function () {
-      const s = getSelText();
-      insertHTML('<pre><code class="language-cpp">' + esc(s || '// 在这里写代码') + '</code></pre><p><br></p>');
-      // 把光标放进刚插入的代码块里，方便直接写代码
-      const pres = edBody().querySelectorAll('pre.code-enh, pre');
-      const last = pres[pres.length - 1];
-      const codeEl = last && last.querySelector('code');
-      if (codeEl) {
-        const range = document.createRange();
-        range.selectNodeContents(codeEl);
-        const sel = window.getSelection();
-        sel.removeAllRanges(); sel.addRange(range);
-      }
-      updatePreview();
-    },
+    codeblock: function () { toggleLangPicker(); },
     ul: function () { exec('insertUnorderedList'); },
     ol: function () { exec('insertOrderedList'); },
     quote: function () { exec('formatBlock', 'BLOCKQUOTE'); },
@@ -727,6 +713,50 @@
       cell.classList.toggle('hovered', r <= rows && c <= cols);
     });
     $('tablePickerLabel').textContent = rows + ' 行 × ' + cols + ' 列 表格';
+  }
+
+  /* ---------------- 代码块语言选择 ---------------- */
+  const LANGS = [
+    ['cpp', 'C++'], ['c', 'C'], ['python', 'Python'], ['java', 'Java'],
+    ['go', 'Go'], ['rust', 'Rust'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript'],
+    ['sql', 'SQL'], ['bash', 'Bash/Shell'], ['json', 'JSON'], ['xml', 'HTML/XML'],
+    ['plaintext', '纯文本']
+  ];
+  function toggleLangPicker() {
+    const pop = $('langPickerPop');
+    pop.hidden = !pop.hidden;
+    if (!pop.hidden) {
+      renderLangPicker();
+      pop.focus();
+    }
+  }
+  function renderLangPicker() {
+    const box = $('langPickerList');
+    box.innerHTML = '';
+    LANGS.forEach(function (it) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lang-pick-item';
+      b.dataset.lang = it[0];
+      b.textContent = it[1];
+      box.appendChild(b);
+    });
+  }
+  function insertCodeBlock(lang) {
+    const s = getSelText();
+    const ph = s || '// 在这里写代码';
+    insertHTML('<pre><code class="language-' + lang + '">' + esc(ph) + '</code></pre><p><br></p>');
+    // 把光标放进刚插入的代码块里，方便直接写代码
+    const pres = edBody().querySelectorAll('pre');
+    const last = pres[pres.length - 1];
+    const codeEl = last && last.querySelector('code');
+    if (codeEl) {
+      const range = document.createRange();
+      range.selectNodeContents(codeEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+    }
+    updatePreview();
   }
 
   function askLink(kind) {
@@ -1081,6 +1111,16 @@
       if (!$('tablePickerPop').hidden && !e.target.closest('#tablePickerWrap')) {
         $('tablePickerPop').hidden = true;
       }
+      if (!$('langPickerPop').hidden && !e.target.closest('#langPickerWrap')) {
+        $('langPickerPop').hidden = true;
+      }
+    });
+    $('langPickerList').addEventListener('click', function (e) {
+      const b = e.target.closest('.lang-pick-item');
+      if (!b) return;
+      const lang = b.dataset.lang || 'plaintext';
+      $('langPickerPop').hidden = true;
+      insertCodeBlock(lang);
     });
 
     $('insertTplBtn').addEventListener('click', function () {

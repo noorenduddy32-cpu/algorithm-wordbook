@@ -126,7 +126,13 @@
     </div>
     <div class="tb-group">
       <button class="tb" data-cmd="code" title="行内代码">&lt;/&gt;</button>
-      <button class="tb" data-cmd="codeblock" title="代码块">代码块</button>
+      <div class="tb-dropdown" id="langPickerWrap">
+        <button class="tb" data-cmd="codeblock" title="插入代码块（可选语言）">代码块 ▾</button>
+        <div class="lang-picker-popover" id="langPickerPop" hidden>
+          <div class="lang-picker-label">选择语言</div>
+          <div class="lang-picker-list" id="langPickerList"></div>
+        </div>
+      </div>
     </div>
     <div class="tb-group">
       <button class="tb" data-cmd="ul" title="无序列表">
