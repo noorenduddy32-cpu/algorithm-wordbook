@@ -680,7 +680,7 @@
 
   function insertTable(rows, cols) {
     let ths = '', tds = '';
-    for (let i = 0; i < cols; i++) { ths += '<th> </th>'; tds += '<td> </td>'; }
+    for (let i = 0; i < cols; i++) { ths += '<th>&nbsp;</th>'; tds += '<td>&nbsp;</td>'; }
     const body = [];
     for (let i = 0; i < rows - 1; i++) body.push('<tr>' + tds + '</tr>');
     insertNodes('<table class="md-table"><thead><tr>' + ths + '</tr></thead><tbody>' + body.join('') + '</tbody></table><p><br></p>');
