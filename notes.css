@@ -781,14 +781,12 @@ pre.code-enh {
 .code-bar .code-lang {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
-  color: #f0f6fc;
-  background: #21262d;
-  padding: 4px 10px;
-  border-radius: 6px;
+  font-size: 13px;
+  color: #c9d1d9;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   letter-spacing: .3px;
   font-weight: 500;
+  padding-left: 2px;
 }
 
 .md-code pre {
@@ -811,40 +809,72 @@ pre.code-enh {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 14px 10px 12px;
+  gap: 12px;
+  padding: 10px 14px;
   background: #0d1117;
   border-bottom: 1px solid #30363d;
 }
-.code-btns { display: flex; gap: 8px; }
-.code-toggle, .code-wrap {
-  border: 1px solid #30363d;
-  background: #21262d;
-  color: #8b949e;
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background .12s, color .12s, border-color .12s;
-}
-.code-toggle:hover, .code-wrap:hover { color: #f0f6fc; border-color: #58a6ff; background: #30363d; }
-.code-copy {
+.code-btns { display: flex; align-items: center; gap: 6px; }
+
+.code-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 24px;
+  height: 28px;
   padding: 0;
   border: 1px solid #30363d;
-  background: #21262d;
+  background: transparent;
   color: #8b949e;
   border-radius: 6px;
   cursor: pointer;
   transition: background .12s, color .12s, border-color .12s;
 }
-.code-copy:hover { color: #f0f6fc; border-color: #58a6ff; background: #30363d; }
+.code-wrap:hover, .code-wrap.active { color: #f0f6fc; border-color: #58a6ff; background: #21262d; }
+
+.code-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border: 1px solid #30363d;
+  background: transparent;
+  color: #c9d1d9;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.code-copy:hover { color: #f0f6fc; border-color: #58a6ff; background: #21262d; }
 .code-copy.copied { color: #3fb950; border-color: #3fb950; background: #18331f; }
+.code-copy span { font-size: 12px; }
+
+.code-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0 10px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+}
+.code-bottom-bar .code-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: #8b949e;
+  font-size: 12.5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color .12s, background .12s;
+}
+.code-bottom-bar .code-toggle:hover { color: #f0f6fc; background: #21262d; }
 
 .code-area {
   position: relative;

@@ -210,27 +210,35 @@
         try { code.className = 'language-' + lang; window.hljs.highlightElement(code); } catch (e) {}
       }
       const gutter = lines.map(function (_, i) { return i + 1; }).join('\n');
+      const copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/></svg>';
+      const wrapIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>';
+      const chevronDown = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+      const chevronUp = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
       const bar = '<div class="code-bar"><span class="code-lang">' + esc(lang) + '</span>' +
         '<span class="code-btns">' +
-        '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码">' +
-          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/></svg>' +
-        '</button>' +
-        (lines.length > 10 ? '<button type="button" class="code-toggle">展开</button>' : '') +
-        '<button type="button" class="code-wrap">换行</button></span></div>';
+        '<button type="button" class="code-wrap" title="自动换行" aria-label="自动换行">' + wrapIcon + '</button>' +
+        '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码">' + copyIcon + '<span>复制</span></button>' +
+        '</span></div>';
+      const bottomBar = lines.length > 10 ? '<div class="code-bottom-bar"><button type="button" class="code-toggle">' +
+        '<span>展开</span>' + chevronDown + '</button></div>' : '';
       const area = '<div class="code-area"><span class="ln-gutter">' + gutter + '</span>' + code.outerHTML + '</div>';
       pre.className = (pre.className + ' code-enh').trim();
-      pre.innerHTML = bar + area;
+      pre.innerHTML = bar + area + bottomBar;
       if (lines.length > 10) pre.classList.add('collapsed');
-      pre.querySelectorAll('.code-toggle').forEach(function (b) {
-        b.addEventListener('click', function () {
+      const toggleBtn = pre.querySelector('.code-toggle');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function () {
           pre.classList.toggle('expanded');
-          b.textContent = pre.classList.contains('expanded') ? '收起' : '展开';
+          const expanded = pre.classList.contains('expanded');
+          toggleBtn.querySelector('span').textContent = expanded ? '收起' : '展开';
+          const svg = toggleBtn.querySelector('svg');
+          if (svg) svg.outerHTML = expanded ? chevronUp : chevronDown;
         });
-      });
+      }
       pre.querySelectorAll('.code-wrap').forEach(function (b) {
         b.addEventListener('click', function () {
           pre.classList.toggle('wrapped');
-          b.textContent = pre.classList.contains('wrapped') ? '不换行' : '换行';
+          b.classList.toggle('active', pre.classList.contains('wrapped'));
         });
       });
       pre.querySelectorAll('.code-copy').forEach(function (b) {
