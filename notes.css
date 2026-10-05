@@ -757,21 +757,47 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
   padding: 0;
 }
 
-.md-body table {
+/* 表格：阅读 / 编辑器 / 预览 共用一套规整样式，让格子够大、光标对齐 */
+.md-body table,
+.ed-input table,
+.ed-preview table {
   border-collapse: collapse;
   width: 100%;
   margin: 1.1em 0;
-  font-size: 14px;
-  display: block;
-  overflow-x: auto;
+  font-size: 14.5px;
+  table-layout: fixed;
 }
-.md-body th, .md-body td {
+.md-body th, .md-body td,
+.ed-input th, .ed-input td,
+.ed-preview th, .ed-preview td {
   border: 1px solid var(--border);
-  padding: 8px 12px;
+  padding: 10px 12px;
   text-align: left;
+  vertical-align: top;
+  line-height: 1.7;
+  min-width: 84px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
-.md-body th { background: var(--panel2); font-weight: 700; }
-.md-body tr:nth-child(even) td { background: color-mix(in srgb, var(--panel2) 45%, transparent); }
+.md-body th,
+.ed-input th,
+.ed-preview th {
+  background: var(--panel2);
+  font-weight: 700;
+  color: var(--text);
+}
+.md-body tr:nth-child(even) td,
+.ed-preview tr:nth-child(even) td { background: color-mix(in srgb, var(--panel2) 45%, transparent); }
+
+/* 编辑器里：边框更清晰、单元格可点、光标对齐（这是「表格太小 / 光标错位」的修复点） */
+.ed-input table { font-size: 15px; }
+.ed-input th { background: var(--panel2); cursor: text; }
+.ed-input td { background: var(--panel); cursor: text; }
+.ed-input td:hover,
+.ed-input th:hover { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--accent) 9%, transparent); }
+/* 空单元格放一个占位，保证能被点中、光标能落进去 */
+.ed-input td:empty::after,
+.ed-input th:empty::after { content: "\00a0"; }
 
 .md-body hr {
   border: none;
