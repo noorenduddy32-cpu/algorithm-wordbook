@@ -12,6 +12,7 @@ GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 ## 最近更新
 
+- 首页移除「最近写的」模块：`index.html` 删除 `recentWrap`/`recentList` 区块；`home.js` 删除 `renderRecent` 函数与调用，只保留统计数字和活跃度热力图；`home.css` 删除 `.recent`/`.recent-head`/`.recent-list`/`.recent-card`/`.recent-meta` 全部样式
 - 顶部导航栏移除「编辑模式」锁按钮：编辑/访客切换完全由右上角「管理 / 访客」角色徽标负责（访客点徽标输 `yqx` 进入管理；管理点徽标免密切回访客）。`common.js` 的 `renderTopbar` 不再生成 `lockBtn`，`initLock` 与 `applyTheme` 中对锁图标的引用一并清理；`app.js` 删除 `updateLockBtn` 与锁按钮点击事件，改为 `refreshEditUI()` 在登录态变化时刷新卡片；`api.js` 去掉后端模式下隐藏锁按钮的冗余逻辑；`styles.css` 删除 `.icon-btn.locked`/`.unlocked` 样式
 - 词汇本顶部四个添加入口合并为一个「添加单词」分割按钮：主按钮默认执行「从句中选词」，右侧小箭头点击展开下拉菜单，可切换为「批量添加」「导入 JSON」「手动添加」，选择后立即执行并设为新的默认；访客模式下该按钮组隐藏。`wordbook.html` 精简工具栏，`styles.css` 新增 `.btn-split`/`.split-menu`/`.split-item` 样式，`app.js` 用 `wb_add_mode_v1` 持久化默认方式并统一 `runAddAction` 调度
 - 顶栏角色徽标双向切换：访客模式点「访客」徽标直接弹访问门输 `yqx` 进入管理模式；管理模式点「管理」徽标**无需密码直接切回访客（只读）**（新增后端 `api/visitor.js` 免密建立只读会话，写操作仍需管理员密码服务端校验）；后端模式下隐藏多余的「编辑模式」锁按钮，消除重复图标。并修正「以访客身份浏览」现在真正写入 visitor Cookie，读权限才生效

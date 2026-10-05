@@ -69,7 +69,6 @@
         setText('footTip', '数据来自云端数据库 · 随时可写');
 
         renderActivityHome(words, notes);
-        renderRecent(notes);
       } catch (e) {
         setText('hsWords', '—'); setText('hsEx', '—');
         setText('hsNotes', '—');
@@ -192,24 +191,6 @@
       tip.style.top = (e.clientY - 34) + 'px';
     };
     grid.onmouseleave = function () { const t = $('activityTip'); if (t) t.style.display = 'none'; };
-  }
-
-  function renderRecent(notes) {    if (!notes.length) return;
-    const list = notes.slice(0, 3);
-    const box = $('recentList');
-    if (!box) return;
-    box.innerHTML = list.map(function (x) {
-      const tags = Array.isArray(x.tags) ? x.tags : [];
-      return '<a class="recent-card" href="notes.html#n' + x.id + '">' +
-        '<h4>' + esc(x.title || '无标题') + '</h4>' +
-        '<p>' + esc(x.summary || '（还没有摘要）') + '</p>' +
-        '<div class="recent-meta">' +
-          '<span>' + AN.relTime(x.updated_at || x.created_at) + '</span>' +
-          (tags.length ? '<span class="tag"># ' + esc(tags.join(' # ')) + '</span>' : '') +
-        '</div></a>';
-    }).join('');
-    const wrap = $('recentWrap');
-    if (wrap) wrap.hidden = false;
   }
 
   window.whenAuthed(loadStats);
