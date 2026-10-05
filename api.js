@@ -136,6 +136,16 @@
     async logout() {
       try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
       this.role = null;
+    },
+    // 免密建立只读访客会话（写入 visitor Cookie），读权限才生效
+    async visitor() {
+      let role = 'visitor';
+      try {
+        const r = await fetch('/api/visitor', { method: 'POST', credentials: 'include' });
+        if (r.ok) { const j = await r.json(); if (j && j.role) role = j.role; }
+      } catch (e) { /* 后端不可达时退回前端只读视图 */ }
+      this.role = role;
+      return role;
     }
   };
   window.Auth = Auth;
@@ -176,10 +186,12 @@
     const err = g.querySelector('#gateErr');
     setTimeout(function () { input.focus(); }, 60);
     const visitorBtn = g.querySelector('#gateVisitor');
-    if (visitorBtn) visitorBtn.addEventListener('click', function () {
+    if (visitorBtn) visitorBtn.addEventListener('click', async function () {
       const gate = document.getElementById('gate');
       if (gate) { gate.remove(); document.body.style.overflow = ''; }
-      applyRole('visitor', true);
+      // 建立真正的访客会话（写入 visitor Cookie），否则读权限不生效
+      try { await Auth.visitor(); } catch (e) {}
+      onAuthed('visitor', true);
     });
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -215,6 +227,9 @@
       document.querySelectorAll('[data-admin]').forEach(function (n) {
         n.style.display = admin ? '' : 'none';
       });
+      // 本地有后端时权限由角色决定，隐藏「编辑模式」锁按钮，避免与角色徽标重复
+      const lb = document.getElementById('lockBtn');
+      if (lb) lb.style.display = 'none';
     }
     // 角色徽标只在本地有后端时显示；纯静态站点没有登录态，不显示访客/管理员标签
     if (!backendMode) {
@@ -230,21 +245,31 @@
       if (host) host.appendChild(bar);
     }
     if (bar) {
-      bar.innerHTML = '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理模式' : '访客模式') + '</span>';
-      // 访客模式：点击角色徽标重新弹出访问门，输管理员密码进入管理模式（顶栏图标真正可用）
+      bar.innerHTML = '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理' : '访客') + '</span>';
+      bar.classList.add('clickable');
       if (admin) {
-        bar.classList.remove('clickable');
-        bar.removeAttribute('title');
-        bar.onclick = null;
+        // 管理模式：点击角色徽标直接切换为访客（只读），无需密码
+        bar.title = '点击切换为访客模式（只读）';
+        bar.onclick = function () { switchToVisitor(); };
       } else {
-        bar.classList.add('clickable');
-        bar.title = '点击以管理员密码进入管理模式';
+        // 访客模式：点击角色徽标重新弹出访问门，输管理员密码进入管理模式
+        bar.title = '点击输入管理员密码进入管理模式';
         bar.onclick = function () {
           if (window.reopenGate) window.reopenGate();
           else location.reload();
         };
       }
     }
+  }
+
+  // 管理模式 -> 访客模式：免密建立只读会话，立即刷新 UI（无刷新、无访问门）
+  async function switchToVisitor() {
+    try { await Auth.visitor(); } catch (e) {}
+    window.AN_ROLE = 'visitor';
+    applyRole('visitor', true);
+    window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: 'visitor' } }));
+    window.dispatchEvent(new CustomEvent('an:visitor', { detail: { role: 'visitor' } }));
+    if (window.AN && window.AN.toast) window.AN.toast('已切换为访客模式（只读）');
   }
 
   async function init() {
