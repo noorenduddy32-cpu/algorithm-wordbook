@@ -17,6 +17,7 @@
   const LS_LOCK = 'wb_edit_unlocked';
   const LS_THEME = 'wb_theme_v2';
   const LS_VIEW = 'wb_view_cfg_v1';
+  const LS_ADD_MODE = 'wb_add_mode_v1';
 
   // 主题：名字 + 用于色块预览的底色
   const THEMES = [
@@ -49,6 +50,8 @@
   let filtered = [];
   let unlocked = localStorage.getItem(LS_LOCK) === '1';
   let editingId = null;
+  let addMode = (localStorage.getItem(LS_ADD_MODE) || 'pick');
+  if (!['pick','batch','import','manual'].includes(addMode)) addMode = 'pick';
   let stats = {};
   try { stats = JSON.parse(localStorage.getItem(LS_STATS) || '{}'); } catch (e) { stats = {}; }
 
@@ -251,10 +254,9 @@
     if (ic) ic.innerHTML = unlocked ? ICONS.unlock : ICONS.lock;
     const lbl = $('lockLabel');
     if (lbl) lbl.textContent = unlocked ? '已解锁' : '编辑模式';
-    // 添加按钮保持可用：点它再弹密码框，符合第一版直觉
-    $('batchBtn').disabled = !unlocked;
-    $('pickBtn').disabled = !unlocked;
-    $('importJsonBtn').disabled = !unlocked;
+    // 合并后的添加按钮组：主按钮需要解锁，箭头只负责展开菜单
+    const addBtn = $('addBtn');
+    if (addBtn) addBtn.disabled = !unlocked;
     render();
   }
 
@@ -289,6 +291,39 @@
     else if (name === '从句中选词') { const m = $('pickModal'); if (m) m.hidden = false; const t = $('pickText'); if (t) t.focus(); }
     else if (name === '导入 JSON') { const f = $('fileInput'); if (f) f.click(); }
     else if (name === '加入单词') { const m = $('pickModal'); if (m) m.hidden = false; }
+  }
+
+  // 添加方式下拉菜单：点击后立即执行并设为默认
+  function runAddAction(mode) {
+    if (mode === 'pick') { const m = $('pickModal'); if (m) m.hidden = false; const t = $('pickText'); if (t) t.focus(); }
+    else if (mode === 'batch') { const tx = $('batchText'); if (tx) tx.value = ''; const m = $('batchModal'); if (m) m.hidden = false; }
+    else if (mode === 'import') { const f = $('fileInput'); if (f) f.click(); }
+    else if (mode === 'manual') { openWordModal(null); }
+  }
+  function addModeName(mode) {
+    return { pick: '从句中选词', batch: '批量添加', import: '导入 JSON', manual: '添加单词' }[mode] || '从句中选词';
+  }
+  function setAddMode(mode) {
+    if (!['pick','batch','import','manual'].includes(mode)) mode = 'pick';
+    addMode = mode;
+    localStorage.setItem(LS_ADD_MODE, mode);
+    document.querySelectorAll('#addSplitMenu .split-item').forEach(function (n) {
+      n.classList.toggle('active', n.dataset.mode === mode);
+    });
+  }
+  function closeAddSplitMenu() {
+    const menu = $('addSplitMenu');
+    const toggle = $('addSplitToggle');
+    if (menu) menu.hidden = true;
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  }
+  function toggleAddSplitMenu() {
+    const menu = $('addSplitMenu');
+    const toggle = $('addSplitToggle');
+    if (!menu) return;
+    const now = menu.hidden;
+    menu.hidden = !now;
+    if (toggle) toggle.setAttribute('aria-expanded', String(now));
   }
 
   // 打开设置 / 关于弹窗（无需任何配置，仅说明）
@@ -1903,16 +1938,31 @@
       }
     });
 
+    // 合并后的「添加单词」按钮组：主按钮执行当前默认方式（默认从句中选词）
+    setAddMode(addMode);
     $('addBtn').addEventListener('click', function () {
-      if (!requireUnlock('添加单词')) return;
-      openWordModal(null);
+      if (!requireUnlock(addModeName(addMode))) return;
+      runAddAction(addMode);
+    });
+    $('addSplitToggle').addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleAddSplitMenu();
+    });
+    $('addSplitMenu').addEventListener('click', function (e) {
+      const item = e.target.closest('.split-item');
+      if (!item) return;
+      const mode = item.dataset.mode;
+      if (!mode) return;
+      setAddMode(mode);
+      closeAddSplitMenu();
+      if (!requireUnlock(addModeName(mode))) return;
+      runAddAction(mode);
+    });
+    document.addEventListener('click', function (e) {
+      const split = $('addSplit');
+      if (split && !split.contains(e.target)) closeAddSplitMenu();
     });
 
-    $('pickBtn').addEventListener('click', function () {
-      if (!requireUnlock('从句中选词')) return;
-      $('pickModal').hidden = false;
-      $('pickText').focus();
-    });
     bindPasteClean($('pickText'), false);   // 题面句子：整段压成一行
     bindPasteClean($('fExamples'), true);   // 例句：只合并被折断的行
     $('pickSplit').addEventListener('click', onPickSplit);
@@ -1940,11 +1990,6 @@
       if (e.target.dataset.f === 'on') pickRows[Number(row.dataset.i)].on = e.target.checked;
     });
 
-    $('batchBtn').addEventListener('click', function () {
-      if (!requireUnlock('批量添加')) return;
-      $('batchText').value = '';
-      $('batchModal').hidden = false;
-    });
     $('batchGo').addEventListener('click', onBatch);
 
     $('wordForm').addEventListener('submit', onSaveWord);
@@ -2076,9 +2121,6 @@
       $(id).addEventListener('change', updateExportHint);
     });
     $('exportJsonBtn').addEventListener('click', exportJson);
-    $('importJsonBtn').addEventListener('click', function () {
-      if (requireUnlock('导入 JSON')) $('fileInput').click();
-    });
     $('fileInput').addEventListener('change', function () {
       if (this.files && this.files[0]) importJson(this.files[0]);
       this.value = '';

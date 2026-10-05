@@ -112,10 +112,18 @@
   </div>
   <button id="exportDocxBtn" class="btn">导出 Word</button>
   <button id="exportJsonBtn" class="btn ghost">备份</button>
-  <button id="importJsonBtn" class="btn ghost">导入</button>
-  <button id="pickBtn" class="btn ghost" data-admin>从句中选词</button>
-  <button id="batchBtn" class="btn ghost" data-admin>批量添加</button>
-  <button id="addBtn" class="btn primary">+ 添加单词</button>
+  <div class="btn-split" id="addSplit" data-admin>
+    <button id="addBtn" class="btn primary split-main" type="button" title="添加单词">+ 添加单词</button>
+    <button id="addSplitToggle" class="btn primary split-arrow" type="button" title="选择添加方式" aria-haspopup="true" aria-expanded="false">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+    </button>
+    <div class="split-menu" id="addSplitMenu" hidden>
+      <button class="split-item active" data-mode="pick" type="button">从句中选词</button>
+      <button class="split-item" data-mode="batch" type="button">批量添加</button>
+      <button class="split-item" data-mode="import" type="button">导入 JSON</button>
+      <button class="split-item" data-mode="manual" type="button">手动添加</button>
+    </div>
+  </div>
 </div>
 
 </div><!-- /chrome -->
