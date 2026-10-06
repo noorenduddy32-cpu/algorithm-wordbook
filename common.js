@@ -11,6 +11,7 @@
   // 与单词本原有 key 保持一致，这样三个页面共用同一份主题 / 解锁状态
   const LS_THEME = 'wb_theme_v2';
   const LS_LOCK = 'wb_edit_unlocked';
+  const LS_FS = 'wb_font_scale';
 
   const THEMES = [
     { id: 'dark', name: '夜间深色', swatch: 'linear-gradient(135deg,#161a22,#0e1116)' },
@@ -244,6 +245,12 @@
           '<button id="themeBtn" class="icon-btn" title="切换主题"><span id="themeIcon"></span></button>' +
           '<div id="themeMenu" class="theme-menu" hidden></div>' +
         '</div>' +
+        '<div class="fs-wrap">' +
+          '<button id="fsBtn" class="icon-btn" title="字号大小" type="button">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.2h16"/><path d="M7.5 19.2 9 5.5h2.4L10 19.2"/><path d="M14.8 19.2 17.6 9h1.9"/></svg>' +
+          '</button>' +
+          '<div id="fsMenu" class="fs-menu" hidden></div>' +
+        '</div>' +
       '</div>';
 
     // 移动端：汉堡菜单开合（桌面端 .nav-toggle 隐藏，此逻辑不触发）
@@ -343,6 +350,82 @@
     return s.length > n ? s.slice(0, n) + '…' : s;
   }
 
+  /* ---------------- 字号缩放（全局生效，所有页面同步） ---------------- */
+
+  const FS_OPTIONS = [
+    { v: 0.85, label: '小' },
+    { v: 1, label: '标准' },
+    { v: 1.15, label: '大' },
+    { v: 1.3, label: '特大' }
+  ];
+
+  function applyFontScale(v) {
+    v = Math.min(1.6, Math.max(0.7, v || 1));
+    document.documentElement.style.zoom = v;
+    try { localStorage.setItem(LS_FS, String(v)); } catch (e) {}
+  }
+  function getFontScale() {
+    let v = 1;
+    try { v = parseFloat(localStorage.getItem(LS_FS)) || 1; } catch (e) {}
+    return v;
+  }
+  function buildFontMenu() {
+    const menu = $('fsMenu');
+    if (!menu) return;
+    const cur = getFontScale();
+    menu.innerHTML = FS_OPTIONS.map(function (o) {
+      return '<button type="button" data-fs="' + o.v + '"' +
+        (Math.abs(o.v - cur) < 0.001 ? ' class="active"' : '') + '>' + o.label + '</button>';
+    }).join('');
+  }
+  function positionFontMenu() {
+    const btn = $('fsBtn');
+    const menu = $('fsMenu');
+    if (!btn || !menu) return;
+    const rect = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 8) + 'px';
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+    menu.style.left = 'auto';
+    menu.style.zIndex = '9999';
+  }
+  function initFontScale() {
+    applyFontScale(getFontScale());
+    buildFontMenu();
+    const btn = $('fsBtn');
+    if (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const m = $('fsMenu');
+        if (!m) return;
+        m.hidden = !m.hidden;
+        if (!m.hidden) { buildFontMenu(); positionFontMenu(); }
+      });
+    }
+    const menu = $('fsMenu');
+    if (menu) {
+      menu.addEventListener('click', function (e) {
+        const b = e.target.closest('[data-fs]');
+        if (!b) return;
+        applyFontScale(parseFloat(b.dataset.fs));
+        buildFontMenu();
+        menu.hidden = true;
+      });
+    }
+    document.addEventListener('click', function (e) {
+      const m = $('fsMenu');
+      if (m && !m.hidden && !e.target.closest('.fs-wrap')) m.hidden = true;
+    });
+    window.addEventListener('scroll', function () {
+      const m = $('fsMenu');
+      if (m && !m.hidden) positionFontMenu();
+    }, true);
+    window.addEventListener('resize', function () {
+      const m = $('fsMenu');
+      if (m && !m.hidden) positionFontMenu();
+    });
+  }
+
   /* ---------------- 启动 ---------------- */
 
   function boot(opts) {
@@ -351,6 +434,7 @@
     if (opts.theme !== false) initTheme();
     if (opts.aurora !== false) initAurora();
     if (opts.modals !== false) initModals();
+    if (opts.fontScale !== false) initFontScale();
     if (opts.cloud !== false) initCloud();
   }
 

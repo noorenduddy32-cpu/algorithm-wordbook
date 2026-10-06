@@ -621,3 +621,19 @@ select option { background: var(--panel); color: var(--text); }
 @media (max-width: 720px) {
   .role-bar .icon-btn { width: 38px; padding: 0; }
 }
+
+/* ---------------- 字号调节 ---------------- */
+
+.fs-wrap { position: relative; z-index: 70; }
+.fs-menu {
+  position: absolute; right: 0; top: calc(100% + 16px); z-index: 71;
+  min-width: 120px; padding: 6px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+}
+.fs-menu[hidden] { display: none; }
+.fs-menu button {
+  display: block; width: 100%; font: inherit; font-size: 14px; color: var(--text);
+  background: transparent; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; text-align: left;
+}
+.fs-menu button:hover { background: var(--panel2); }
+.fs-menu button.active { color: var(--accent); font-weight: 600; }
