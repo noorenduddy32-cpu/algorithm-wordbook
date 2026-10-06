@@ -856,6 +856,8 @@
     h1: function () { exec('formatBlock', 'H1'); closeAllPickers(); },
     h2: function () { exec('formatBlock', 'H2'); closeAllPickers(); },
     h3: function () { exec('formatBlock', 'H3'); closeAllPickers(); },
+    h4: function () { exec('formatBlock', 'H4'); closeAllPickers(); },
+    h5: function () { exec('formatBlock', 'H5'); closeAllPickers(); },
     p: function () { exec('formatBlock', 'P'); closeAllPickers(); },
     bold: function () { exec('bold'); },
     italic: function () { exec('italic'); closeAllPickers(); },
@@ -948,6 +950,9 @@
       const el = $(id);
       if (el) el.hidden = true;
     });
+  }
+  function closeToolbarGroups() {
+    document.querySelectorAll('.tb-group.open').forEach(function (g) { g.classList.remove('open'); });
   }
   function togglePicker(id, render) {
     const el = $(id);
@@ -1387,6 +1392,16 @@
     });
 
     $('edToolbar').addEventListener('click', function (e) {
+      const cat = e.target.closest('[data-cat]');
+      if (cat) {
+        const group = cat.closest('.tb-group');
+        const wasOpen = group && group.classList.contains('open');
+        document.querySelectorAll('.tb-group.open').forEach(function (g) { g.classList.remove('open'); });
+        closeAllPickers();
+        if (group && !wasOpen) group.classList.add('open');
+        e.stopPropagation();
+        return;
+      }
       const d = e.target.closest('[data-dropdown]');
       if (d) {
         const map = {
@@ -1408,6 +1423,8 @@
         const fn = CMDS[cmd];
         if (fn) fn();
       }
+      closeAllPickers();
+      e.stopPropagation();
     });
 
     // 表格选择器：hover 高亮，点击插入
@@ -1424,7 +1441,7 @@
     });
     document.addEventListener('click', function (e) {
       const inside = e.target.closest('#tablePickerWrap, #langPickerWrap, #formatPickerWrap, #colorPickerWrap, #bgPickerWrap, #moreFormatWrap, #listPickerWrap, #alignPickerWrap, #codePickerWrap, #resPickerWrap');
-      if (!inside) closeAllPickers();
+      if (!inside) { closeAllPickers(); closeToolbarGroups(); }
     });
     $('langPickerList').addEventListener('click', function (e) {
       const b = e.target.closest('.lang-pick-item');
