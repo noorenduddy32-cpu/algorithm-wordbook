@@ -432,11 +432,15 @@
 .ed-title::placeholder { color: var(--muted); opacity: .55; }
 
 .ed-meta-row {
-  display: grid;
-  grid-template-columns: 1fr 140px 165px;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 12px;
   padding: 14px 0;
+  overflow-x: auto;
 }
+.ed-meta-row input { flex: 1 1 auto; min-width: 80px; }
+.ed-meta-row select { flex: 0 0 auto; min-width: 0; }
 .ed-meta-row input,
 .ed-meta-row select { font-size: 13.5px; }
 .ed-col,
@@ -1144,7 +1148,7 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
 @media (max-width: 900px) {
   .ed-panes { grid-template-columns: 1fr; }
   .ed-input { border-right: none; border-bottom: 1px solid var(--border); }
-  .ed-meta-row { grid-template-columns: 1fr; }
+  /* 元信息行保持一行，移动端可横向滚动 */
   .top-nav { display: none; }
   .notes-head-actions { width: 100%; }
   .notes-head-actions #noteSearch { flex: 1; width: auto; }
