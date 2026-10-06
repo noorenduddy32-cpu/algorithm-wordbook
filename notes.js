@@ -1482,9 +1482,7 @@
     });
     $('edTitle').addEventListener('input', saveDraftLocal);
 
-    // 标签库选择器
-    const picker = $('tagPicker');
-    if (picker) picker.classList.add('open');
+    // 标签库选择器（默认收起，点「常用标签库」展开）
     $('tagPickerToggle').addEventListener('click', function () {
       $('tagPicker').classList.toggle('open');
     });
