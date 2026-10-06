@@ -738,6 +738,15 @@
     // 词性单独一行，释义只保留中文
     $('dPos').innerHTML = renderPosTags(w.pos);
     $('dMeaning').innerHTML = renderMeaningRows(w.meaning);
+
+    // 备注只在详情页显示
+    const noteBlock = $('dNoteBlock');
+    const noteEl = $('dNote');
+    if (noteBlock && noteEl) {
+      noteBlock.hidden = !w.note;
+      if (w.note) noteEl.textContent = w.note;
+    }
+
     const ex = (w.examples || []).filter(Boolean);
     $('dExampleBlock').hidden = !ex.length;
     $('dExamples').innerHTML = ex.map(function (e) {
@@ -1185,12 +1194,12 @@
     $('emptyState').hidden = filtered.length > 0;
   }
 
-  // 方块模式下的行结构（配合 styles.css 里 body.layout-grid .card 的规则）：
-  //   第 1 行：单词 + 小喇叭（同一行、喇叭与文字同高）
-  //   第 2 行：词性 + 中文释义
-  //   第 3-5 行：例句（最多 3 行）
-  //   底部：认识 / 不认识 + 编辑删除
-  // 备注 note 在方块模式里不显示（内容太碎，留白反而多）。
+    // 方块模式下的行结构（配合 styles.css 里 body.layout-grid .card 的规则）：
+    //   第 1 行：单词 + 小喇叭（同一行、喇叭与文字同高）
+    //   第 2 行：词性 + 中文释义
+    //   第 3-5 行：例句（最多 3 行）
+    //   底部：认识 / 不认识 + 编辑删除
+    // 备注 note 在列表卡片里不显示（内容太碎，留白反而多），只在单词详情页展示。
   function cardHtml(w) {
     const s = stats[w.word] || {};
     const ex = (w.examples || []).map(function (e) {
@@ -1220,7 +1229,6 @@
       (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') +
       '<span class="meaning">' + esc(w.meaning || '—') + '</span></div>' +
       (ex ? '<ul class="examples">' + ex + '</ul>' : '<ul class="examples"></ul>') +
-      (w.note ? '<div class="note">' + esc(w.note) + '</div>' : '') +
       (badges || actions
         ? '<div class="card-foot">' + badges + actions + '</div>'
         : '') +
