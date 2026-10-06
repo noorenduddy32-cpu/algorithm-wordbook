@@ -351,32 +351,54 @@
   }
 
   /* ---------------- 字号缩放（全局生效，所有页面同步） ---------------- */
+  // 新版：1-100 连续滑杆，50=标准(1.0)，1=最小(0.5)，100=最大(2.0)
 
-  const FS_OPTIONS = [
-    { v: 0.85, label: '小' },
-    { v: 1, label: '标准' },
-    { v: 1.15, label: '大' },
-    { v: 1.3, label: '特大' }
-  ];
+  const FS_MIN = 1, FS_MAX = 100, FS_DEFAULT = 50;
 
-  function applyFontScale(v) {
-    v = Math.min(1.6, Math.max(0.7, v || 1));
-    document.documentElement.style.zoom = v;
-    try { localStorage.setItem(LS_FS, String(v)); } catch (e) {}
+  function scaleToZoom(s) {
+    s = Math.min(FS_MAX, Math.max(FS_MIN, parseInt(s, 10) || FS_DEFAULT));
+    if (s <= FS_DEFAULT) {
+      // 1 ~ 50 -> 0.5 ~ 1.0
+      return 0.5 + (s - FS_MIN) * (0.5 / (FS_DEFAULT - FS_MIN));
+    }
+    // 51 ~ 100 -> 1.02 ~ 2.0
+    return 1.0 + (s - FS_DEFAULT) * (1.0 / (FS_MAX - FS_DEFAULT));
+  }
+  function zoomToScale(z) {
+    z = parseFloat(z) || 1.0;
+    if (z <= 1.0) {
+      return Math.round(FS_MIN + (z - 0.5) * ((FS_DEFAULT - FS_MIN) / 0.5));
+    }
+    return Math.round(FS_DEFAULT + (z - 1.0) * (FS_MAX - FS_DEFAULT));
+  }
+  function applyFontScale(scale) {
+    const s = Math.min(FS_MAX, Math.max(FS_MIN, parseInt(scale, 10) || FS_DEFAULT));
+    document.documentElement.style.zoom = scaleToZoom(s);
+    try { localStorage.setItem(LS_FS, String(s)); } catch (e) {}
   }
   function getFontScale() {
-    let v = 1;
-    try { v = parseFloat(localStorage.getItem(LS_FS)) || 1; } catch (e) {}
+    let v = FS_DEFAULT;
+    try {
+      const raw = localStorage.getItem(LS_FS);
+      if (!raw) return v;
+      const n = parseInt(raw, 10);
+      if (!isNaN(n) && n >= FS_MIN && n <= FS_MAX) {
+        v = n;
+      } else {
+        // 兼容旧版 zoom 值（如 0.85/1/1.15/1.3）
+        const z = parseFloat(raw);
+        if (!isNaN(z)) v = Math.min(FS_MAX, Math.max(FS_MIN, zoomToScale(z)));
+      }
+    } catch (e) {}
     return v;
   }
   function buildFontMenu() {
     const menu = $('fsMenu');
     if (!menu) return;
     const cur = getFontScale();
-    menu.innerHTML = FS_OPTIONS.map(function (o) {
-      return '<button type="button" data-fs="' + o.v + '"' +
-        (Math.abs(o.v - cur) < 0.001 ? ' class="active"' : '') + '>' + o.label + '</button>';
-    }).join('');
+    menu.innerHTML =
+      '<div class="fs-row"><span>小</span><span id="fsVal">' + cur + '</span><span>大</span></div>' +
+      '<input id="fsRange" type="range" min="' + FS_MIN + '" max="' + FS_MAX + '" value="' + cur + '">';
   }
   function positionFontMenu() {
     const btn = $('fsBtn');
@@ -404,12 +426,13 @@
     }
     const menu = $('fsMenu');
     if (menu) {
-      menu.addEventListener('click', function (e) {
-        const b = e.target.closest('[data-fs]');
-        if (!b) return;
-        applyFontScale(parseFloat(b.dataset.fs));
-        buildFontMenu();
-        menu.hidden = true;
+      // 拖动滑杆时实时更新字号和显示值
+      menu.addEventListener('input', function (e) {
+        if (e.target.id !== 'fsRange') return;
+        const s = parseInt(e.target.value, 10);
+        applyFontScale(s);
+        const label = $('fsVal');
+        if (label) label.textContent = s;
       });
     }
     document.addEventListener('click', function (e) {

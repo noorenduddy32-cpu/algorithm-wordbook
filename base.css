@@ -626,14 +626,32 @@ select option { background: var(--panel); color: var(--text); }
 
 .fs-wrap { position: relative; z-index: 70; }
 .fs-menu {
-  position: absolute; right: 0; top: calc(100% + 16px); z-index: 71;
-  min-width: 120px; padding: 6px;
+  position: fixed; z-index: 9999;
+  min-width: 220px; padding: 14px 16px;
   background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
 }
 .fs-menu[hidden] { display: none; }
-.fs-menu button {
-  display: block; width: 100%; font: inherit; font-size: 14px; color: var(--text);
-  background: transparent; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; text-align: left;
+.fs-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--muted); margin-bottom: 10px;
 }
-.fs-menu button:hover { background: var(--panel2); }
-.fs-menu button.active { color: var(--accent); font-weight: 600; }
+.fs-row #fsVal {
+  color: var(--accent); font-weight: 600; font-size: 14px;
+  min-width: 28px; text-align: center;
+}
+#fsRange {
+  width: 100%; margin: 0;
+  -webkit-appearance: none; appearance: none;
+  height: 6px; background: var(--panel3); border-radius: 3px; outline: none; cursor: pointer;
+}
+#fsRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--panel);
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+#fsRange::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--panel);
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
