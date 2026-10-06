@@ -170,7 +170,7 @@
       '<div id="gate">' +
         '<div class="gate-card">' +
           '<h1>算法竞赛笔记</h1>' +
-          '<p class="muted">输入访问密码以进入（访客 icpc / 管理员 yqx）</p>' +
+          '<p class="muted">输入访问密码以进入</p>' +
           '<form id="gateForm" autocomplete="off">' +
             '<input id="gatePw" type="password" placeholder="访问密码" autocomplete="current-password">' +
             '<button type="submit" class="btn primary">进入笔记</button>' +
@@ -274,8 +274,9 @@
       applyRole(null, false);
       return;
     }
-    const role = await Auth.me();
-    if (role) onAuthed(role, true);
+    // 有后端时：每次打开页面都强制重新输入密码，不自动恢复旧会话。
+    // 这样管理员密码才不会形同虚设；访客先输访客密码进入只读模式，
+    // 再点右上角角色徽标输管理员密码升级为管理模式。
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
