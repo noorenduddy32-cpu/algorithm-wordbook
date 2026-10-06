@@ -269,21 +269,21 @@
   }
 
   async function init() {
-    buildGate();
-    // 探测后端：纯静态部署（WorkBuddy）没有 /api/me，不卡访问门，由 lockBtn 编辑模式控制写权限
+    // 先探测后端 / 会话，**确认需要登录再渲染访问门**，避免每次站内跳转都先闪一下密码框。
     let resp = null;
     try { resp = await fetch('/api/me', { credentials: 'include' }); } catch (e) { resp = null; }
     const hasBackend = !!(resp && resp.status !== 404);
     window.AN_HAS_BACKEND = hasBackend;
+
+    // 纯静态部署（WorkBuddy）没有 /api/me，不卡访问门，由 lockBtn 编辑模式控制写权限
     if (!resp || resp.status === 404) {
-      const gate = document.getElementById('gate');
-      if (gate) { gate.remove(); document.body.style.overflow = ''; }
       applyRole(null, false);
       return;
     }
-    // 有后端：读已有会话角色。有效会话（访客/管理员）按「进入方式」决定行为：
+
+    // 有后端：读已有会话角色，按「进入方式」决定行为：
     //  · 站内跳转(navigate) / 前进后退(back_forward) → 静默恢复，不弹密码框（状态保持）
-    //  · 刷新(reload) → 保留访问门，强制重新输密码（满足「刷新必须输访客密码」）
+    //  · 刷新(reload) / 无会话 → 才渲染访问门，强制重新输密码
     let role = null;
     try { const j = await resp.json(); role = j && j.role; } catch (e) {}
     if (role === 'visitor' || role === 'admin') {
@@ -293,10 +293,11 @@
         onAuthed(role, true);
         return;
       }
-      return; // reload：访问门已在 buildGate() 显示，等待重新输密码
     }
-    // 无会话：保留访问门，强制先输密码（访客或管理员）才能进入网站。
-    // 访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级为管理模式；
+
+    // 需要输密码时才渲染访问门
+    buildGate();
+    // 无会话：访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级；
     // 管理员密码与访客密码严格绑定各自角色，输入访客密码绝不会进入管理员模式。
   }
 
