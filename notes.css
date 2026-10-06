@@ -1090,12 +1090,13 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
   overflow-wrap: anywhere;
   box-sizing: border-box;
 }
-/* 编辑器里格子要比光标明显大一些，给足高度和水平空间 */
+/* 编辑器里：初始插入的表格每个格子都是正方形（宽高一致，不撑满整行） */
 .ed-input th, .ed-input td {
-  padding: 12px 16px;
-  min-width: 110px;
-  height: 44px;
-  line-height: 1.85;
+  padding: 8px 12px;
+  width: 96px;
+  min-width: 96px;
+  height: 96px;
+  line-height: 1.6;
 }
 .md-body th,
 .ed-input th,
@@ -1108,7 +1109,8 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
 .ed-preview tr:nth-child(even) td { background: color-mix(in srgb, var(--panel2) 45%, transparent); }
 
 /* 编辑器里：边框更清晰、单元格可点、光标对齐（这是「表格太小 / 光标错位」的修复点） */
-.ed-input table { font-size: 15px; }
+/* 编辑器里插入的表格不撑满整行，格子按固定宽高排布成正方形 */
+.ed-input table { font-size: 15px; width: auto; }
 .ed-input th { background: var(--panel2); cursor: text; }
 .ed-input td { background: var(--panel); cursor: text; }
 .ed-input td:hover,
