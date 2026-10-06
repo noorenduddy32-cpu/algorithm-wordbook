@@ -281,14 +281,19 @@
       applyRole(null, false);
       return;
     }
-    // 有后端：读已有会话角色。只要存在有效会话（访客或管理员），直接静默恢复，
-    // 切换页面 / 刷新都不再弹密码框（站内跳转保持状态；刷新也保持登录态）。
+    // 有后端：读已有会话角色。有效会话（访客/管理员）按「进入方式」决定行为：
+    //  · 站内跳转(navigate) / 前进后退(back_forward) → 静默恢复，不弹密码框（状态保持）
+    //  · 刷新(reload) → 保留访问门，强制重新输密码（满足「刷新必须输访客密码」）
     let role = null;
     try { const j = await resp.json(); role = j && j.role; } catch (e) {}
     if (role === 'visitor' || role === 'admin') {
-      Auth.role = role;
-      onAuthed(role, true);
-      return;
+      const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || {};
+      if (nav.type !== 'reload') {
+        Auth.role = role;
+        onAuthed(role, true);
+        return;
+      }
+      return; // reload：访问门已在 buildGate() 显示，等待重新输密码
     }
     // 无会话：保留访问门，强制先输密码（访客或管理员）才能进入网站。
     // 访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级为管理模式；
