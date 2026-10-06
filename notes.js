@@ -906,9 +906,9 @@
     history: function () { showHistory(); },
     foreColor: function (color) { exec('foreColor', color); closeAllPickers(); },
     hiliteColor: function (color) { exec('hiliteColor', color); closeAllPickers(); },
-    justifyLeft: function () { exec('justifyLeft'); closeAllPickers(); },
-    justifyCenter: function () { exec('justifyCenter'); closeAllPickers(); },
-    justifyRight: function () { exec('justifyRight'); closeAllPickers(); }
+    justifyLeft: function () { applyAlign('left'); closeAllPickers(); },
+    justifyCenter: function () { applyAlign('center'); closeAllPickers(); },
+    justifyRight: function () { applyAlign('right'); closeAllPickers(); }
   };
 
   function insertTable(rows, cols) {
@@ -928,6 +928,62 @@
     const frag = document.createRange().createContextualFragment(html);
     range.insertNode(frag);
     sel.collapseToEnd();
+    updatePreview();
+  }
+
+  // 任意元素对齐：文字用 text-align，图片/表格/媒体用 margin:auto（块级才能居中）
+  // 这样「文字 / 表格 / 图片 / 其他任何元素」都能左 / 中 / 右对齐
+  const ALIGN_MEDIA = 'img, table, pre, figure, iframe, video';
+  function rangeIntersectsNode(range, node) {
+    try { if (typeof range.intersectsNode === 'function') return range.intersectsNode(node); } catch (e) {}
+    const nr = document.createRange();
+    nr.selectNode(node);
+    return range.compareBoundaryPoints(Range.END_TO_START, nr) <= 0 &&
+           range.compareBoundaryPoints(Range.START_TO_END, nr) >= 0;
+  }
+  function getBlockElement(node) {
+    if (node && node.nodeType === 3) node = node.parentNode;
+    const root = edBody();
+    while (node && node !== root) {
+      const tag = node.tagName;
+      if (['P', 'DIV', 'LI', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'TD', 'TH', 'FIGURE', 'PRE'].indexOf(tag) >= 0) return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+  function setElementAlign(el, value) {
+    const tag = el.tagName;
+    if (ALIGN_MEDIA.toUpperCase().indexOf(tag) >= 0 || tag === 'IMG' || tag === 'TABLE' ||
+        tag === 'PRE' || tag === 'FIGURE' || tag === 'IFRAME' || tag === 'VIDEO') {
+      // 块级 / 媒体元素：用左右外边距居中，文字对齐作兜底
+      el.style.display = (tag === 'IMG') ? 'block' : el.style.display;
+      el.style.marginLeft = (value === 'right' || value === 'center') ? 'auto' : '0';
+      el.style.marginRight = (value === 'left' || value === 'center') ? 'auto' : '0';
+      el.style.textAlign = value;
+    } else {
+      // 纯文字块：用 text-align
+      el.style.textAlign = value;
+    }
+  }
+  function applyAlign(value) {
+    const root = edBody();
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const els = new Set();
+    root.querySelectorAll(ALIGN_MEDIA).forEach(function (el) {
+      if (rangeIntersectsNode(range, el)) els.add(el);
+    });
+    const block = getBlockElement(range.commonAncestorContainer);
+    if (block) {
+      if (els.size === 0) {
+        // 选区没精准命中媒体：若所在块内含媒体，则对齐该媒体（方便「点一下图片/表格就居中」）
+        block.querySelectorAll(ALIGN_MEDIA).forEach(function (m) { els.add(m); });
+      }
+      els.add(block);
+    }
+    if (els.size === 0) return;
+    els.forEach(function (el) { setElementAlign(el, value); });
     updatePreview();
   }
 
