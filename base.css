@@ -467,19 +467,18 @@ select option { background: var(--panel); color: var(--text); }
 
 .theme-wrap { position: relative; }
 .theme-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 16px);
+  position: fixed;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 6px;
-  z-index: 120;
+  z-index: 9999;
   min-width: 176px;
   max-width: 260px;
   max-height: 280px;
   overflow-y: auto;
   box-shadow: var(--shadow);
+  /* 具体 top/right 由 common.js 根据主题按钮实时计算，避免绝对定位撑开顶栏导致页面整体下移 */
 }
 .theme-menu[hidden] { display: none; }
 .theme-menu button {

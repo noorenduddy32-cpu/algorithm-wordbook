@@ -59,6 +59,18 @@
     }).join('');
   }
 
+  function positionThemeMenu() {
+    const btn = $('themeBtn');
+    const menu = $('themeMenu');
+    if (!btn || !menu) return;
+    const rect = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = (rect.bottom + 8) + 'px';
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+    menu.style.left = 'auto';
+    menu.style.zIndex = '9999';
+  }
+
   function initTheme() {
     let saved = 'dark';
     try { saved = localStorage.getItem(LS_THEME) || 'dark'; } catch (e) {}
@@ -69,7 +81,9 @@
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         const m = $('themeMenu');
-        if (m) m.hidden = !m.hidden;
+        if (!m) return;
+        m.hidden = !m.hidden;
+        if (!m.hidden) positionThemeMenu();
       });
     }
     const menu = $('themeMenu');
@@ -84,6 +98,15 @@
     document.addEventListener('click', function (e) {
       const m = $('themeMenu');
       if (m && !m.hidden && !e.target.closest('.theme-wrap')) m.hidden = true;
+    });
+    // 滚动/缩放时若菜单打开，实时跟随主题按钮，保持浮层不飘
+    window.addEventListener('scroll', function () {
+      const m = $('themeMenu');
+      if (m && !m.hidden) positionThemeMenu();
+    }, true);
+    window.addEventListener('resize', function () {
+      const m = $('themeMenu');
+      if (m && !m.hidden) positionThemeMenu();
     });
   }
 
