@@ -274,9 +274,18 @@
       applyRole(null, false);
       return;
     }
-    // 有后端时：每次打开页面都强制重新输入密码，不自动恢复旧会话。
-    // 这样管理员密码才不会形同虚设；访客先输访客密码进入只读模式，
-    // 再点右上角角色徽标输管理员密码升级为管理模式。
+    // 有后端：读已有会话角色
+    let role = null;
+    try { const j = await resp.json(); role = j && j.role; } catch (e) {}
+    if (role === 'visitor') {
+      // 访客会话有效 → 直接恢复，切换页面 / 刷新不必重输密码；浏览本就不需要管理员密码
+      Auth.role = role;
+      onAuthed('visitor', true);
+      return;
+    }
+    // 其余情况（无会话 / 管理员会话）：保留访问门，强制先输密码。
+    // 管理员不自动恢复，打开网站必须先输密码（访客或管理员），密码才不形同虚设；
+    // 访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级为管理模式。
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
