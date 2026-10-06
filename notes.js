@@ -840,6 +840,30 @@
     updatePreview();
   }
 
+  // 把剪贴板 / 拖拽的图片文件直接内嵌为原图（base64 data URI），不替换成链接或占位符
+  function readFileAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      const r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(r.error || new Error('read error')); };
+      r.readAsDataURL(file);
+    });
+  }
+  // 在当前光标处逐个插入原图；图片以 data URI 形式写入正文 HTML，保存后持久可见、可复制
+  async function embedImages(files) {
+    edBody().focus();
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (!/^image\//.test(f.type)) continue;
+      try {
+        const url = await readFileAsDataUrl(f);
+        insertHTML('<img src="' + url + '" alt="' + esc(f.name || '图片') + '" style="max-width:100%">');
+      } catch (err) {
+        AN.toast('图片读取失败', true);
+      }
+    }
+  }
+
   const TPL = [
     '<h2>题目描述</h2>',
     '<p>在这里粘贴题面，或者用一两句话概括。</p>',
@@ -1462,10 +1486,30 @@
       updatePreview();
     });
 
-    // 粘贴：从剪贴板取 HTML 并消毒后原样插入（复制的题目 / 博客原原本本契合）
+    // 粘贴：优先内嵌剪贴板里的图片（原图直出，不替换成链接/占位符）；其余按文本/HTML 原样插入
     edBody().addEventListener('paste', function (e) {
       e.preventDefault();
       const cd = e.clipboardData;
+      // 1) 剪贴板含图片文件 → 直接内嵌为原图
+      const items = cd ? cd.items : null;
+      if (items) {
+        const imgFiles = [];
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].kind === 'file' && /^image\//.test(items[i].type)) {
+            const f = items[i].getAsFile();
+            if (f) imgFiles.push(f);
+          }
+        }
+        if (imgFiles.length) { embedImages(imgFiles); return; }
+      }
+      // 2) 兼容：部分浏览器图片以 files 形式出现
+      const files = cd ? cd.files : null;
+      if (files && files.length) {
+        const arr = [];
+        for (let i = 0; i < files.length; i++) if (/^image\//.test(files[i].type)) arr.push(files[i]);
+        if (arr.length) { embedImages(arr); return; }
+      }
+      // 3) 文本 / HTML（原有逻辑）
       const html = cd ? cd.getData('text/html') : '';
       const text = cd ? cd.getData('text/plain') : '';
       if (html) {
@@ -1475,6 +1519,23 @@
       } else if (text) {
         insertHTML(esc(text).replace(/\n/g, '<br>'));
       }
+    });
+
+    // 拖拽图片：松手即内嵌原图（与粘贴同一套逻辑）
+    edBody().addEventListener('dragover', function (e) {
+      const dt = e.dataTransfer;
+      if (dt && dt.items) {
+        for (let i = 0; i < dt.items.length; i++) {
+          if (dt.items[i].kind === 'file' && /^image\//.test(dt.items[i].type)) { e.preventDefault(); break; }
+        }
+      }
+    });
+    edBody().addEventListener('drop', function (e) {
+      const dt = e.dataTransfer;
+      if (!dt || !dt.files || !dt.files.length) return;
+      const arr = [];
+      for (let i = 0; i < dt.files.length; i++) if (/^image\//.test(dt.files[i].type)) arr.push(dt.files[i]);
+      if (arr.length) { e.preventDefault(); embedImages(arr); }
     });
 
     // 编辑联动
