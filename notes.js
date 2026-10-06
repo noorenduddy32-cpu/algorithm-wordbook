@@ -571,9 +571,12 @@
     const sel = $('edColumn');
     const cur = sel.value;
     const names = boardColumnNames();
-    sel.innerHTML = '<option value="">未分栏</option>' +
-      names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
-    sel.value = (cur && names.indexOf(cur) >= 0) ? cur : '';
+    if (!names.length) {
+      sel.innerHTML = '<option value="" disabled selected>暂无分栏，请先到「管理栏」添加</option>';
+      return;
+    }
+    sel.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+    if (cur && names.indexOf(cur) >= 0) sel.value = cur;
   }
 
   function openColModal() {
@@ -1073,6 +1076,8 @@
     if (!title) { AN.toast('先起个标题', true); $('edTitle').focus(); return; }
     const content = sanitizeHtml(getHtml());
     if (publish && !stripHtml(content).trim()) { AN.toast('正文还是空的', true); return; }
+    const category = $('edColumn').value || '';
+    if (!category.trim()) { AN.toast('请先选择分栏', true); $('edColumn').focus(); return; }
 
     const btn = publish ? $('publishBtn') : $('saveDraftBtn');
     const old = btn.textContent;
@@ -1083,7 +1088,7 @@
       content: content,
       summary: $('edSummary').value.trim() || autoSummary(content),
       tags: parseTags(),
-      category: $('edColumn').value || '',
+      category: category,
       status: publish ? 'published' : 'draft',
       visibility: $('edVisibility').value || 'private',
       updated_at: new Date().toISOString()
