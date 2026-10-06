@@ -170,13 +170,12 @@
       '<div id="gate">' +
         '<div class="gate-card">' +
           '<h1>算法竞赛笔记</h1>' +
-          '<p class="muted">输入访问密码以进入</p>' +
+          '<p class="muted">输入访问密码以进入（访客 icpc / 管理员 yqx）</p>' +
           '<form id="gateForm" autocomplete="off">' +
             '<input id="gatePw" type="password" placeholder="访问密码" autocomplete="current-password">' +
             '<button type="submit" class="btn primary">进入笔记</button>' +
           '</form>' +
           '<p id="gateErr" class="err" hidden></p>' +
-          '<button type="button" id="gateVisitor" class="link-btn">以访客身份浏览（只读）</button>' +
         '</div>' +
       '</div>'
     );
@@ -185,14 +184,6 @@
     const input = g.querySelector('#gatePw');
     const err = g.querySelector('#gateErr');
     setTimeout(function () { input.focus(); }, 60);
-    const visitorBtn = g.querySelector('#gateVisitor');
-    if (visitorBtn) visitorBtn.addEventListener('click', async function () {
-      const gate = document.getElementById('gate');
-      if (gate) { gate.remove(); document.body.style.overflow = ''; }
-      // 建立真正的访客会话（写入 visitor Cookie），否则读权限不生效
-      try { await Auth.visitor(); } catch (e) {}
-      onAuthed('visitor', true);
-    });
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       err.hidden = true;
