@@ -495,6 +495,60 @@ select option { background: var(--panel); color: var(--text); }
   .topbar { padding: 12px 14px; gap: 10px; }
 }
 
+/* ---------------- 移动端汉堡菜单 ----------------
+   桌面端 .top-nav 横向铺开、.nav-toggle 隐藏；
+   窄屏（≤900px）.top-nav 被各页隐藏，改由 .nav-toggle 开合 .mobile-nav 抽屉。 */
+/* 用 .icon-btn.nav-toggle 提高特异性，盖过 styles.css 里 .icon-btn { display:inline-flex } */
+.icon-btn.nav-toggle { display: none; }
+.mobile-nav { display: none; }
+@media (max-width: 900px) {
+  .topbar { position: relative; }
+  .icon-btn.nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    flex: none;
+  }
+  .mobile-nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 6px;
+    z-index: 120;
+  }
+  body.nav-open .mobile-nav { display: flex; }
+  .mobile-nav .mn-link {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .mobile-nav .mn-link:hover { background: var(--panel2); text-decoration: none; }
+  .mobile-nav .mn-link.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .mobile-nav .mn-link svg { flex: none; }
+}
+
 /* ---------------- 登录门 ---------------- */
 
 #gate {
