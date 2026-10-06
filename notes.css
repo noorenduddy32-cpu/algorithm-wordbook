@@ -574,9 +574,9 @@ body.read-only .tag-picker { display: none; }
 .ed-toolbar {
   display: flex;
   gap: 0;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding: 8px 10px;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding: 6px 10px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px 12px 0 0;
@@ -584,20 +584,20 @@ body.read-only .tag-picker { display: none; }
   top: 0;
   z-index: 30;
   backdrop-filter: blur(8px);
-  scrollbar-width: thin;
 }
-.ed-toolbar::-webkit-scrollbar { height: 5px; }
-.ed-toolbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .tb-group {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 0 8px;
   border-right: 1px solid var(--border);
-  flex: none;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .tb-group:first-child { padding-left: 0; }
 .tb-group:last-child { border-right: none; padding-right: 0; }
 .tb-group-right { margin-left: auto; padding-right: 0; border-right: none; }
+
 .tb {
   border: 1px solid transparent;
   background: transparent;
@@ -623,16 +623,34 @@ body.read-only .tag-picker { display: none; }
 .tb:hover { background: var(--panel3); color: var(--text); }
 .tb:active { transform: translateY(1px); }
 
-/* 分类折叠按钮（默认在桌面端隐藏） */
-.tb-cat { display: none; }
-.tb-group-body { display: flex; gap: 2px; }
-.tb-group.open .tb-cat,
-.tb-cat.active {
+/* 分类折叠按钮：默认只显示分类，点击后展开该分类下的按钮 */
+.tb-cat {
+  display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 48px;
+  order: 0;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--border);
+}
+.tb-cat:hover { background: var(--panel3); }
+.tb-group.open .tb-cat {
   background: var(--accent-soft);
   color: var(--accent);
   border-color: var(--accent);
 }
-
+.tb-group-body {
+  display: none;
+  width: 100%;
+  order: 99;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel2);
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.tb-group.open .tb-group-body { display: flex; }
 /* 通用下拉面板 */
 .tb-popover {
   position: absolute;
@@ -650,6 +668,9 @@ body.read-only .tag-picker { display: none; }
   gap: 3px;
   user-select: none;
 }
+.tb-popover[hidden],
+.table-picker-popover[hidden],
+.lang-picker-popover[hidden] { display: none; }
 .tb-pop-item {
   display: flex;
   align-items: center;
@@ -1145,51 +1166,11 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
 }
 
 @media (max-width: 720px) {
-  /* 工具栏折叠为分类按钮 */
-  .ed-toolbar {
-    flex-wrap: wrap;
-    padding: 6px;
-    gap: 0;
-    overflow-x: visible;
-  }
-  .tb-group {
-    display: contents;
-    padding: 0;
-    border-right: none;
-  }
+  /* 工具栏在窄屏下微调 */
+  .tb-group { border-right: none; padding: 0; }
   .tb-group-right { margin-left: 0; }
-  .tb-cat {
-    display: inline-flex;
-    flex: 1 1 0;
-    min-width: 0;
-    height: 48px;
-    order: 0;
-    border-radius: 0;
-    border: 1px solid transparent;
-    border-bottom: 1px solid var(--border);
-  }
-  .tb-cat:hover { background: var(--panel3); }
-  .tb-group.open .tb-cat {
-    background: var(--accent-soft);
-    color: var(--accent);
-    border-color: var(--accent);
-  }
-  .tb-group-body {
-    display: none;
-    width: 100%;
-    order: 99;
-    padding: 6px 4px;
-    border-bottom: 1px solid var(--border);
-    background: var(--panel2);
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-  .tb-group.open .tb-group-body { display: flex; }
-  .tb-group-body .tb {
-    min-width: 44px;
-    height: 48px;
-    font-size: 10px;
-  }
+  .tb-cat { border-radius: 0; }
+  .tb-group-body .tb { min-width: 44px; height: 48px; font-size: 10px; }
   .tb-group-body .tb svg { width: 14px; height: 14px; }
 
   /* 编辑器标签库在窄屏下更紧凑 */
