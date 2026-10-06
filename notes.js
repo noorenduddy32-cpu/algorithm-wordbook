@@ -1418,7 +1418,7 @@
       if (d) {
         const map = {
           format: toggleFormatPicker, color: toggleColorPicker, bg: toggleBgPicker,
-          align: toggleAlignPicker, code: toggleCodePicker
+          align: toggleAlignPicker, code: toggleCodePicker, table: toggleTablePicker
         };
         const fn = map[d.dataset.dropdown];
         if (fn) fn();
