@@ -623,6 +623,16 @@ body.read-only .tag-picker { display: none; }
 .tb:hover { background: var(--panel3); color: var(--text); }
 .tb:active { transform: translateY(1px); }
 
+/* 分类折叠按钮（默认在桌面端隐藏） */
+.tb-cat { display: none; }
+.tb-group-body { display: flex; gap: 2px; }
+.tb-group.open .tb-cat,
+.tb-cat.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* 通用下拉面板 */
 .tb-popover {
   position: absolute;
@@ -1132,4 +1142,82 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
   .reader-body h1 { font-size: 26px; }
   .ed-title { font-size: 23px; }
   .ai-acts { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  /* 工具栏折叠为分类按钮 */
+  .ed-toolbar {
+    flex-wrap: wrap;
+    padding: 6px;
+    gap: 0;
+    overflow-x: visible;
+  }
+  .tb-group {
+    display: contents;
+    padding: 0;
+    border-right: none;
+  }
+  .tb-group-right { margin-left: 0; }
+  .tb-cat {
+    display: inline-flex;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 48px;
+    order: 0;
+    border-radius: 0;
+    border: 1px solid transparent;
+    border-bottom: 1px solid var(--border);
+  }
+  .tb-cat:hover { background: var(--panel3); }
+  .tb-group.open .tb-cat {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .tb-group-body {
+    display: none;
+    width: 100%;
+    order: 99;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel2);
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .tb-group.open .tb-group-body { display: flex; }
+  .tb-group-body .tb {
+    min-width: 44px;
+    height: 48px;
+    font-size: 10px;
+  }
+  .tb-group-body .tb svg { width: 14px; height: 14px; }
+
+  /* 编辑器标签库在窄屏下更紧凑 */
+  .tag-picker { padding: 12px; }
+  .tag-picker-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .tag-group-head { font-size: 12px; }
+  .tag-chip { padding: 4px 8px; font-size: 11px; }
+
+  /* 文章列表卡片在窄屏单列 */
+  .note-grid { grid-template-columns: 1fr; }
+  .board-view { flex-direction: column; }
+  .board-col { min-width: 100%; }
+
+  /* 编辑元信息行竖排 */
+  .ed-meta-row { grid-template-columns: 1fr; gap: 10px; }
+  .ed-toolbar + .ed-meta-row { margin-top: 10px; }
+}
+
+@media (max-width: 480px) {
+  .ed-title { font-size: 20px; padding: 14px 16px; }
+  .ed-input, .ed-preview { padding: 14px 16px; font-size: 15px; }
+  .notes-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .notes-head-actions { flex-wrap: wrap; }
+  .reader-body { padding: 16px; }
+  .reader-body h1 { font-size: 22px; }
+  .reader-body h2 { font-size: 19px; }
+  .reader-body h3 { font-size: 17px; }
+  .tb-cat { height: 44px; font-size: 10px; }
+  .tb-cat svg { width: 14px; height: 14px; }
+  .tb-group-body .tb { min-width: 40px; height: 44px; }
 }
