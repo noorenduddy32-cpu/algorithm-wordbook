@@ -6,7 +6,7 @@
 
   // 数据层与云端大模型均改走 /api 代理（api.js）。
   // 前端不再直接连云端，密钥与密码只在服务端，因此这里直接取代理对象。
-  let cloud = null, db = null, cloudModel = null, cloudReady = false;
+  let cloud = null, db = null, cloudReady = false;
   function initCloud() {
     db = window.DB || null;
     cloud = window.ANCloud || null;
@@ -1563,23 +1563,23 @@
   }
 
   // 识别走站点自带的云端大模型（keyless，无需用户自备任何 API Key / Token）。
-  // 优先用非思考型对话模型；拿不到再退回第一个可用模型。
-  const PREF_MODELS = ['hunyuan-chat', 'default'];
+  // ⚠️ 关键：云端的 auto 现在路由到「思考型」模型，会先输出长篇 reasoning 再给答案，
+  // 真实识别任务要慢到数分钟。而客户端 models.list() 是桩（只返回 ['auto']），
+  // 导致偏好列表里的非思考型模型永远选不上、恒落到慢的 auto。
+  // 这里直接按已知可用、非思考型的模型偏好顺序选；hunyuan-chat 实测 ~1s 秒回。
+  const PREF_MODELS = ['hunyuan-chat', 'hunyuan', 'deepseek', 'default'];
 
   async function ensureModel() {
     if (llmModelId) return llmModelId;
     if (!cloud || !cloudReady) throw new Error('云端查词暂不可用：请确认能联网加载云端 SDK（WorkBuddy 部署版始终可用）');
-    const models = await cloud.llm.models.list();
-    const usable = (models || []).filter(function (x) { return x && x.disabled !== true; });
-    let m = null;
-    for (const id of PREF_MODELS) {
-      m = usable.find(function (x) { return x.id === id; });
-      if (m) break;
-    }
-    if (!m) m = usable.find(function (x) { return x.supportsReasoning !== true; });
-    if (!m) m = usable[0];
-    if (!m) throw new Error('当前应用没有可用的模型');
-    llmModelId = m.id;
+    const cand = PREF_MODELS.slice();
+    // 把桩列表里真实返回到的模型也加进候选（去重），但非思考型偏好模型始终排前面
+    try {
+      const stub = await cloud.llm.models.list();
+      (stub || []).forEach(function (x) { if (x && x.id && cand.indexOf(x.id) < 0) cand.push(x.id); });
+    } catch (e) {}
+    if (!cand.length) cand.push('auto');
+    llmModelId = cand[0];
     return llmModelId;
   }
 
@@ -1604,16 +1604,25 @@
           '待识别单词：\n<<<\n' + words.join(', ') + '\n>>>'
       }
     ];
-    let items = null;
-    let answer = await streamOnce(model, messages, true);
-    try { items = parseItems(answer); } catch (e) { items = null; }
-    if (!items || !items.length) {
-      answer = await streamOnce(model, messages, false);
-      try { items = parseItems(answer); } catch (e) {
-        throw new Error('模型返回无法解析：' + String(answer).slice(0, 60));
-      }
+    // 依次尝试候选模型：首选非思考型（hunyuan-chat，~1s），失败再退回 auto 兜底。
+    // 避免一旦 auto 之类思考型模型被选中、要等数分钟才出结果。
+    const tries = [model, 'auto'].filter(function (v, i, a) { return a.indexOf(v) === i; });
+    let lastErr = null;
+    for (const m of tries) {
+      try {
+        let items = null;
+        let answer = await streamOnce(m, messages, true);
+        try { items = parseItems(answer); } catch (e) { items = null; }
+        if (!items || !items.length) {
+          answer = await streamOnce(m, messages, false);
+          try { items = parseItems(answer); } catch (e) {
+            throw new Error('模型返回无法解析：' + String(answer).slice(0, 60));
+          }
+        }
+        if (items && items.length) return items;
+      } catch (e) { lastErr = e; }
     }
-    return items;
+    throw lastErr || new Error('识别失败');
   }
 
   async function onPickQuery() {
@@ -1978,24 +1987,31 @@
       const old = btn.textContent;
       btn.disabled = true; btn.textContent = '查询中…';
       try {
-        if (!cloudModel) {
-          const models = await cloud.llm.models.list();
-          cloudModel = models.find(function (m) { return m.disabled !== true; }) || null;
-          if (!cloudModel) throw new Error('no_model');
-        }
+        const model = await ensureModel();
+        // 首选非思考型模型（hunyuan-chat，~1s），失败再退回 auto 兜底
+        const tries = [model, 'auto'].filter(function (v, i, a) { return a.indexOf(v) === i; });
         let answer = '';
-        for await (const chunk of cloud.llm.chat.completions.create({
-          model: cloudModel.id,
-          messages: [
-            { role: 'system', content: '你是英语词典助手。给定英文单词，返回它的词性和最常用中文释义。严格只返回 JSON：{"pos":"词性，如 n. / v. / adj.","meaning":"中文释义，1-3 个，用顿号分隔"}。不要解释，不要多余文字。' },
-            { role: 'user', content: word }
-          ],
-          stream: true,
-          response_format: { type: 'json_object' }
-        })) {
-          const d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
-          if (d) answer += d;
+        let used = null;
+        for (const m of tries) {
+          answer = '';
+          try {
+            for await (const chunk of cloud.llm.chat.completions.create({
+              model: m,
+              messages: [
+                { role: 'system', content: '你是英语词典助手。给定英文单词，返回它的词性和最常用中文释义。严格只返回 JSON：{"pos":"词性，如 n. / v. / adj.","meaning":"中文释义，1-3 个，用顿号分隔"}。不要解释，不要多余文字。' },
+                { role: 'user', content: word }
+              ],
+              stream: true,
+              response_format: { type: 'json_object' }
+            })) {
+              const d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
+              if (d) answer += d;
+            }
+            used = m;
+            break;
+          } catch (e) { /* 该模型不可用，尝试下一个候选 */ }
         }
+        if (!used) throw new Error('云端查词失败');
         let obj;
         try { obj = JSON.parse(answer.trim()); } catch (e) { throw new Error('解析失败'); }
         if (obj.pos && !$('fPos').value.trim()) $('fPos').value = obj.pos;
