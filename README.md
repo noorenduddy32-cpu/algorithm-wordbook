@@ -5,13 +5,14 @@
 1. **算法词汇本** —— Codeforces / ICPC 高频词，按原形收录，配词性、中文释义和原题例句
 2. **我的文章** —— 所见即所得富文本编辑器，写题解、思路复盘、模板与踩坑记录；支持公开/私密发布、草稿箱、访问记录
 
-在线站点（2026-10-04 已下架）：原只读分享站 **https://algorithm-wordbook.app.workbuddy.host/** 已取消发布，链接失效。日常使用请在本机打开 **http://127.0.0.1:8787/index.html**（也可直接进 /wordbook.html；需先启动 `_dev.js` 本地服务），用管理员密码 `管理员密码` 进入即可增删改。
+在线站点（2026-10-06 重新上线）：**https://algorithm-wordbook.app.workbuddy.host/** 已重新发布，手机/电脑/任意网络均可直接打开，访问速度约 400ms（CDN 直连级）。日常本地开发仍可用本机 `_dev.js`（`http://127.0.0.1:8787`），用管理员密码 `管理员密码` 进入即可增删改。
 GitHub 仓库：`noorenduddy32-cpu/algorithm-wordbook`。
 
 > 线上分享站已下架；本机 `_dev.js` 提供 `/api/*` 后端与访问密码门（访客 `访客密码` / 管理员 `管理员密码`），是当前唯一使用入口。
 
 ## 最近更新
 
+- 重新发布线上站（恢复 CDN 直连速度）：把本地 `_dev.js` 作为单端口 Node HTTP 服务重新发布到 WorkBuddy 云端托管，链接回到 **https://algorithm-wordbook.app.workbuddy.host/**，手机/电脑/任意网络直接打开，首屏约 400ms，比之前的免费隧道（localtunnel 2.6s / pinggy 5.1s）快 6～12 倍；复用原 app id 保持域名与云端 Origin 一致，云端验证登录链路（访客/管理员）、云数据库读写、后端权限二次校验均正常。
 - 修复访问门自动进入管理员导致密码形同虚设，并补齐手机局域网访问：之前 `_dev.js` 的 `server.listen(PORT)` 未显式绑 `0.0.0.0`，虽然 Node 默认会监听所有接口，但日志只打印 `127.0.0.1`，导致用户误以为手机只能用 `127.0.0.1` 访问而打不开；现在显式监听 `0.0.0.0` 并打印本机局域网 IPv4 地址，手机连同一 WiFi 即可用局域网 IP 访问。同时 `api.js` 的 `init()` 不再自动恢复已有的 admin/visitor 会话——每次打开页面都强制显示访问门，必须输入访客密码才能进入访客模式，进入后点右上角角色徽标再输管理员密码才能升级为管理模式，避免一打开就是管理员。登录门副标题也去掉明文「访客 icpc / 管理员 yqx」提示
 - 修复文章编辑器工具栏「全展开」问题：之前 `.tb-popover` 的 `display: flex` 覆盖了 `hidden` 属性，导致所有下拉面板（格式、颜色、背景、其他、列表、对齐、代码、资源）在页面加载后全部可见，工具栏也因此被撑出水平滚动条。`notes.css` 新增 `.tb-popover[hidden]/ .table-picker-popover[hidden]/ .lang-picker-popover[hidden] { display: none }`，恢复默认收起；同时把分类折叠从窄屏媒体查询提到默认状态，现在工具栏只显示「历史 / 格式 / 段落 / 插入 / 辅助」五个分类按钮，点击哪个才展开它下面的按钮，其余收起，不再有滚动条。顺手把常用标签库默认从展开改为收起（删除 `notes.js` 里初始化时自动 `classList.add('open')`），需要时再点「常用标签库」展开
 - 修复「从句中选词 / AI 查中文」识别慢到好几分钟：云端 `auto` 模型已变成思考型，会先输出上万字 reasoning 才给答案（实测 5 词 56 秒）。根因是 `app.js` 的 `ensureModel()` 依赖客户端 `cloud.llm.models.list()` 这个桩（只返回 `['auto']`），导致偏好列表里的非思考型 `hunyuan-chat` 永远选不上、恒落到慢的 `auto`。改为按已知可用的非思考型模型偏好顺序（`hunyuan-chat` 实测 ~1s 秒回）直接选，并在两处识别调用都加 `auto` 兜底重试；`aiLookupCn` 同步去掉失效的 `cloudModel` 桩逻辑。`app.js` 语法校验通过，云端实测 `hunyuan-chat` 对 5 词识别 4.4s 且 JSON 可解析
