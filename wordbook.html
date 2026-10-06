@@ -39,7 +39,15 @@
     <a class="top-link active" href="wordbook.html"><span>词汇</span></a>
     <a class="top-link" href="notes.html"><span>文章</span></a>
   </nav>
+  <nav class="mobile-nav" id="mobileNav">
+    <a class="mn-link" href="index.html"><span>首页</span></a>
+    <a class="mn-link active" href="wordbook.html"><span>词汇</span></a>
+    <a class="mn-link" href="notes.html"><span>文章</span></a>
+  </nav>
   <div class="top-actions">
+    <button id="menuToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
     <div class="theme-wrap">
       <button id="themeBtn" class="icon-btn" title="切换主题">
         <span id="themeIcon"></span>
@@ -48,6 +56,25 @@
     </div>
   </div>
 </header>
+<script>
+(function () {
+  var t = document.getElementById('menuToggle');
+  var m = document.getElementById('mobileNav');
+  if (!t || !m) return;
+  t.addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.body.classList.toggle('nav-open');
+  });
+  m.addEventListener('click', function (e) {
+    if (e.target.closest('a')) document.body.classList.remove('nav-open');
+  });
+  document.addEventListener('click', function (e) {
+    if (!document.body.classList.contains('nav-open')) return;
+    if (e.target.closest('#mobileNav') || e.target.closest('#menuToggle')) return;
+    document.body.classList.remove('nav-open');
+  });
+})();
+</script>
 
 <section class="stats-bar">
   <div class="stat"><b id="statWords">0</b><span>单词</span></div>
@@ -219,6 +246,13 @@
       <section class="detail-block">
         <h4 class="detail-section-title">释义</h4>
         <div id="dMeaning" class="detail-meaning"></div>
+      </section>
+
+      <section id="dNoteBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">备注</h4>
+        <div class="detail-card">
+          <div id="dNote" class="detail-note"></div>
+        </div>
       </section>
 
       <section id="dExampleBlock" class="detail-block" hidden>
