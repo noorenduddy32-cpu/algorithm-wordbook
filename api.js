@@ -226,7 +226,7 @@
       if (bar) bar.remove();
       return;
     }
-    // 右上角角色徽标（纯文本，无操作按钮）
+    // 右上角角色徽标 + 退出登录
     let bar = document.getElementById('roleBar');
     if (!bar) {
       bar = el('<div class="role-bar" id="roleBar"></div>');
@@ -234,20 +234,16 @@
       if (host) host.appendChild(bar);
     }
     if (bar) {
-      bar.innerHTML = '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '">' + (admin ? '管理' : '访客') + '</span>';
-      bar.classList.add('clickable');
-      if (admin) {
-        // 管理模式：点击角色徽标直接切换为访客（只读），无需密码
-        bar.title = '点击切换为访客模式（只读）';
-        bar.onclick = function () { switchToVisitor(); };
-      } else {
-        // 访客模式：点击角色徽标重新弹出访问门，输管理员密码进入管理模式
-        bar.title = '点击输入管理员密码进入管理模式';
-        bar.onclick = function () {
-          if (window.reopenGate) window.reopenGate();
-          else location.reload();
-        };
-      }
+      bar.innerHTML =
+        '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '" title="' + (admin ? '点击切换为访客模式（只读）' : '点击输入管理员密码进入管理模式') + '">' + (admin ? '管理' : '访客') + '</span>' +
+        '<button type="button" class="role-logout" title="退出登录（回到访问门）">退出</button>';
+      bar.classList.remove('clickable');
+      const tag = bar.querySelector('.role-tag');
+      const logoutBtn = bar.querySelector('.role-logout');
+      tag.onclick = admin
+        ? function () { switchToVisitor(); }
+        : function () { if (window.reopenGate) window.reopenGate(); else location.reload(); };
+      logoutBtn.onclick = function () { doLogout(); };
     }
   }
 
@@ -259,6 +255,17 @@
     window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: 'visitor' } }));
     window.dispatchEvent(new CustomEvent('an:visitor', { detail: { role: 'visitor' } }));
     if (window.AN && window.AN.toast) window.AN.toast('已切换为访客模式（只读）');
+  }
+
+  // 主动退出：清除签名会话 Cookie，回到访问门（之后站内跳转 / 刷新将再次要求输密码）
+  async function doLogout() {
+    try { await Auth.logout(); } catch (e) {}
+    window.AN_ROLE = null;
+    window.Auth.role = null;
+    const bar = document.getElementById('roleBar');
+    if (bar) bar.remove();
+    document.querySelectorAll('[data-admin]').forEach(function (n) { n.style.display = 'none'; });
+    buildGate();
   }
 
   async function init() {
@@ -274,18 +281,18 @@
       applyRole(null, false);
       return;
     }
-    // 有后端：读已有会话角色
+    // 有后端：读已有会话角色。只要存在有效会话（访客或管理员），直接静默恢复，
+    // 切换页面 / 刷新都不再弹密码框（站内跳转保持状态；刷新也保持登录态）。
     let role = null;
     try { const j = await resp.json(); role = j && j.role; } catch (e) {}
-    if (role === 'visitor') {
-      // 访客会话有效 → 直接恢复，切换页面 / 刷新不必重输密码；浏览本就不需要管理员密码
+    if (role === 'visitor' || role === 'admin') {
       Auth.role = role;
-      onAuthed('visitor', true);
+      onAuthed(role, true);
       return;
     }
-    // 其余情况（无会话 / 管理员会话）：保留访问门，强制先输密码。
-    // 管理员不自动恢复，打开网站必须先输密码（访客或管理员），密码才不形同虚设；
-    // 访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级为管理模式。
+    // 无会话：保留访问门，强制先输密码（访客或管理员）才能进入网站。
+    // 访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级为管理模式；
+    // 管理员密码与访客密码严格绑定各自角色，输入访客密码绝不会进入管理员模式。
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
