@@ -15,20 +15,8 @@
 
   const LS_STATS = 'wb_recite_stats_v1';
   const LS_LOCK = 'wb_edit_unlocked';
-  const LS_THEME = 'wb_theme_v2';
   const LS_VIEW = 'wb_view_cfg_v1';
   const LS_ADD_MODE = 'wb_add_mode_v1';
-
-  // 主题：名字 + 用于色块预览的底色
-  const THEMES = [
-    { id: 'dark', name: '夜间深色', swatch: 'linear-gradient(135deg,#161a22,#0e1116)' },
-    { id: 'light', name: '日间亮色', swatch: 'linear-gradient(135deg,#ffffff,#e9eef7)' },
-    { id: 'glass', name: '玻璃拟态（深）', swatch: 'linear-gradient(135deg,#6d5cff,#00b0ff)' },
-    { id: 'glass-light', name: '玻璃拟态（亮）', swatch: 'linear-gradient(135deg,#f6f8ff,#a8c4ff)' },
-    { id: 'eye', name: '护眼米黄', swatch: 'linear-gradient(135deg,#f2ecd6,#e8e2c9)' },
-    { id: 'eye-green', name: '护眼豆绿', swatch: 'linear-gradient(135deg,#e6efe0,#d8e3d0)' },
-    { id: 'ink', name: '墨绿复古', swatch: 'linear-gradient(135deg,#2a323b,#14181c)' }
-  ];
 
   function loadView() {
     let o = {};
@@ -217,32 +205,7 @@
     eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>'
   };
 
-  /* ---------------- 主题 / 锁 ---------------- */
-
-  function currentTheme() {
-    const t = document.documentElement.getAttribute('data-theme');
-    return THEMES.some(function (x) { return x.id === t; }) ? t : 'dark';
-  }
-
-  function applyTheme(name) {
-    const t = THEMES.some(function (x) { return x.id === name; }) ? name : 'dark';
-    document.documentElement.setAttribute('data-theme', t);
-    localStorage.setItem(LS_THEME, t);
-    $('themeIcon').innerHTML = ICONS.sun;
-    $('themeBtn').title = '主题：' + (THEMES.find(function (x) { return x.id === t; }) || {}).name;
-    renderThemeMenu(t);
-  }
-
-  function renderThemeMenu(active) {
-    const box = $('themeMenu');
-    if (!box) return;
-    box.innerHTML = THEMES.map(function (x) {
-      return '<button type="button" data-theme-id="' + x.id + '"' +
-        (x.id === active ? ' class="on"' : '') + '>' +
-        '<span class="theme-swatch" style="background:' + x.swatch + '"></span>' +
-        esc(x.name) + '</button>';
-    }).join('');
-  }
+  /* ---------------- 锁 / 权限 ---------------- */
 
   // 登录态变化后刷新卡片（让编辑/删除按钮随 unlocked 状态出现或消失）
   function refreshEditUI() {
@@ -331,10 +294,21 @@
      读取是公开的（RLS SELECT 全开）。 */
 
   function init() {
+    AN.boot({
+      title: '算法词汇本',
+      subtitle: 'Codeforces / ICPC 高频词 · 例句全部来自原题',
+      active: 'wordbook',
+      nav: [
+        { key: 'home', label: '首页', href: 'index.html', icon: AN.ICONS.home },
+        { key: 'wordbook', label: '词汇', href: 'wordbook.html', icon: AN.ICONS.book },
+        { key: 'notes', label: '文章', href: 'notes.html', icon: AN.ICONS.pen },
+        { key: 'visits', label: '访问记录', href: 'visits.html', icon: AN.ICONS.file, adminOnly: true }
+      ],
+      cloud: false
+    });
     bindUI();
     initCloud();
     if (cloudReady && $('aiCnBtn')) $('aiCnBtn').hidden = false;
-    applyTheme(localStorage.getItem(LS_THEME) || 'dark');
     applyCols();
     // 登录态同步：管理员=已解锁，访客=未解锁
     if (window.AN_ROLE === 'admin') unlocked = true;
@@ -981,13 +955,6 @@
     Array.prototype.forEach.call($('hideSeg').querySelectorAll('.seg-btn'), function (b) {
       b.classList.toggle('active', !!view['hide' + (b.dataset.hide === 'meaning' ? 'Meaning' : 'Examples')]);
     });
-    const nt = $('navToggle');
-    if (nt) {
-      nt.classList.toggle('on', view.autoHide);
-      $('navToggleIcon').innerHTML = ICONS.eye;
-      const ntLabel = nt.querySelector('.btn-label');
-      if (ntLabel) ntLabel.textContent = view.autoHide ? '自动隐藏·开' : '自动隐藏·关';
-    }
 
     // 排序方向
     $('sortDirIcon').innerHTML = view.sortDir === 'asc' ? ICONS.arrowUp : ICONS.arrowDown;
@@ -1797,34 +1764,6 @@
     const setupIcon = $('setupIcon');
     if (setupIcon) setupIcon.innerHTML = ICONS.gear;
     applyView();
-
-    $('themeBtn').addEventListener('click', function (e) {
-      e.stopPropagation();
-      const m = $('themeMenu');
-      m.hidden = !m.hidden;
-    });
-    $('themeMenu').addEventListener('click', function (e) {
-      const b = e.target.closest('[data-theme-id]');
-      if (!b) return;
-      applyTheme(b.dataset.themeId);
-      $('themeMenu').hidden = true;
-    });
-    document.addEventListener('click', function (e) {
-      if (!e.target.closest('.theme-wrap')) $('themeMenu').hidden = true;
-    });
-
-    const navToggle = $('navToggle');
-    if (navToggle) {
-      navToggle.addEventListener('click', function () {
-        view.autoHide = !view.autoHide;
-        saveView();
-        applyView();
-        if (!view.autoHide) {
-          clearTimeout(navHoldTimer);
-          document.body.classList.remove('chrome-hidden');
-        }
-      });
-    }
 
     // 排序方向：每次点一下就翻转
     $('sortDir').addEventListener('click', function () {

@@ -224,6 +224,8 @@ a:hover { text-decoration: underline; }
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;
+  position: relative;
+  z-index: 50;
 }
 
 .brand {
@@ -272,6 +274,25 @@ a:hover { text-decoration: underline; }
   gap: 8px;
   flex: none;
 }
+
+/* 顶部三页导航：首页 / 词汇本 / 文章（全局统一） */
+.top-nav { display: flex; gap: 6px; align-items: center; flex: none; }
+.top-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 13px; border-radius: 10px;
+  color: var(--muted); font-size: 14px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.top-link:hover { background: var(--panel2); color: var(--text); text-decoration: none; }
+.top-link.active {
+  background: var(--accent-soft); color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.top-link svg { flex: none; }
 
 /* ---------------- 按钮 ---------------- */
 
@@ -503,6 +524,7 @@ select option { background: var(--panel); color: var(--text); }
 .mobile-nav { display: none; }
 @media (max-width: 900px) {
   .topbar { position: relative; }
+  .top-nav { display: none; }
   .icon-btn.nav-toggle {
     display: inline-flex;
     align-items: center;

@@ -337,8 +337,9 @@ h1, h2 { margin: 0; font-weight: 650; }
    把内部 topbar / 工具栏 / 主题菜单的 z-index 全部关在这个上下文里，
    下拉菜单和弹窗就再也没法盖到下面的单词上面。 */
 body.chrome-hidden .chrome { transform: translateY(-100%); opacity: 0; pointer-events: none; }
-/* 自动隐藏开启时，内部两栏不再各自吸顶（否则会和 .chrome 打架） */
-body.auto-hide .topbar,
+/* 自动隐藏开启时，.toolbar 不再单独吸顶（否则会脱离顶栏浮在页面中间盖住单词）。
+   注意：.topbar 现在在 .chrome 之外，必须保持 position: relative（base.css），
+   否则移动端汉堡菜单的 .mobile-nav 会失去定位参照（top:100% 失效）。 */
 body.auto-hide .toolbar { position: static; }
 /* 关闭自动隐藏时，.chrome 只作为普通容器；
    里面的 .toolbar 也不能再单独吸顶 —— 否则它会脱离顶栏浮在页面中间盖住单词。 */
@@ -364,72 +365,6 @@ body:not(.auto-hide) .toolbar { position: static; }
 [data-theme="glass-light"] .stats-bar { background: linear-gradient(180deg, rgba(255,255,255,.58), #f2f6ff); }
 [data-theme="glass"] .toolbar { background: #0b1020; }
 [data-theme="glass-light"] .toolbar { background: #f2f6ff; }
-
-/* ---------- top bar ---------- */
-/* z-index 必须高于 .toolbar(20)：玻璃主题给 topbar 加了 backdrop-filter，
-   会生成新的层叠上下文，主题下拉菜单若不抬高层级会被工具栏盖住 */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 12px 26px; border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  position: relative; z-index: 50;
-}
-.brand { display: flex; align-items: center; gap: 14px; }
-a.brand { text-decoration: none; color: inherit; }
-a.brand:hover { text-decoration: none; }
-
-/* 顶部三页导航：首页 / 词汇本 / 文章 */
-.top-nav { display: flex; gap: 4px; align-items: center; flex: none; }
-.top-link {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 13px; border-radius: 10px;
-  color: var(--muted); font-size: 14px;
-  border: 1px solid transparent;
-  white-space: nowrap;
-  transition: background .16s, color .16s, border-color .16s;
-}
-.top-link:hover { background: var(--panel2); color: var(--text); text-decoration: none; }
-.top-link.active {
-  background: var(--accent-soft); color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  font-weight: 600;
-}
-.logo {
-  height: 58px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-}
-.logo img { height: 46px; width: auto; display: block; }
-.brand-text h1 { font-size: 20px; letter-spacing: .3px; }
-.brand-text p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
-.top-actions { display: flex; gap: 10px; align-items: center; }
-
-/* ---------- 主题下拉 ---------- */
-/* z-index 要高于 .chrome(40)：.chrome 是 sticky 且带 transform，会建层叠上下文，
-   菜单必须在它内部也保持最高层，否则会被下面的 .toolbar 盖住点不到 */
-.theme-wrap { position: relative; z-index: 70; }
-.theme-menu {
-  position: absolute; right: 0; top: calc(100% + 16px); z-index: 71;
-  min-width: 176px; max-width: 260px; padding: 6px;
-  max-height: 170px; overflow-y: auto;
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 12px; box-shadow: var(--shadow);
-}
-.theme-menu button {
-  display: flex; align-items: center; gap: 9px; width: 100%;
-  font: inherit; font-size: 13.5px; color: var(--text);
-  background: transparent; border: none; border-radius: 8px;
-  padding: 7px 10px; cursor: pointer; text-align: left;
-}
-.theme-menu button:hover { background: var(--panel2); }
-.theme-menu button.on { color: var(--accent); font-weight: 600; }
-.theme-swatch {
-  width: 15px; height: 15px; border-radius: 5px; flex: none;
-  border: 1px solid var(--border);
-}
-/* 打开主题菜单时把顶栏下方内容顶下去，避免菜单盖住操作栏（菜单绝对定位，自身位置不变） */
-.topbar:has(.theme-menu:not([hidden])) {
-  margin-bottom: 240px;
-}
 
 /* ---------- 导航栏收起 ---------- */
 body.nav-collapsed .topbar {
@@ -1242,11 +1177,6 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 
 #detailModal .detail-box .detail-status {
   margin: 18px 0 0; font-size: 12px; color: var(--muted);
-}
-
-/* 窄屏改用顶栏汉堡菜单（base.css 的 .mobile-nav），避免 .top-nav 横向溢出 */
-@media (max-width: 900px) {
-  .top-nav { display: none; }
 }
 
 @media (max-width: 640px) {

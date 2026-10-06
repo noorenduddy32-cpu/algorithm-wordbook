@@ -2,43 +2,11 @@
    home.css —— 主页（算法学习笔记本 Hub）
    ============================================================ */
 
-.topbar {
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-}
-[data-theme="glass"] .topbar,
-[data-theme="glass-light"] .topbar {
-  background: #0a0f1e;
-}
+[data-theme="glass"] .topbar { background: #0a0f1e; }
 [data-theme="glass-light"] .topbar { background: #f0f4fd; }
 
 .brand { text-decoration: none; color: inherit; }
 .brand:hover { text-decoration: none; }
-.brand-text h1 { font-size: 20px; }
-.topbar .logo { height: 48px; }
-.topbar .logo img { height: 44px; }
-
-.top-nav { display: flex; gap: 6px; flex: none; }
-.top-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 13px;
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: 14px;
-  border: 1px solid transparent;
-  white-space: nowrap;
-  transition: background .16s, color .16s;
-}
-.top-link:hover { background: var(--panel2); color: var(--text); text-decoration: none; }
-.top-link.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.top-link svg { flex: none; }
-
 /* ---------------- Hero ---------------- */
 
 .hub {

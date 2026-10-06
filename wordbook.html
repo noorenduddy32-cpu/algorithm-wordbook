@@ -19,62 +19,10 @@
   <div class="aurora a4"></div>
 </div>
 
-<!-- 会随滚动藏起来的顶部区域：顶栏 + 统计栏 + 工具栏 -->
-<div id="chrome" class="chrome">
+<header id="topbar" class="topbar"></header>
 
-<header class="topbar" id="topbar">
-  <div class="brand">
-    <a class="brand" href="index.html" title="返回算法学习笔记本首页">
-      <span class="logo" aria-label="ICPC 云朵 · 灯泡 · 气球">
-        <img src="assets/logo.png" alt="logo" draggable="false">
-      </span>
-      <span class="brand-text">
-        <h1>算法词汇本</h1>
-        <p>Codeforces / ICPC 高频词 · 例句全部来自原题</p>
-      </span>
-    </a>
-  </div>
-  <nav class="top-nav">
-    <a class="top-link" href="index.html"><span>首页</span></a>
-    <a class="top-link active" href="wordbook.html"><span>词汇</span></a>
-    <a class="top-link" href="notes.html"><span>文章</span></a>
-  </nav>
-  <nav class="mobile-nav" id="mobileNav">
-    <a class="mn-link" href="index.html"><span>首页</span></a>
-    <a class="mn-link active" href="wordbook.html"><span>词汇</span></a>
-    <a class="mn-link" href="notes.html"><span>文章</span></a>
-  </nav>
-  <div class="top-actions">
-    <button id="menuToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
-    <div class="theme-wrap">
-      <button id="themeBtn" class="icon-btn" title="切换主题">
-        <span id="themeIcon"></span>
-      </button>
-      <div id="themeMenu" class="theme-menu" hidden></div>
-    </div>
-  </div>
-</header>
-<script>
-(function () {
-  var t = document.getElementById('menuToggle');
-  var m = document.getElementById('mobileNav');
-  if (!t || !m) return;
-  t.addEventListener('click', function (e) {
-    e.stopPropagation();
-    document.body.classList.toggle('nav-open');
-  });
-  m.addEventListener('click', function (e) {
-    if (e.target.closest('a')) document.body.classList.remove('nav-open');
-  });
-  document.addEventListener('click', function (e) {
-    if (!document.body.classList.contains('nav-open')) return;
-    if (e.target.closest('#mobileNav') || e.target.closest('#menuToggle')) return;
-    document.body.classList.remove('nav-open');
-  });
-})();
-</script>
+<!-- 会随滚动藏起来的顶部区域：统计栏 + 工具栏 -->
+<div id="chrome" class="chrome">
 
 <section class="stats-bar">
   <div class="stat"><b id="statWords">0</b><span>单词</span></div>
@@ -481,6 +429,7 @@
   }
 </script>
 <script src="docx.js"></script>
+<script src="common.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 </body>
