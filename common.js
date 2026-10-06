@@ -192,6 +192,14 @@
         (n.icon || '') + '<span>' + n.label + '</span></a>';
     }).join('');
 
+    // 移动端抽屉导航：与 .top-nav 同源，点开后在顶栏下方铺开
+    const mnLinks = (o.nav || []).filter(function (n) {
+      return !n.adminOnly || isAdmin;
+    }).map(function (n) {
+      return '<a class="mn-link' + (n.key === o.active ? ' active' : '') + '" href="' + n.href + '">' +
+        (n.icon || '') + '<span>' + n.label + '</span></a>';
+    }).join('');
+
     host.innerHTML =
       '<a class="brand" href="index.html">' +
         '<span class="logo"><img src="assets/logo.png" alt="logo" draggable="false"></span>' +
@@ -199,12 +207,34 @@
         '<p>' + (o.subtitle || '') + '</p></span>' +
       '</a>' +
       '<nav class="top-nav">' + links + '</nav>' +
+      '<nav class="mobile-nav" id="mobileNav">' + mnLinks + '</nav>' +
       '<div class="top-actions">' +
+        '<button id="navToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
+        '</button>' +
         '<div class="theme-wrap">' +
           '<button id="themeBtn" class="icon-btn" title="切换主题"><span id="themeIcon"></span></button>' +
           '<div id="themeMenu" class="theme-menu" hidden></div>' +
         '</div>' +
       '</div>';
+
+    // 移动端：汉堡菜单开合（桌面端 .nav-toggle 隐藏，此逻辑不触发）
+    const navToggle = host.querySelector('#navToggle');
+    const mnav = host.querySelector('#mobileNav');
+    if (navToggle && mnav) {
+      navToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        document.body.classList.toggle('nav-open');
+      });
+      mnav.addEventListener('click', function (e) {
+        if (e.target.closest('a')) document.body.classList.remove('nav-open');
+      });
+      document.addEventListener('click', function (e) {
+        if (!document.body.classList.contains('nav-open')) return;
+        if (e.target.closest('#mobileNav') || e.target.closest('#navToggle')) return;
+        document.body.classList.remove('nav-open');
+      });
+    }
   }
 
   /* ---------------- 云端（keyless） ---------------- */
