@@ -944,6 +944,10 @@ body.hide-examples .rec-examples { display: none !important; }
   border-radius: 10px; border: 1px solid var(--border);
   background: var(--panel2); color: var(--text); outline: none; resize: vertical;
 }
+.modal-box input[type="checkbox"] {
+  width: auto; min-width: auto; margin-top: 0; padding: 0; border-radius: 0;
+  background: transparent; flex: none;
+}
 .modal-box input:focus, .modal-box textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .field-hint { display: block; margin-top: 6px; font-size: 12.5px; min-height: 16px; color: var(--warn); }
 .field-hint.muted { color: var(--muted); line-height: 1.6; }
@@ -952,7 +956,12 @@ body.hide-examples .rec-examples { display: none !important; }
   padding: 10px 12px; margin-bottom: 10px;
   background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
 }
-.opt-row .check { color: var(--text); font-size: 13.5px; }
+.opt-row .check {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text); font-size: 13.5px;
+  margin-bottom: 0; white-space: nowrap; flex: none;
+}
+.opt-row .check input { width: auto; min-width: auto; margin-top: 0; flex: none; }
 .sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 code { background: var(--panel2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; }
@@ -1133,6 +1142,10 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   border: 1px solid var(--border);
   border-radius: 16px; padding: 14px 16px;
 }
+#detailModal .detail-box .detail-note {
+  font-size: 14.5px; line-height: 1.6;
+  color: var(--warn); margin: 0;
+}
 #detailModal .detail-box .detail-tag {
   display: inline-block; font-size: 11px; font-weight: 600;
   color: var(--muted); background: color-mix(in srgb, var(--text) 6%, transparent);
@@ -1229,6 +1242,11 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
 
 #detailModal .detail-box .detail-status {
   margin: 18px 0 0; font-size: 12px; color: var(--muted);
+}
+
+/* 窄屏改用顶栏汉堡菜单（base.css 的 .mobile-nav），避免 .top-nav 横向溢出 */
+@media (max-width: 900px) {
+  .top-nav { display: none; }
 }
 
 @media (max-width: 640px) {
