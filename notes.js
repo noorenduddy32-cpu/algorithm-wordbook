@@ -971,15 +971,11 @@
   ];
 
   function closeAllPickers() {
-    ['formatPickerPop', 'colorPickerPop', 'bgPickerPop', 'moreFormatPop',
-     'listPickerPop', 'alignPickerPop', 'codePickerPop', 'resPickerPop',
-     'tablePickerPop', 'langPickerPop'].forEach(function (id) {
+    ['formatPickerPop', 'colorPickerPop', 'bgPickerPop', 'alignPickerPop',
+     'codePickerPop', 'tablePickerPop', 'langPickerPop'].forEach(function (id) {
       const el = $(id);
       if (el) el.hidden = true;
     });
-  }
-  function closeToolbarGroups() {
-    document.querySelectorAll('.tb-group.open').forEach(function (g) { g.classList.remove('open'); });
   }
   function togglePicker(id, render) {
     const el = $(id);
@@ -993,11 +989,8 @@
   function toggleFormatPicker() { togglePicker('formatPickerPop'); }
   function toggleColorPicker() { togglePicker('colorPickerPop', renderColorPicker); }
   function toggleBgPicker() { togglePicker('bgPickerPop', renderBgPicker); }
-  function toggleMoreFormat() { togglePicker('moreFormatPop'); }
-  function toggleListPicker() { togglePicker('listPickerPop'); }
   function toggleAlignPicker() { togglePicker('alignPickerPop'); }
   function toggleCodePicker() { togglePicker('codePickerPop'); }
-  function toggleResPicker() { togglePicker('resPickerPop'); }
 
   function renderColorGrid(gridId, cmdName) {
     const grid = $(gridId);
@@ -1421,22 +1414,11 @@
     });
 
     $('edToolbar').addEventListener('click', function (e) {
-      const cat = e.target.closest('[data-cat]');
-      if (cat) {
-        const group = cat.closest('.tb-group');
-        const wasOpen = group && group.classList.contains('open');
-        document.querySelectorAll('.tb-group.open').forEach(function (g) { g.classList.remove('open'); });
-        closeAllPickers();
-        if (group && !wasOpen) group.classList.add('open');
-        e.stopPropagation();
-        return;
-      }
       const d = e.target.closest('[data-dropdown]');
       if (d) {
         const map = {
           format: toggleFormatPicker, color: toggleColorPicker, bg: toggleBgPicker,
-          moreFormat: toggleMoreFormat, list: toggleListPicker, align: toggleAlignPicker,
-          code: toggleCodePicker, res: toggleResPicker
+          align: toggleAlignPicker, code: toggleCodePicker
         };
         const fn = map[d.dataset.dropdown];
         if (fn) fn();
@@ -1469,8 +1451,8 @@
       $('tablePickerPop').hidden = true;
     });
     document.addEventListener('click', function (e) {
-      const inside = e.target.closest('#tablePickerWrap, #langPickerWrap, #formatPickerWrap, #colorPickerWrap, #bgPickerWrap, #moreFormatWrap, #listPickerWrap, #alignPickerWrap, #codePickerWrap, #resPickerWrap');
-      if (!inside) { closeAllPickers(); closeToolbarGroups(); }
+      const inside = e.target.closest('#tablePickerWrap, #langPickerWrap, #formatPickerWrap, #colorPickerWrap, #bgPickerWrap, #alignPickerWrap, #codePickerWrap');
+      if (!inside) { closeAllPickers(); }
     });
     $('langPickerList').addEventListener('click', function (e) {
       const b = e.target.closest('.lang-pick-item');
@@ -1478,12 +1460,6 @@
       const lang = b.dataset.lang || 'plaintext';
       $('langPickerPop').hidden = true;
       insertCodeBlock(lang);
-    });
-
-    $('insertTplBtn').addEventListener('click', function () {
-      if (getHtml().trim() && !confirm('当前正文会被模板替换，继续？')) return;
-      edBody().innerHTML = TPL;
-      updatePreview();
     });
 
     // 粘贴：优先内嵌剪贴板里的图片（原图直出，不替换成链接/占位符）；其余按文本/HTML 原样插入
@@ -1569,36 +1545,11 @@
       else if (k === 's') { e.preventDefault(); saveNote(false); }
     });
 
-    // 导入 / 导出
-    $('importBtn').addEventListener('click', function () { $('importFile').click(); });
-    $('importFile').addEventListener('change', function (e) {
-      const f = e.target.files && e.target.files[0];
-      if (f) doImport(f);
-      e.target.value = '';
-    });
-    $('exportBtn').addEventListener('click', doExport);
-
     // 链接弹窗
     $('linkOk').addEventListener('click', doLinkInsert);
     $('linkUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLinkInsert(); });
 
-    // AI
-    $('aiBtn').addEventListener('click', function () {
-      aiAct = 'continue';
-      document.querySelectorAll('[data-ai]').forEach(function (b) { b.classList.remove('active'); });
-      document.querySelector('[data-ai="continue"]').classList.add('active');
-      $('aiRun').disabled = false; $('aiHint').textContent = '';
-      $('aiModal').hidden = false;
-    });
-    $('aiModal').addEventListener('click', function (e) {
-      const b = e.target.closest('[data-ai]');
-      if (!b) return;
-      aiAct = b.dataset.ai;
-      document.querySelectorAll('[data-ai]').forEach(function (x) { x.classList.remove('active'); });
-      b.classList.add('active');
-      $('aiRun').disabled = false; $('aiHint').textContent = '';
-    });
-    $('aiRun').addEventListener('click', runAI);
+    // (AI / 模板 / 导入 / 导出 已从工具栏移除，如需恢复请重新加回)
   }
 
   /* ---------------- 启动 ---------------- */

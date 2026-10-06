@@ -144,197 +144,100 @@
     <div class="tag-picker-body" id="tagPickerBody"></div>
   </div>
 
-  <!-- 工具栏：桌面端平铺，窄屏端按分类折叠 -->
+  <!-- 工具栏：全部高频功能平铺常驻，不再折叠 -->
   <div class="ed-toolbar" id="edToolbar" data-admin>
-    <!-- 历史 -->
-    <div class="tb-group" data-group="history">
-      <button class="tb tb-cat" data-cat="history" title="历史操作" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        <span>历史</span>
-      </button>
-      <div class="tb-group-body">
-        <button class="tb" data-cmd="undo" title="撤消 Ctrl+Z" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
-          <span>撤消</span>
-        </button>
-        <button class="tb" data-cmd="redo" title="重做 Ctrl+Y" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
-          <span>重做</span>
-        </button>
-        <button class="tb" data-cmd="history" title="文章修改时间" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          <span>历史</span>
-        </button>
-      </div>
-    </div>
+    <button class="tb" data-cmd="undo" title="撤消 Ctrl+Z" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      <span>撤销</span>
+    </button>
+    <button class="tb" data-cmd="redo" title="重做 Ctrl+Y" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+      <span>重做</span>
+    </button>
+    <button class="tb" data-cmd="history" title="文章修改时间" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>历史</span>
+    </button>
 
-    <!-- 格式 -->
-    <div class="tb-group" data-group="format">
-      <button class="tb tb-cat" data-cat="format" title="文字格式" type="button">
+    <div class="tb-dropdown" id="formatPickerWrap">
+      <button class="tb" data-dropdown="format" title="标题格式" type="button">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M17 12h3m0 0v6m0-6-4-3.5"/></svg>
         <span>格式</span>
       </button>
-      <div class="tb-group-body">
-        <div class="tb-dropdown" id="formatPickerWrap">
-          <button class="tb" data-dropdown="format" title="标题格式" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M17 12h3m0 0v6m0-6-4-3.5"/></svg>
-            <span>格式</span>
-          </button>
-          <div class="tb-popover" id="formatPickerPop" hidden>
-            <button class="tb-pop-item" data-cmd="p" type="button"><span class="tbp-icon tbp-p">T</span><span class="tbp-label">正文</span></button>
-            <button class="tb-pop-item" data-cmd="h1" type="button"><span class="tbp-icon tbp-h1">H1</span><span class="tbp-label">一级标题</span></button>
-            <button class="tb-pop-item" data-cmd="h2" type="button"><span class="tbp-icon tbp-h2">H2</span><span class="tbp-label">二级标题</span></button>
-            <button class="tb-pop-item" data-cmd="h3" type="button"><span class="tbp-icon tbp-h3">H3</span><span class="tbp-label">三级标题</span></button>
-            <button class="tb-pop-item" data-cmd="h4" type="button"><span class="tbp-icon tbp-h4">H4</span><span class="tbp-label">四级标题</span></button>
-            <button class="tb-pop-item" data-cmd="h5" type="button"><span class="tbp-icon tbp-h5">H5</span><span class="tbp-label">五级标题</span></button>
-          </div>
-        </div>
-        <button class="tb" data-cmd="bold" title="加粗 Ctrl+B" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 0 0-8H6v8zm0 0v8m0-8h10a4 4 0 0 1 0 8H6v-8z"/></svg>
-          <span>加粗</span>
-        </button>
-        <div class="tb-dropdown" id="colorPickerWrap">
-          <button class="tb" data-dropdown="color" title="文字颜色" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="m6 16 6-12 6 12"/><path d="M8 12h8"/></svg>
-            <span>颜色</span>
-          </button>
-          <div class="tb-popover color-popover" id="colorPickerPop" hidden>
-            <div class="color-grid" id="colorPickerGrid"></div>
-          </div>
-        </div>
-        <div class="tb-dropdown" id="bgPickerWrap">
-          <button class="tb" data-dropdown="bg" title="文字背景色" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            <span>背景</span>
-          </button>
-          <div class="tb-popover color-popover" id="bgPickerPop" hidden>
-            <div class="color-grid" id="bgPickerGrid"></div>
-          </div>
-        </div>
-        <div class="tb-dropdown" id="moreFormatWrap">
-          <button class="tb" data-dropdown="moreFormat" title="更多格式" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-            <span>其他</span>
-          </button>
-          <div class="tb-popover" id="moreFormatPop" hidden>
-            <button class="tb-pop-item" data-cmd="italic" type="button">斜体</button>
-            <button class="tb-pop-item" data-cmd="underline" type="button">下划线</button>
-            <button class="tb-pop-item" data-cmd="strike" type="button">删除线</button>
-            <button class="tb-pop-item" data-cmd="code" type="button">行内代码</button>
-            <button class="tb-pop-item" data-cmd="formula" type="button">行内公式</button>
-            <button class="tb-pop-item" data-cmd="clear" type="button">清除格式</button>
-          </div>
-        </div>
+      <div class="tb-popover" id="formatPickerPop" hidden>
+        <button class="tb-pop-item" data-cmd="p" type="button"><span class="tbp-icon tbp-p">T</span><span class="tbp-label">正文</span></button>
+        <button class="tb-pop-item" data-cmd="h1" type="button"><span class="tbp-icon tbp-h1">H1</span><span class="tbp-label">一级标题</span></button>
+        <button class="tb-pop-item" data-cmd="h2" type="button"><span class="tbp-icon tbp-h2">H2</span><span class="tbp-label">二级标题</span></button>
+        <button class="tb-pop-item" data-cmd="h3" type="button"><span class="tbp-icon tbp-h3">H3</span><span class="tbp-label">三级标题</span></button>
+        <button class="tb-pop-item" data-cmd="h4" type="button"><span class="tbp-icon tbp-h4">H4</span><span class="tbp-label">四级标题</span></button>
+        <button class="tb-pop-item" data-cmd="h5" type="button"><span class="tbp-icon tbp-h5">H5</span><span class="tbp-label">五级标题</span></button>
+      </div>
+    </div>
+    <button class="tb" data-cmd="bold" title="加粗 Ctrl+B" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 0 0-8H6v8zm0 0v8m0-8h10a4 4 0 0 1 0 8H6v-8z"/></svg>
+      <span>加粗</span>
+    </button>
+    <div class="tb-dropdown" id="colorPickerWrap">
+      <button class="tb" data-dropdown="color" title="文字颜色" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="m6 16 6-12 6 12"/><path d="M8 12h8"/></svg>
+        <span>颜色</span>
+      </button>
+      <div class="tb-popover color-popover" id="colorPickerPop" hidden>
+        <div class="color-grid" id="colorPickerGrid"></div>
+      </div>
+    </div>
+    <div class="tb-dropdown" id="bgPickerWrap">
+      <button class="tb" data-dropdown="bg" title="文字背景色" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        <span>背景</span>
+      </button>
+      <div class="tb-popover color-popover" id="bgPickerPop" hidden>
+        <div class="color-grid" id="bgPickerGrid"></div>
       </div>
     </div>
 
-    <!-- 段落 -->
-    <div class="tb-group" data-group="para">
-      <button class="tb tb-cat" data-cat="para" title="段落" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="7" r="1.7"/><circle cx="5" cy="12" r="1.7"/><circle cx="5" cy="17" r="1.7"/><rect x="9.5" y="5.8" width="11" height="2.4" rx="1.2"/><rect x="9.5" y="10.8" width="11" height="2.4" rx="1.2"/><rect x="9.5" y="15.8" width="11" height="2.4" rx="1.2"/></svg>
-        <span>段落</span>
+    <div class="tb-dropdown" id="alignPickerWrap">
+      <button class="tb" data-dropdown="align" title="对齐方式" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h12M3 18h18"/></svg>
+        <span>对齐</span>
       </button>
-      <div class="tb-group-body">
-        <div class="tb-dropdown" id="listPickerWrap">
-          <button class="tb" data-dropdown="list" title="列表" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="7" r="1.7"/><circle cx="5" cy="12" r="1.7"/><circle cx="5" cy="17" r="1.7"/><rect x="9.5" y="5.8" width="11" height="2.4" rx="1.2"/><rect x="9.5" y="10.8" width="11" height="2.4" rx="1.2"/><rect x="9.5" y="15.8" width="11" height="2.4" rx="1.2"/></svg>
-            <span>列表</span>
-          </button>
-          <div class="tb-popover" id="listPickerPop" hidden>
-            <button class="tb-pop-item" data-cmd="ul" type="button">无序列表</button>
-            <button class="tb-pop-item" data-cmd="ol" type="button">有序列表</button>
-          </div>
-        </div>
-        <div class="tb-dropdown" id="alignPickerWrap">
-          <button class="tb" data-dropdown="align" title="对齐方式" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h12M3 18h18"/></svg>
-            <span>对齐</span>
-          </button>
-          <div class="tb-popover" id="alignPickerPop" hidden>
-            <button class="tb-pop-item" data-cmd="justifyLeft" type="button">左对齐</button>
-            <button class="tb-pop-item" data-cmd="justifyCenter" type="button">居中</button>
-            <button class="tb-pop-item" data-cmd="justifyRight" type="button">右对齐</button>
-          </div>
-        </div>
-        <button class="tb" data-cmd="hr" title="分割线" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/></svg>
-          <span>水平线</span>
-        </button>
-        <button class="tb" data-cmd="quote" title="引用" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="3" height="16" rx="1.2"/><rect x="8" y="7" width="13" height="3" rx="1.5"/><rect x="8" y="14" width="13" height="3" rx="1.5"/></svg>
-          <span>块引用</span>
-        </button>
+      <div class="tb-popover" id="alignPickerPop" hidden>
+        <button class="tb-pop-item" data-cmd="justifyLeft" type="button">左对齐</button>
+        <button class="tb-pop-item" data-cmd="justifyCenter" type="button">居中</button>
+        <button class="tb-pop-item" data-cmd="justifyRight" type="button">右对齐</button>
       </div>
     </div>
+    <button class="tb" data-cmd="hr" title="分割线" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/></svg>
+      <span>水平线</span>
+    </button>
+    <button class="tb" data-cmd="quote" title="引用" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="3" height="16" rx="1.2"/><rect x="8" y="7" width="13" height="3" rx="1.5"/><rect x="8" y="14" width="13" height="3" rx="1.5"/></svg>
+      <span>块引用</span>
+    </button>
 
-    <!-- 插入 -->
-    <div class="tb-group" data-group="insert">
-      <button class="tb tb-cat" data-cat="insert" title="插入" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-        <span>插入</span>
+    <div class="tb-dropdown" id="codePickerWrap">
+      <button class="tb" data-dropdown="code" title="代码" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+        <span>插入代码</span>
       </button>
-      <div class="tb-group-body">
-        <div class="tb-dropdown" id="codePickerWrap">
-          <button class="tb" data-dropdown="code" title="代码" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
-            <span>代码</span>
-          </button>
-          <div class="tb-popover" id="codePickerPop" hidden>
-            <button class="tb-pop-item" data-cmd="code" type="button">行内代码</button>
-            <button class="tb-pop-item" data-cmd="codeblock" type="button">代码块</button>
-          </div>
-          <div class="lang-picker-popover" id="langPickerPop" hidden>
-            <div class="lang-picker-label">选择语言</div>
-            <div class="lang-picker-list" id="langPickerList"></div>
-          </div>
-        </div>
-        <div class="tb-dropdown" id="resPickerWrap">
-          <button class="tb" data-dropdown="res" title="资源绑定" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13.5 10.5-3 3"/><path d="M16 13a5 5 0 0 0-7.1 0l-2.8 2.8a5 5 0 0 0 7.1 7.1l1.4-1.4"/><path d="M8 11a5 5 0 0 1 7.1 0l2.8 2.8a5 5 0 0 1-7.1 7.1l-1.4-1.4"/></svg>
-            <span>资源</span>
-          </button>
-          <div class="tb-popover" id="resPickerPop" hidden>
-            <button class="tb-pop-item" data-cmd="link" type="button">链接</button>
-            <button class="tb-pop-item" data-cmd="image" type="button">图片</button>
-          </div>
-        </div>
-        <div class="tb-dropdown" id="tablePickerWrap">
-          <button class="tb" id="tablePickerBtn" data-cmd="table" title="插入表格" type="button">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9.6h18M3 14.6h18M9.5 9.6v9.9"/></svg>
-            <span>表格</span>
-          </button>
-          <div class="table-picker-popover" id="tablePickerPop" hidden>
-            <div class="table-picker-label" id="tablePickerLabel">3行 * 2列 表格</div>
-            <div class="table-picker-grid" id="tablePickerGrid"></div>
-          </div>
-        </div>
+      <div class="tb-popover" id="codePickerPop" hidden>
+        <button class="tb-pop-item" data-cmd="code" type="button">行内代码</button>
+        <button class="tb-pop-item" data-cmd="codeblock" type="button">代码块</button>
+      </div>
+      <div class="lang-picker-popover" id="langPickerPop" hidden>
+        <div class="lang-picker-label">选择语言</div>
+        <div class="lang-picker-list" id="langPickerList"></div>
       </div>
     </div>
-
-    <!-- 辅助 -->
-    <div class="tb-group tb-group-right" data-group="extra">
-      <button class="tb tb-cat" data-cat="extra" title="辅助" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 13.7 8l4.8 1.7-4.8 1.7L12 16.2 10.3 11.4 5.5 9.7l4.8-1.7z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
-        <span>辅助</span>
+    <div class="tb-dropdown" id="tablePickerWrap">
+      <button class="tb" id="tablePickerBtn" data-cmd="table" title="插入表格" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9.6h18M3 14.6h18M9.5 9.6v9.9"/></svg>
+        <span>插入表格</span>
       </button>
-      <div class="tb-group-body">
-        <button class="tb" id="aiBtn" data-admin title="AI 续写" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 13.7 8l4.8 1.7-4.8 1.7L12 16.2 10.3 11.4 5.5 9.7l4.8-1.7z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>
-          <span>AI</span>
-        </button>
-        <button class="tb" id="insertTplBtn" title="插入模板" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-          <span>模板</span>
-        </button>
-        <button class="tb" id="importBtn" data-admin title="导入文章" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0-4 4m4-4 4 4"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
-          <span>导入</span>
-        </button>
-        <button class="tb" id="exportBtn" data-admin title="导出文章" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0 4 4m-4-4-4 4"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
-          <span>导出</span>
-        </button>
-        <input id="importFile" type="file" accept=".md,.html,.txt" hidden>
+      <div class="table-picker-popover" id="tablePickerPop" hidden>
+        <div class="table-picker-label" id="tablePickerLabel">3行 * 2列 表格</div>
+        <div class="table-picker-grid" id="tablePickerGrid"></div>
       </div>
     </div>
   </div>

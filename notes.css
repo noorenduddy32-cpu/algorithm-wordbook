@@ -560,7 +560,8 @@ body.read-only .tag-picker { display: none; }
 
 .ed-toolbar {
   display: flex;
-  gap: 0;
+  gap: 2px;
+  align-items: center;
   flex-wrap: wrap;
   overflow-x: visible;
   padding: 6px 10px;
