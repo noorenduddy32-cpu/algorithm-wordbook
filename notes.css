@@ -431,28 +431,53 @@
 .ed-title:focus { border-color: var(--accent); box-shadow: none; }
 .ed-title::placeholder { color: var(--muted); opacity: .55; }
 
+/* ---------------- 摘要 + 标签 合并到同一行 ---------------- */
 .ed-meta-row {
   display: flex;
   flex-wrap: nowrap;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
   padding: 14px 0;
-  overflow-x: auto;
+  overflow: visible;
 }
-.ed-meta-row input { flex: 1 1 auto; min-width: 80px; }
-.ed-meta-row select { flex: 0 0 auto; min-width: 0; }
-.ed-meta-row input,
-.ed-meta-row select { font-size: 13.5px; }
-.ed-col,
+.ed-meta-row > input#edSummary {
+  flex: 0 0 260px;
+  min-width: 140px;
+  max-width: 320px;
+}
+.ed-meta-row > .tag-picker {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+.ed-meta-row .tag-picker-bar {
+  padding: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.ed-meta-row .tag-picker-bar > * { flex-shrink: 0; }
+.ed-meta-row .tag-picker-bar .tag-input { flex: 1 1 auto; min-width: 120px; }
+.ed-meta-row .tag-picker-body {
+  position: relative;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
 .ed-visibility {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   font-family: inherit;
+  font-size: 13.5px;
 }
-.ed-col:disabled,
 .ed-visibility:disabled { opacity: .6; background: var(--panel2); }
 
 body.read-only .ed-meta-row,

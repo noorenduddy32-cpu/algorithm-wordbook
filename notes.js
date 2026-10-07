@@ -575,18 +575,6 @@
 
   /* ---------------- 分栏管理 ---------------- */
 
-  function fillColumnSelect() {
-    const sel = $('edColumn');
-    const cur = sel.value;
-    const names = boardColumnNames();
-    if (!names.length) {
-      sel.innerHTML = '<option value="" disabled selected>暂无分栏，请先到「管理栏」添加</option>';
-      return;
-    }
-    sel.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
-    if (cur && names.indexOf(cur) >= 0) sel.value = cur;
-  }
-
   function openColModal() {
     if (!isAdmin()) return;
     renderColList();
@@ -620,7 +608,7 @@
     if (colOrder.indexOf(name) >= 0) { AN.toast('这个栏已经有了', true); return; }
     colOrder.push(name); saveColOrder();
     inp.value = '';
-    renderColList(); fillColumnSelect(); renderBoard();
+    renderColList(); renderBoard();
     AN.toast('已添加栏「' + name + '」');
   }
 
@@ -646,7 +634,7 @@
         rows.forEach(function (n) { n.category = ''; });
       }
     }
-    renderColList(); fillColumnSelect(); renderBoard();
+    renderColList(); renderBoard();
     AN.toast('已删除栏「' + name + '」');
   }
 
@@ -714,8 +702,6 @@
     $('edTags').value = rec ? arr(rec.tags).join(', ') : '';
     renderTagPicker();
     $('edVisibility').value = rec ? (rec.visibility || 'private') : 'private';
-    fillColumnSelect();
-    $('edColumn').value = rec ? (rec.category || '') : '';
     edBody().innerHTML = rec ? toHtml(rec.content) : '';
     if (readOnly) enhanceCodeBlocks(edBody());
 
@@ -725,7 +711,6 @@
     $('edSummary').readOnly = !editable;
     $('edTags').readOnly = !editable;
     $('edVisibility').disabled = !editable;
-    $('edColumn').disabled = !editable;
     edBody().contentEditable = editable ? 'true' : 'false';
     $('edToolbar').hidden = readOnly;
     $('saveDraftBtn').hidden = readOnly;
@@ -1155,8 +1140,8 @@
     if (!title) { AN.toast('先起个标题', true); $('edTitle').focus(); return; }
     const content = sanitizeHtml(getHtml());
     if (publish && !stripHtml(content).trim()) { AN.toast('正文还是空的', true); return; }
-    const category = $('edColumn').value || '';
-    if (!category.trim()) { AN.toast('请先选择分栏', true); $('edColumn').focus(); return; }
+    // 编辑页已去掉分栏选择器，保存时保留原有分栏（看板拖拽设置），新建文章默认未分栏
+    const category = editing && editing.category ? editing.category : '';
 
     const btn = publish ? $('publishBtn') : $('saveDraftBtn');
     const old = btn.textContent;

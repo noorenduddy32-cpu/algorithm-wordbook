@@ -114,6 +114,10 @@
       <button class="seg-btn active" data-mode="edit" title="直接编辑">编辑</button>
       <button class="seg-btn" data-mode="preview" title="查看效果">预览</button>
     </div>
+      <select id="edVisibility" class="ed-visibility" title="发布后谁可见">
+        <option value="public">公开</option>
+        <option value="private">私密</option>
+      </select>
       <button id="delNoteBtn" class="btn ghost" data-admin hidden>删除</button>
       <button id="saveDraftBtn" class="btn ghost" data-admin>存草稿</button>
       <button id="publishBtn" class="btn primary" data-admin>发布</button>
@@ -121,18 +125,10 @@
 
   <input id="edTitle" class="ed-title" placeholder="给这篇文章起个标题…" maxlength="120" autocomplete="off">
 
+  <!-- 摘要 + 标签 合并到同一行 -->
   <div class="ed-meta-row">
-    <input id="edSummary" placeholder="摘要" autocomplete="off">
-    <select id="edColumn" class="ed-col" title="所属分栏（自定义栏模式下生效；可在「管理栏」里增删）">
-      <option value="" disabled selected>请选择分栏</option>
-    </select>
-    <select id="edVisibility" class="ed-visibility" title="发布后谁可见">
-      <option value="public">公开</option>
-      <option value="private">私密</option>
-    </select>
-  </div>
-  <!-- 标签区：手输 + 常用标签库二合一 -->
-  <div class="tag-picker" id="tagPicker">
+    <input id="edSummary" placeholder="摘要" autocomplete="off" title="摘要">
+    <div class="tag-picker" id="tagPicker">
     <div class="tag-picker-bar">
       <span class="tag-label" title="可直接输入，或展开常用标签库点选">标签</span>
       <input id="edTags" class="tag-input" placeholder="逗号分隔，如 图论, 最短路, CF1900" list="tagList" autocomplete="off">
