@@ -1152,12 +1152,14 @@ pre.code-enh.wrapped .ln { white-space: pre-wrap; word-break: break-all; }
    插入代码弹窗（仿 CSDN：左代码编辑区 + 右语言列表）
    ============================================================ */
 .modal-box.code-modal { max-width: 860px; }
-.code-modal-body { display: flex; gap: 14px; align-items: stretch; }
-.code-modal-editor { flex: 1; min-width: 0; }
+.code-modal-body { display: flex; gap: 14px; align-items: stretch; height: 460px; }
+.code-modal-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .code-input {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 340px;
-  resize: vertical;
+  height: auto;
+  resize: none;
   box-sizing: border-box;
   background: #0d1117;
   color: #c9d1d9;
