@@ -324,6 +324,19 @@
 
   /* ---------------- 数据 ---------------- */
 
+  // 缓存立即显示：不依赖登录态，DOM 就绪就先画出来，消除切页/加载的一秒空白
+  function renderNotesCache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem('wb_notes_cache') || 'null');
+      if (cached && cached.length) {
+        all = cached;
+        const tab = $('notesTabs'); if (tab) tab.hidden = !isAdmin();
+        if (!isAdmin()) listTab = 'published';
+        renderView();
+      }
+    } catch (e) {}
+  }
+
   async function loadAll() {
     const db = AN.getDb();
     if (!db) {
@@ -1340,11 +1353,16 @@
     try {
       const cloud = AN.getCloud();
       if (!cloud) throw new Error('云端模型未就绪');
-      const models = await cloud.llm.models.list();
-      const m = (models || []).find(function (x) { return x.disabled !== true; });
-      if (!m) throw new Error('没有可用模型');
+      // 全部用非思考型快速模型（hunyuan-chat 等），绝不退回 auto 思考型（会等数分钟）
+      const FAST_MODELS = ['hunyuan-chat', 'hunyuan', 'deepseek', 'default'];
+      let modelId = 'hunyuan-chat';
+      try {
+        const models = await cloud.llm.models.list();
+        const ids = (models || []).map(function (x) { return x.id; }).filter(function (id) { return id && id !== 'auto'; });
+        for (const f of FAST_MODELS) { if (ids.indexOf(f) >= 0) { modelId = f; break; } }
+      } catch (e) {}
       const opts = {
-        model: m.id,
+        model: modelId,
         messages: [
           { role: 'system', content: '你是资深算法竞赛教练，输出中文 Markdown，简洁专业，不说废话。' },
           { role: 'user', content: AI_PROMPTS[aiAct] + ctx }
@@ -1736,6 +1754,7 @@
 
   function start() {
     bind();
+    renderNotesCache();
     window.whenAuthed(loadAll);
     if (location.hash) {
       const m = location.hash.match(/#n(\d+)/);

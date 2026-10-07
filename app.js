@@ -327,8 +327,8 @@
     window.whenAuthed(loadWords);
   }
 
-  async function loadWords() {
-    // 先用本地缓存秒显，消除切换页面时的一秒空白
+  // 缓存立即显示：不依赖登录态，DOM 就绪就先画出来，消除切页/加载的一秒空白
+  function renderWordsCache() {
     try {
       const cached = JSON.parse(localStorage.getItem('wb_words_cache') || 'null');
       if (cached && cached.length) {
@@ -337,6 +337,9 @@
         render();
       }
     } catch (e) {}
+  }
+
+  async function loadWords() {
     setStatus('正在连接词库…');
     if (!db) {
       setStatus('云端未就绪，刷新页面重试');
@@ -1581,9 +1584,8 @@
           '待识别单词：\n<<<\n' + words.join(', ') + '\n>>>'
       }
     ];
-    // 依次尝试候选模型：首选非思考型（hunyuan-chat，~1s），失败再退回 auto 兜底。
-    // 避免一旦 auto 之类思考型模型被选中、要等数分钟才出结果。
-    const tries = [model, 'auto'].filter(function (v, i, a) { return a.indexOf(v) === i; });
+    // 全部用非思考型快速模型，按 PREF_MODELS 顺序尝试；绝不退回 auto（思考型，会等数分钟）
+    const tries = PREF_MODELS.slice();
     let lastErr = null;
     for (const m of tries) {
       try {
@@ -1937,8 +1939,8 @@
       btn.disabled = true; btn.textContent = '查询中…';
       try {
         const model = await ensureModel();
-        // 首选非思考型模型（hunyuan-chat，~1s），失败再退回 auto 兜底
-        const tries = [model, 'auto'].filter(function (v, i, a) { return a.indexOf(v) === i; });
+        // 全部用非思考型快速模型，按 PREF_MODELS 顺序尝试；绝不退回 auto（思考型，会等数分钟）
+        const tries = PREF_MODELS.slice();
         let answer = '';
         let used = null;
         for (const m of tries) {

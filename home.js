@@ -51,6 +51,14 @@
     renderActivityHome(words, notes);
   }
 
+  // 缓存立即显示：不依赖登录态，DOM 就绪就先画出来，消除切页/加载的一秒空白
+  function renderHomeCache() {
+    try {
+      const c = JSON.parse(localStorage.getItem('wb_home_cache') || 'null');
+      if (c && c.words && c.notes) renderStats(c.words, c.notes);
+    } catch (e) {}
+  }
+
   function loadStats() {
     const db = AN.getDb();
     if (!db) {
@@ -200,5 +208,6 @@
     grid.onmouseleave = function () { const t = $('activityTip'); if (t) t.style.display = 'none'; };
   }
 
+  renderHomeCache();
   window.whenAuthed(loadStats);
 })();

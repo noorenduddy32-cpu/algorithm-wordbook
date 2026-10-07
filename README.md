@@ -4,6 +4,11 @@
 
 线上站点：**https://algorithm-wordbook.app.workbuddy.host/**（手机 / 电脑 / 任意网络直接打开，访客只读、管理员可写）
 
+## 最近更新
+
+- 性能优化：首页 / 词汇 / 文章三页改为「本地缓存先秒显、云端后台刷新」，切换与加载不再空白等待；静态资源 gzip + ETag 条件请求；AI 查词与文章助手统一走非思考型快速模型（hunyuan-chat 等），不再退回慢速思考模型。
+- 文章页给 jsDelivr 加 preconnect，预热 CDN 连接。
+
 ## 架构
 
 ```
