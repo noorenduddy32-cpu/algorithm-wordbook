@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+(function(){
+  try {
+    var fs = parseInt(localStorage.getItem('wb_font_scale'), 10);
+    if (isNaN(fs) || fs < 1 || fs > 100) fs = 50;
+    var z = fs <= 50 ? 0.5 + (fs - 1) * (0.5 / 49) : 1 + (fs - 50) * (1 / 50);
+    document.documentElement.style.zoom = z;
+    var t = localStorage.getItem('wb_theme_v2');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+})();
+</script>
 <title>访问记录 · 算法学习笔记本</title>
 <meta name="description" content="算法学习笔记本的访问日志：谁、从哪来、看了哪篇、看了多久。仅管理员可见。">
 <link rel="icon" href="assets/logo.png">
