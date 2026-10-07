@@ -1197,7 +1197,16 @@ pre.code-enh.wrapped .ln { white-space: pre-wrap; word-break: break-all; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
+.code-lang-list::-webkit-scrollbar { width: 8px; }
+.code-lang-list::-webkit-scrollbar-track { background: transparent; }
+.code-lang-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+.code-lang-list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 .code-lang-item {
   text-align: left;
   border: none;
