@@ -439,6 +439,15 @@
   gap: 8px;
   padding: 10px 0 12px;
   overflow: visible;
+  /* 写文章时让「摘要 / 标签 / 工具栏」这一行吸顶：长文向下滚动也不丢，随时能撤销、加粗、插入代码 */
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin: 0 -20px;
+  padding: 10px 20px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .10);
 }
 .ed-meta-row > input#edSummary {
   flex: 0 0 auto;
