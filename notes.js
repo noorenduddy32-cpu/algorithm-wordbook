@@ -891,8 +891,7 @@
     underline: function () { exec('underline'); closeAllPickers(); },
     strike: function () { exec('strikeThrough'); closeAllPickers(); },
     clear: function () { exec('removeFormat'); closeAllPickers(); },
-    code: function () { const s = getSelText(); insertHTML('<code>' + esc(s || '代码') + '</code>'); closeAllPickers(); },
-    codeblock: function () { closeAllPickers(); toggleLangPicker(); },
+    codeOpen: function () { openCodeModal(); },
     ul: function () { exec('insertUnorderedList'); closeAllPickers(); },
     ol: function () { exec('insertOrderedList'); closeAllPickers(); },
     quote: function () { exec('formatBlock', 'BLOCKQUOTE'); closeAllPickers(); },
@@ -1028,7 +1027,7 @@
 
   function closeAllPickers() {
     ['formatPickerPop', 'colorPickerPop', 'bgPickerPop', 'alignPickerPop',
-     'codePickerPop', 'tablePickerPop', 'langPickerPop'].forEach(function (id) {
+     'tablePickerPop'].forEach(function (id) {
       const el = $(id);
       if (el) el.hidden = true;
     });
@@ -1046,7 +1045,6 @@
   function toggleColorPicker() { togglePicker('colorPickerPop', renderColorPicker); }
   function toggleBgPicker() { togglePicker('bgPickerPop', renderBgPicker); }
   function toggleAlignPicker() { togglePicker('alignPickerPop'); }
-  function toggleCodePicker() { togglePicker('codePickerPop'); }
 
   function renderColorGrid(gridId, cmdName) {
     const grid = $(gridId);
@@ -1074,48 +1072,48 @@
     AN.toast('创建：' + created + '；更新：' + updated);
   }
 
-  /* ---------------- 代码块语言选择 ---------------- */
+  /* ---------------- 插入代码弹窗（仿 CSDN：代码编辑区 + 语言列表） ---------------- */
   const LANGS = [
-    ['cpp', 'C++'], ['c', 'C'], ['python', 'Python'], ['java', 'Java'],
+    ['cpp', 'C++'], ['c', 'C'], ['csharp', 'C#'], ['python', 'Python'], ['java', 'Java'],
     ['go', 'Go'], ['rust', 'Rust'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript'],
-    ['sql', 'SQL'], ['bash', 'Bash/Shell'], ['json', 'JSON'], ['xml', 'HTML/XML'],
-    ['plaintext', '纯文本']
+    ['kotlin', 'Kotlin'], ['swift', 'Swift'], ['dart', 'Dart'], ['php', 'PHP'], ['ruby', 'Ruby'],
+    ['perl', 'Perl'], ['sql', 'SQL'], ['bash', 'Bash/Shell'], ['json', 'JSON'], ['yaml', 'YAML'],
+    ['css', 'CSS'], ['scss', 'SCSS'], ['less', 'LESS'], ['xml', 'HTML/XML'],
+    ['diff', 'diff'], ['markdown', 'Markdown'], ['plaintext', '纯文本']
   ];
-  function toggleLangPicker() {
-    const pop = $('langPickerPop');
-    pop.hidden = !pop.hidden;
-    if (!pop.hidden) {
-      renderLangPicker();
-      pop.focus();
-    }
+  let codeLang = 'cpp';
+
+  function openCodeModal() {
+    const ta = $('codeInput');
+    const sel = (getSelText() || '').trim();
+    ta.value = sel;
+    codeLang = 'cpp';
+    renderCodeLangList();
+    $('codeModal').hidden = false;
+    setTimeout(function () { ta.focus(); }, 40);
   }
-  function renderLangPicker() {
-    const box = $('langPickerList');
+  function closeCodeModal() { $('codeModal').hidden = true; }
+  function renderCodeLangList() {
+    const box = $('codeLangList');
     box.innerHTML = '';
     LANGS.forEach(function (it) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'lang-pick-item';
+      b.className = 'code-lang-item' + (it[0] === codeLang ? ' active' : '');
       b.dataset.lang = it[0];
       b.textContent = it[1];
       box.appendChild(b);
     });
   }
-  function insertCodeBlock(lang) {
-    const s = getSelText();
-    const ph = s || '// 在这里写代码';
+  function insertCodeBlock(lang, text) {
+    const s = (text != null) ? text : (getSelText() || '// 在这里写代码');
+    const ph = (s && s.length) ? s : '// 在这里写代码';
     insertHTML('<pre><code class="language-' + lang + '">' + esc(ph) + '</code></pre><p><br></p>');
-    // 把光标放进刚插入的代码块里，方便直接写代码
-    const pres = edBody().querySelectorAll('pre');
-    const last = pres[pres.length - 1];
-    const codeEl = last && last.querySelector('code');
-    if (codeEl) {
-      const range = document.createRange();
-      range.selectNodeContents(codeEl);
-      const sel = window.getSelection();
-      sel.removeAllRanges(); sel.addRange(range);
-    }
     updatePreview();
+  }
+  function confirmCodeInsert() {
+    insertCodeBlock(codeLang, $('codeInput').value);
+    closeCodeModal();
   }
 
   function askLink(kind) {
@@ -1474,7 +1472,7 @@
       if (d) {
         const map = {
           format: toggleFormatPicker, color: toggleColorPicker, bg: toggleBgPicker,
-          align: toggleAlignPicker, code: toggleCodePicker, table: toggleTablePicker
+          align: toggleAlignPicker, table: toggleTablePicker
         };
         const fn = map[d.dataset.dropdown];
         if (fn) fn();
@@ -1507,15 +1505,32 @@
       $('tablePickerPop').hidden = true;
     });
     document.addEventListener('click', function (e) {
-      const inside = e.target.closest('#tablePickerWrap, #langPickerWrap, #formatPickerWrap, #colorPickerWrap, #bgPickerWrap, #alignPickerWrap, #codePickerWrap');
+      const inside = e.target.closest('#tablePickerWrap, #formatPickerWrap, #colorPickerWrap, #bgPickerWrap, #alignPickerWrap');
       if (!inside) { closeAllPickers(); }
     });
-    $('langPickerList').addEventListener('click', function (e) {
-      const b = e.target.closest('.lang-pick-item');
+    // 插入代码弹窗
+    $('codeLangList').addEventListener('click', function (e) {
+      const b = e.target.closest('.code-lang-item');
       if (!b) return;
-      const lang = b.dataset.lang || 'plaintext';
-      $('langPickerPop').hidden = true;
-      insertCodeBlock(lang);
+      codeLang = b.dataset.lang;
+      renderCodeLangList();
+    });
+    $('codeInsertOk').addEventListener('click', function () { confirmCodeInsert(); });
+    $('codeCancel').addEventListener('click', closeCodeModal);
+    $('codeModal').addEventListener('click', function (e) {
+      if (e.target === $('codeModal')) closeCodeModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !$('codeModal').hidden) closeCodeModal();
+    });
+    // 代码编辑区：Tab 缩进而非跳焦
+    $('codeInput').addEventListener('keydown', function (e) {
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      const ta = e.target;
+      const start = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.slice(0, start) + '  ' + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + 2;
     });
 
     // 粘贴：优先内嵌剪贴板里的图片（原图直出，不替换成链接/占位符）；其余按文本/HTML 原样插入

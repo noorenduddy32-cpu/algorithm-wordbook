@@ -218,20 +218,10 @@
       <span>块引用</span>
     </button>
 
-    <div class="tb-dropdown" id="codePickerWrap">
-      <button class="tb" data-dropdown="code" title="代码" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
-        <span>插入代码</span>
-      </button>
-      <div class="tb-popover" id="codePickerPop" hidden>
-        <button class="tb-pop-item" data-cmd="code" type="button">行内代码</button>
-        <button class="tb-pop-item" data-cmd="codeblock" type="button">代码块</button>
-      </div>
-      <div class="lang-picker-popover" id="langPickerPop" hidden>
-        <div class="lang-picker-label">选择语言</div>
-        <div class="lang-picker-list" id="langPickerList"></div>
-      </div>
-    </div>
+    <button class="tb" data-cmd="codeOpen" title="插入代码" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+      <span>插入代码</span>
+    </button>
     <div class="tb-dropdown" id="tablePickerWrap">
       <button class="tb" id="tablePickerBtn" data-dropdown="table" title="插入表格" type="button">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9.6h18M3 14.6h18M9.5 9.6v9.9"/></svg>
@@ -286,6 +276,26 @@
     <div class="modal-actions">
       <button type="button" class="btn ghost" data-close>取消</button>
       <button type="button" class="btn primary" id="linkOk">插入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 插入代码弹窗（仿 CSDN：左侧代码编辑区 + 右侧语言列表） -->
+<div class="modal" id="codeModal" hidden>
+  <div class="modal-box code-modal">
+    <h2>插入代码</h2>
+    <div class="code-modal-body">
+      <div class="code-modal-editor">
+        <textarea id="codeInput" class="code-input" spellcheck="false" placeholder="在这里写代码…"></textarea>
+      </div>
+      <aside class="code-lang-aside">
+        <div class="code-lang-aside-title">选择语言</div>
+        <div class="code-lang-list" id="codeLangList"></div>
+      </aside>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" id="codeCancel">取消</button>
+      <button type="button" class="btn primary" id="codeInsertOk">确定</button>
     </div>
   </div>
 </div>

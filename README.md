@@ -15,6 +15,7 @@
 - 修复编辑器「插入表格」按钮点了没反应：把该按钮从 `data-cmd` 改为 `data-dropdown`，使其走下拉分支（点完不再被 `closeAllPickers` 立刻关掉），点格子即可插入表格
 - 插入的表格单元格改为正方形：编辑器表格不再撑满整行（`.ed-input table { width:auto }`），单元格固定 96×96 宽高一致，阅读/预览模式仍保持满宽
 - 任意元素都能左/中/右对齐：文字用 `text-align`，图片/表格/代码块等媒体元素用 `margin:auto`（图片自动 `display:block`），点一下所在块内的图片或表格即可整体对齐；左/中/右三种均生效，对齐结果随正文持久保存
+- 「插入代码」改为弹窗式（仿 CSDN）：点工具栏「插入代码」直接弹出代码编辑区 + 右侧 26 种语言列表（C++/C/C#/Python/Java/Go/Rust/JS/TS/Kotlin/Swift/Dart/PHP/Ruby/SQL/Bash/JSON/YAML/CSS/SCSS/LESS/XML/diff/Markdown/纯文本），确定后插入深色代码块；代码块带语言标签、行号、复制按钮、超 10 行自动收起（可展开），编辑区 Tab 缩进、Esc/点遮罩关闭弹窗；去掉了原来的「行内代码」选项
 
 ---
 

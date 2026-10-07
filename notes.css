@@ -1067,6 +1067,94 @@ pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; 
   padding: 0;
 }
 
+/* 编辑器内未增强的代码块（直接插入态）也显示深色卡片 */
+.ed-input pre,
+.md-body pre:not(.code-enh) {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: #c9d1d9;
+  margin: 1.15em 0;
+}
+.ed-input pre code,
+.md-body pre:not(.code-enh) code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* ============================================================
+   插入代码弹窗（仿 CSDN：左代码编辑区 + 右语言列表）
+   ============================================================ */
+.modal-box.code-modal { max-width: 860px; }
+.code-modal-body { display: flex; gap: 14px; align-items: stretch; }
+.code-modal-editor { flex: 1; min-width: 0; }
+.code-input {
+  width: 100%;
+  height: 340px;
+  resize: vertical;
+  box-sizing: border-box;
+  background: #0d1117;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.75;
+  tab-size: 4;
+  outline: none;
+}
+.code-input:focus { border-color: #58a6ff; }
+.code-input::placeholder { color: #6e7681; }
+.code-lang-aside {
+  flex: none;
+  width: 188px;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  background: var(--panel2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.code-lang-aside-title {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel3);
+  flex: none;
+}
+.code-lang-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.code-lang-item {
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s, color .12s;
+}
+.code-lang-item:hover { background: var(--panel3); }
+.code-lang-item.active { background: rgba(31, 111, 235, .22); color: #58a6ff; font-weight: 600; }
+
 /* 表格：阅读 / 编辑器 / 预览 共用一套规整样式，让格子够大、光标对齐 */
 .md-body table,
 .ed-input table,
