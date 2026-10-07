@@ -29,6 +29,28 @@
     return Object.keys(obj).filter(function (k) { return (obj[k] || 0) > 0; }).length;
   }
 
+  function renderStats(words, notes) {
+    let ex = 0;
+    const days = {};
+    words.forEach(function (x) {
+      if (Array.isArray(x.examples)) ex += x.examples.length;
+      if (x.created_at) days[String(x.created_at).slice(0, 10)] = 1;
+    });
+    try {
+      const act = JSON.parse(localStorage.getItem(LS_ACT) || '{}');
+      Object.keys(act).forEach(function (k) { if ((act[k] || 0) > 0) days[k] = 1; });
+    } catch (e) {}
+    notes.forEach(function (x) { if (x.updated_at) days[String(x.updated_at).slice(0, 10)] = 1; });
+    setText('hsWords', String(words.length));
+    setText('hsEx', String(ex));
+    setText('hsNotes', String(notes.length));
+    setText('hsDays', String(Object.keys(days).length));
+    setText('entryWords', String(words.length));
+    setText('entryNotes', String(notes.length));
+    setText('footTip', '数据来自云端数据库 · 随时可写');
+    renderActivityHome(words, notes);
+  }
+
   function loadStats() {
     const db = AN.getDb();
     if (!db) {
@@ -38,6 +60,11 @@
       setText('footTip', '云端未连接，数字暂不可用');
       return;
     }
+    // 先用本地缓存秒显，消除切换页面时的一秒空白
+    try {
+      const c = JSON.parse(localStorage.getItem('wb_home_cache') || 'null');
+      if (c && c.words && c.notes) renderStats(c.words, c.notes);
+    } catch (e) {}
     (async function () {
       try {
         const [w, n] = await Promise.all([
@@ -47,28 +74,8 @@
         ]);
         const words = w.data || [];
         const notes = n.data || [];
-
-        let ex = 0;
-        const days = {};
-        words.forEach(function (x) {
-          if (Array.isArray(x.examples)) ex += x.examples.length;
-          if (x.created_at) days[String(x.created_at).slice(0, 10)] = 1;
-        });
-        try {
-          const act = JSON.parse(localStorage.getItem(LS_ACT) || '{}');
-          Object.keys(act).forEach(function (k) { if ((act[k] || 0) > 0) days[k] = 1; });
-        } catch (e) {}
-        notes.forEach(function (x) { if (x.updated_at) days[String(x.updated_at).slice(0, 10)] = 1; });
-
-        setText('hsWords', String(words.length));
-        setText('hsEx', String(ex));
-        setText('hsNotes', String(notes.length));
-        setText('hsDays', String(Object.keys(days).length));
-        setText('entryWords', String(words.length));
-        setText('entryNotes', String(notes.length));
-        setText('footTip', '数据来自云端数据库 · 随时可写');
-
-        renderActivityHome(words, notes);
+        try { localStorage.setItem('wb_home_cache', JSON.stringify({ words: words, notes: notes })); } catch (e) {}
+        renderStats(words, notes);
       } catch (e) {
         setText('hsWords', '—'); setText('hsEx', '—');
         setText('hsNotes', '—');

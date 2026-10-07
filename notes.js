@@ -331,9 +331,20 @@
       $('noteList').innerHTML = '<p class="muted" style="padding:30px 0">读不到数据，刷新页面重试。</p>';
       return;
     }
+    // 先用本地缓存秒显，消除切换页面时的一秒空白
+    try {
+      const cached = JSON.parse(localStorage.getItem('wb_notes_cache') || 'null');
+      if (cached && cached.length) {
+        all = cached;
+        $('notesTabs').hidden = !isAdmin();
+        if (!isAdmin()) listTab = 'published';
+        renderView();
+      }
+    } catch (e) {}
     const { data, error } = await db.from('notes').select('*').order('updated_at', { ascending: false });
     if (error) { $('notesSub').textContent = '读取失败：' + (error.message || ''); return; }
     all = data || [];
+    try { localStorage.setItem('wb_notes_cache', JSON.stringify(all)); } catch (e) {}
     $('notesTabs').hidden = !isAdmin();
     // 非管理员只看已发布
     if (!isAdmin()) listTab = 'published';

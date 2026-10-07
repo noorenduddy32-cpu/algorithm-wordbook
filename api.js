@@ -269,7 +269,7 @@
   }
 
   async function init() {
-    // 先探测后端 / 会话，**确认需要登录再渲染访问门**，避免每次站内跳转都先闪一下密码框。
+    // 先探测后端 / 会话，决定角色与加载方式
     let resp = null;
     try { resp = await fetch('/api/me', { credentials: 'include' }); } catch (e) { resp = null; }
     const hasBackend = !!(resp && resp.status !== 404);
@@ -281,24 +281,19 @@
       return;
     }
 
-    // 有后端：读已有会话角色，按「进入方式」决定行为：
-    //  · 站内跳转(navigate) / 前进后退(back_forward) → 静默恢复，不弹密码框（状态保持）
-    //  · 刷新(reload) / 无会话 → 才渲染访问门，强制重新输密码
+    // 有后端：已有会话（visitor/admin）直接静默恢复，切换/刷新都不弹门、不闪
     let role = null;
     try { const j = await resp.json(); role = j && j.role; } catch (e) {}
     if (role === 'visitor' || role === 'admin') {
-      const nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || {};
-      if (nav.type !== 'reload') {
-        Auth.role = role;
-        onAuthed(role, true);
-        return;
-      }
+      Auth.role = role;
+      onAuthed(role, true);
+      return;
     }
 
-    // 需要输密码时才渲染访问门
-    buildGate();
-    // 无会话：访客先输访客密码进入只读模式，再点右上角角色徽标输管理员密码升级；
-    // 管理员密码与访客密码严格绑定各自角色，输入访客密码绝不会进入管理员模式。
+    // 无会话：自动以访客身份只读进入（无需手输密码），数据照常可看；
+    // 需要写时再点角色徽标/写按钮，弹门输管理员密码升级。
+    const v = await Auth.visitor();
+    onAuthed(v, true);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

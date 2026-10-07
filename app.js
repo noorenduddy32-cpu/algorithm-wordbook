@@ -328,6 +328,15 @@
   }
 
   async function loadWords() {
+    // 先用本地缓存秒显，消除切换页面时的一秒空白
+    try {
+      const cached = JSON.parse(localStorage.getItem('wb_words_cache') || 'null');
+      if (cached && cached.length) {
+        all = cached.map(function (w) { w._r = Math.random(); if (!Array.isArray(w.examples)) w.examples = []; return w; });
+        setStatus('已从本地缓存加载 ' + all.length + ' 个单词');
+        render();
+      }
+    } catch (e) {}
     setStatus('正在连接词库…');
     if (!db) {
       setStatus('云端未就绪，刷新页面重试');
@@ -342,6 +351,7 @@
         if (!Array.isArray(w.examples)) w.examples = [];
         return w;
       });
+      try { localStorage.setItem('wb_words_cache', JSON.stringify(all.map(function (w) { const c = Object.assign({}, w); delete c._r; return c; }))); } catch (e) {}
       setStatus('已同步 ' + all.length + ' 个单词');
       render();
     } catch (err) {
