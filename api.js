@@ -281,12 +281,15 @@
       return;
     }
 
-    // 有后端：/api/me 一定返回 visitor/admin（无会话已自动降级），直接静默恢复
+    // 有后端：/api/me 返回 visitor/admin（已有会话）才静默恢复；无会话则必须先输密码
     let role = null;
     try { const j = await resp.json(); role = j && j.role; } catch (e) {}
-    if (role === 'visitor' || role === 'admin') {
+    if (role === 'admin' || role === 'visitor') {
       Auth.role = role;
       onAuthed(role, true);
+    } else {
+      // 无会话：弹出访问门，必须先输入正确密码才能访问（不再自动免密进入）
+      buildGate();
     }
   }
 

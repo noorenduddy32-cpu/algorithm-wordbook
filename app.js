@@ -324,11 +324,12 @@
       setTimeout(function () { runAction(act); }, 80);
     });
     refreshEditUI();
-    window.whenAuthed(loadWords);
+    window.whenAuthed(function () { renderWordsCache(); loadWords(); });
   }
 
-  // 缓存立即显示：不依赖登录态，DOM 就绪就先画出来，消除切页/加载的一秒空白
+  // 缓存显示：仅登录后触发（未登录不渲染，避免未授权泄露本地缓存）
   function renderWordsCache() {
+    if (!window.Auth || !window.Auth.role) return;
     try {
       const cached = JSON.parse(localStorage.getItem('wb_words_cache') || 'null');
       if (cached && cached.length) {

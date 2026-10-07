@@ -2,7 +2,7 @@
 
 个人算法竞赛用的在线笔记本，两块内容：**算法词汇本**（Codeforces / ICPC 高频词，按原形收录，配词性、中文释义和原题例句）和**我的文章**（所见即所得富文本，写题解、复盘、模板与踩坑）。
 
-线上站点：**https://algorithm-wordbook.app.workbuddy.host/**（手机 / 电脑 / 任意网络直接打开，访客只读、管理员可写）
+线上站点：**https://algorithm-wordbook.app.workbuddy.host/**（需输入访问密码进入：访客只读、管理员可写）
 
 ## 最近更新
 
