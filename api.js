@@ -269,7 +269,7 @@
   }
 
   async function init() {
-    // 先探测后端 / 会话，决定角色与加载方式
+    // 先探测后端；有后端时 /api/me 会直接返回角色（无会话自动降级为 visitor 并发 Cookie）
     let resp = null;
     try { resp = await fetch('/api/me', { credentials: 'include' }); } catch (e) { resp = null; }
     const hasBackend = !!(resp && resp.status !== 404);
@@ -281,19 +281,13 @@
       return;
     }
 
-    // 有后端：已有会话（visitor/admin）直接静默恢复，切换/刷新都不弹门、不闪
+    // 有后端：/api/me 一定返回 visitor/admin（无会话已自动降级），直接静默恢复
     let role = null;
     try { const j = await resp.json(); role = j && j.role; } catch (e) {}
     if (role === 'visitor' || role === 'admin') {
       Auth.role = role;
       onAuthed(role, true);
-      return;
     }
-
-    // 无会话：自动以访客身份只读进入（无需手输密码），数据照常可看；
-    // 需要写时再点角色徽标/写按钮，弹门输管理员密码升级。
-    const v = await Auth.visitor();
-    onAuthed(v, true);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
