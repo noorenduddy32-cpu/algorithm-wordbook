@@ -1029,35 +1029,48 @@ pre.code-enh:not(.expanded) .code-area::after {
   background: linear-gradient(transparent, #161b22);
   pointer-events: none;
 }
-.ln-gutter {
+pre.code-enh .ln-gutter {
   flex: none;
   padding: 14px 12px 14px 16px;
   text-align: right;
-  white-space: pre;
   color: #6e7681;
   user-select: none;
   border-right: 1px solid #30363d;
   background: #0d1117;
   font-size: 13.5px;
-  line-height: 1.75;
+  line-height: 24px;
 }
-.code-area > code {
+pre.code-enh .ln-gutter .ln {
+  display: block;
+  white-space: pre;
+  line-height: 24px;
+  min-height: 24px;
+}
+pre.code-enh .code-area > code {
   display: block;
   flex: 1;
   margin: 0;
-  padding: 14px 16px;
+  padding: 14px 16px !important;
   overflow-x: auto;
-  white-space: pre;
-  background: none;
-  border: none;
+  white-space: normal;
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
   color: inherit;
+  font-size: 13.5px;
+  line-height: 24px;
 }
-pre.code-enh.wrapped .code-area > code {
+pre.code-enh .code-line {
+  display: block;
+  white-space: pre;
+  line-height: 24px;
+  min-height: 24px;
+}
+pre.code-enh.wrapped .code-line {
   white-space: pre-wrap;
   word-break: break-all;
-  overflow-x: hidden;
 }
-pre.code-enh.wrapped .ln-gutter { white-space: pre-wrap; word-break: break-all; }
+pre.code-enh.wrapped .ln { white-space: pre-wrap; word-break: break-all; }
 
 /* 代码块高亮：覆盖 hljs 默认背景，保持深色统一 */
 .md-code .hljs,

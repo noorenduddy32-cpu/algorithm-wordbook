@@ -273,7 +273,9 @@
       if (window.hljs && lang !== 'code' && !code.classList.contains('hljs')) {
         try { code.className = 'language-' + lang; window.hljs.highlightElement(code); } catch (e) {}
       }
-      const gutter = lines.map(function (_, i) { return i + 1; }).join('\n');
+      const gutter = lines.map(function (_, i) { return '<div class="ln">' + (i + 1) + '</div>'; }).join('');
+      const codeClass = code.className || ('language-' + lang);
+      const codeLines = code.innerHTML.split('\n').map(function (html) { return '<div class="code-line">' + html + '</div>'; }).join('');
       const copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/></svg>';
       const wrapIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>';
       const chevronDown = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
@@ -285,7 +287,7 @@
         '</span></div>';
       const bottomBar = lines.length > 10 ? '<div class="code-bottom-bar"><button type="button" class="code-toggle">' +
         '<span>展开</span>' + chevronDown + '</button></div>' : '';
-      const area = '<div class="code-area"><span class="ln-gutter">' + gutter + '</span>' + code.outerHTML + '</div>';
+      const area = '<div class="code-area"><div class="ln-gutter">' + gutter + '</div><code class="' + esc(codeClass) + '">' + codeLines + '</code></div>';
       pre.className = (pre.className + ' code-enh').trim();
       pre.innerHTML = bar + area + bottomBar;
       if (lines.length > 10) pre.classList.add('collapsed');
