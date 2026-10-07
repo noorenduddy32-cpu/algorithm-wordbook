@@ -284,10 +284,10 @@
       const chevronUp = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
       const bar = '<div class="code-bar"><span class="code-lang">' + esc(lang) + '</span>' +
         '<span class="code-btns">' +
-        '<button type="button" class="code-wrap" title="打开自动换行" aria-label="打开自动换行">' + wrapOffIcon + '</button>' +
-        '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码">' + copyIcon + '<span>复制</span></button>' +
+        '<button type="button" class="code-wrap" title="打开自动换行" aria-label="打开自动换行" contenteditable="false">' + wrapOffIcon + '</button>' +
+        '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码" contenteditable="false">' + copyIcon + '<span>复制</span></button>' +
         '</span></div>';
-      const bottomBar = lines.length > 10 ? '<div class="code-bottom-bar"><button type="button" class="code-toggle">' +
+      const bottomBar = lines.length > 10 ? '<div class="code-bottom-bar"><button type="button" class="code-toggle" contenteditable="false">' +
         '<span>展开</span>' + chevronDown + '</button></div>' : '';
       const area = '<div class="code-area"><div class="ln-gutter">' + gutter + '</div><code class="' + esc(codeClass) + '">' + codeLines + '</code></div>';
       pre.className = (pre.className + ' code-enh').trim();
@@ -675,7 +675,22 @@
 
   function edBody() { return $('edBody'); }
 
-  function getHtml() { return edBody().innerHTML; }
+  function getHtml() {
+    // 编辑模式下代码块会被增强为带行号/工具栏的卡片；
+    // 保存前还原为干净的 <pre><code class="language-xxx">文本</code></pre>，
+    // 保证数据库、预览、后续重新打开都能正常高亮。
+    const clone = edBody().cloneNode(true);
+    clone.querySelectorAll('pre.code-enh').forEach(function (pre) {
+      const code = pre.querySelector('.code-area > code');
+      if (!code) return;
+      const lang = (code.className.match(/language-([\w+-]+)/) || [])[1] || 'code';
+      const raw = codeText(code).replace(/^\n+|\n+$/g, '');
+      const clean = document.createElement('pre');
+      clean.innerHTML = '<code class="language-' + lang + '">' + esc(raw) + '</code>';
+      pre.parentNode.replaceChild(clean, pre);
+    });
+    return clone.innerHTML;
+  }
 
   function setMode(m) {
     mode = m;
@@ -755,7 +770,9 @@
     renderTagPicker();
     $('edVisibility').value = rec ? (rec.visibility || 'private') : 'private';
     edBody().innerHTML = rec ? toHtml(rec.content) : '';
-    if (readOnly) enhanceCodeBlocks(edBody());
+    // 编辑/只读模式都增强代码块，保持与预览一致的高亮、行号、工具栏
+    edBody().querySelectorAll('pre[data-enh]').forEach(function (pre) { delete pre.dataset.enh; });
+    enhanceCodeBlocks(edBody());
 
     // 只读模式：标题、摘要、正文不可改；工具栏、保存/发布按钮隐藏
     const editable = !readOnly;
@@ -763,6 +780,10 @@
     $('edSummary').readOnly = !editable;
     $('edTags').readOnly = !editable;
     $('edVisibility').disabled = !editable;
+    // 编辑模式下让增强后的代码文本区仍可编辑，只读模式下整体不可编辑
+    edBody().querySelectorAll('pre.code-enh .code-area > code').forEach(function (code) {
+      code.setAttribute('contenteditable', editable ? 'true' : 'false');
+    });
     edBody().contentEditable = editable ? 'true' : 'false';
     $('edToolbar').hidden = readOnly;
     $('saveDraftBtn').hidden = readOnly;
