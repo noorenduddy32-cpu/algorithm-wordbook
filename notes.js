@@ -664,6 +664,7 @@
   /* ---------------- 视图切换 ---------------- */
 
   function show(which) {
+    if (which !== 'edit') stopAutosave();
     $('listView').hidden = which !== 'list';
     $('editView').hidden = which !== 'edit';
     if (which === 'list') startVisit(null);
@@ -692,10 +693,61 @@
     saveDraftLocal();
   }
 
+  /* ---------------- 自动存草稿（写一半退出也进草稿箱） ---------------- */
+  // autosaveId：当前正在写的「新文章/草稿」在云端对应的笔记 id；
+  // 首次自动保存时插入，之后原地更新，避免每次都新建重复草稿。
+  let autosaveId = null;
+  let autosaveTimer = null;
+  function startAutosave() {
+    stopAutosave();
+    if (readOnly) return;
+    // 已发布的文章不在后台自动存成草稿（避免产生重复草稿）
+    if (editing && (editing.status || 'draft') !== 'draft') return;
+    autosaveTimer = setInterval(stashAutosaveDraft, 15000);
+  }
+  function stopAutosave() {
+    if (autosaveTimer) { clearInterval(autosaveTimer); autosaveTimer = null; }
+  }
+  async function stashAutosaveDraft() {
+    if (readOnly) return;
+    // 正在编辑「已发布」文章时不做后台草稿（避免产生一份重复的草稿副本）
+    if (editing && (editing.status || 'draft') !== 'draft') return;
+    const html = getHtml().trim();
+    if (!html) return;
+    const db = AN.getDb();
+    if (!db) return;
+    const rec = {
+      title: $('edTitle').value.trim() || '未命名草稿',
+      content: sanitizeHtml(getHtml()),
+      summary: $('edSummary').value.trim() || autoSummary(html),
+      tags: parseTags(),
+      category: (editing && editing.category) || '',
+      status: 'draft',
+      visibility: $('edVisibility').value || 'private',
+      updated_at: new Date().toISOString()
+    };
+    try {
+      if (autosaveId) {
+        const { error } = await db.from('notes').update(rec).eq('id', autosaveId);
+        if (!error) {
+          const i = all.findIndex(function (n) { return String(n.id) === String(autosaveId); });
+          if (i >= 0) all[i] = Object.assign({}, all[i], rec);
+        }
+      } else {
+        const { data, error } = await db.from('notes').insert(rec).select();
+        if (!error && data && data[0]) {
+          autosaveId = data[0].id;
+          const i = all.findIndex(function (n) { return String(n.id) === String(autosaveId); });
+          if (i >= 0) all[i] = data[0]; else all.push(data[0]);
+        }
+      }
+    } catch (e) {}
+  }
+
   function openEditor(rec, opts) {
     opts = opts || {};
     editing = rec || null;
-    readOnly = !!opts.readOnly;
+    readOnly = (opts && typeof opts.readOnly === 'boolean') ? opts.readOnly : !isAdmin();
 
     $('edTitle').value = rec ? (rec.title || '') : '';
     $('edSummary').value = rec ? (rec.summary || '') : '';
@@ -729,7 +781,11 @@
       $('edStatus').textContent = '新文章';
     }
 
-    if (!rec) restoreDraft();
+    // 点「写文章」不再自动恢复上次没写完的本地草稿（避免一进编辑器就跳到未发布内容）；
+    // 半途内容改为自动存进云端草稿箱（见 startAutosave / stashAutosaveDraft）。
+    if (!rec) { autosaveId = null; }
+    else { autosaveId = ((rec.status || 'draft') === 'draft') ? rec.id : null; }
+    startAutosave();
     setMode(readOnly ? 'preview' : (localStorage.getItem(LS_MODE) || 'edit'));
     updatePreview();
     show('edit');
@@ -741,6 +797,7 @@
   // 点已有文章：管理员直接进编辑（并强制显示可编辑正文，避免停在预览模式让人误以为不能改）；
   // 访客则弹登录门输管理员密码升级为管理员，升级后自动打开该文章编辑。
   let pendingEditRec = null;
+  let pendingNew = false;
   function openExisting(x) {
     if (!x) return;
     if (isAdmin()) {
@@ -758,20 +815,11 @@
       openEditor(x, { readOnly: false });
       setMode('edit');
     }
+    if (pendingNew) {
+      pendingNew = false;
+      openEditor(null);
+    }
   });
-
-  function restoreDraft() {
-    try {
-      const d = JSON.parse(localStorage.getItem(LS_DRAFT) || 'null');
-      if (d && d.content) {
-        $('edTitle').value = d.title || '';
-        $('edSummary').value = d.summary || '';
-        $('edTags').value = d.tags || '';
-        edBody().innerHTML = d.content || '';
-        $('edStatus').textContent = '草稿（已恢复上次没写完的）';
-      }
-    } catch (e) {}
-  }
 
   function saveDraftLocal() {
     try {
@@ -1185,11 +1233,17 @@
         const { error } = await db.from('notes').update(rec).eq('id', editing.id);
         if (error) throw new Error(error.message || '更新失败');
         rec.id = editing.id; rec.created_at = editing.created_at; rec.views = editing.views;
+      } else if (autosaveId) {
+        // 新建文章：复用自动保存时已建好的云端草稿，原地更新为发布/草稿，避免留下重复草稿
+        const { error } = await db.from('notes').update(rec).eq('id', autosaveId);
+        if (error) throw new Error(error.message || '写入失败');
+        rec.id = autosaveId; rec.created_at = new Date().toISOString(); rec.views = 0;
       } else {
         const { data, error } = await db.from('notes').insert(rec).select();
         if (error) throw new Error(error.message || '写入失败');
         rec.id = data[0].id; rec.created_at = data[0].created_at; rec.views = 0;
       }
+      autosaveId = rec.id;
       AN.bumpActivity(publish ? 2 : 1);
       const i = all.findIndex(function (n) { return String(n.id) === String(rec.id); });
       if (i >= 0) all[i] = rec; else all.push(rec);
@@ -1435,7 +1489,16 @@
       moveToColumn(id, body.dataset.col || '未分栏');
     });
 
-    $('newNoteBtn').addEventListener('click', function () { openEditor(null); });
+    $('newNoteBtn').addEventListener('click', function () {
+      // 访客/只读模式没有发布权限：先弹登录门升级为管理员，登录成功后再开空白编辑器
+      if (!isAdmin()) {
+        pendingNew = true;
+        if (window.reopenGate) window.reopenGate();
+        else if (window.AN && window.AN.toast) window.AN.toast('请以管理员身份登录后再写文章', true);
+        return;
+      }
+      openEditor(null);
+    });
 
     $('noteList').addEventListener('click', function (e) {
       const cb = e.target.closest('.sel-check');
@@ -1465,8 +1528,9 @@
 
     $('edBack').addEventListener('click', function () {
       if (!readOnly && getHtml().trim() && !editing) {
-        if (!confirm('还没发布，确定离开吗？（内容会留在草稿里）')) return;
+        if (!confirm('还没发布，确定离开吗？（内容会留在草稿箱）')) return;
       }
+      stashAutosaveDraft(); // 兜底：离开前把半途内容存进草稿箱
       history.replaceState(null, '', 'notes.html');
       show('list');
     });
@@ -1653,7 +1717,7 @@
       }
     }
     window.addEventListener('beforeunload', function () {
-      if (!$('editView').hidden && getHtml().trim() && !readOnly) saveDraftLocal();
+      if (!$('editView').hidden && getHtml().trim() && !readOnly) { saveDraftLocal(); stashAutosaveDraft(); }
       reportVisit(Date.now() - visitStart, visitNoteId, visitNoteTitle);
     });
   }
