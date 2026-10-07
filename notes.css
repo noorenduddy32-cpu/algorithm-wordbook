@@ -431,28 +431,29 @@
 .ed-title:focus { border-color: var(--accent); box-shadow: none; }
 .ed-title::placeholder { color: var(--muted); opacity: .55; }
 
-/* ---------------- 摘要 + 标签 合并到同一行 ---------------- */
+/* ---------------- 摘要 + 标签 + 工具按钮 合并到同一行 ---------------- */
 .ed-meta-row {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 12px;
-  padding: 14px 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 12px;
   overflow: visible;
 }
 .ed-meta-row > input#edSummary {
-  flex: 0 0 260px;
-  min-width: 140px;
-  max-width: 320px;
+  flex: 0 0 auto;
+  width: 140px;
+  min-width: 120px;
 }
 .ed-meta-row > .tag-picker {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 1 220px;
+  min-width: 180px;
   margin: 0;
   border: none;
   border-radius: 0;
   background: transparent;
   overflow: visible;
+  position: relative;
 }
 .ed-meta-row .tag-picker-bar {
   padding: 0;
@@ -460,13 +461,19 @@
   gap: 8px;
 }
 .ed-meta-row .tag-picker-bar > * { flex-shrink: 0; }
-.ed-meta-row .tag-picker-bar .tag-input { flex: 1 1 auto; min-width: 120px; }
+.ed-meta-row .tag-picker-bar .tag-input { flex: 1 1 auto; min-width: 100px; }
+.ed-meta-row .tag-picker-bar .tag-filter { flex: 0 1 110px; min-width: 80px; }
 .ed-meta-row .tag-picker-body {
-  position: relative;
-  margin-top: 8px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  margin-top: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
 }
 
 .ed-visibility {
@@ -593,14 +600,15 @@ body.read-only .tag-picker { display: none; }
   align-items: center;
   flex-wrap: wrap;
   overflow-x: visible;
-  padding: 6px 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px 12px 0 0;
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  backdrop-filter: blur(8px);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  position: static;
+  z-index: auto;
+  backdrop-filter: none;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 .tb-group {
   display: flex;
@@ -639,6 +647,18 @@ body.read-only .tag-picker { display: none; }
 .tb span { display: block; }
 .tb:hover { background: var(--panel3); color: var(--text); }
 .tb:active { transform: translateY(1px); }
+
+/* 合并到标题下一行后的紧凑工具按钮 */
+.ed-meta-row .tb {
+  height: 34px;
+  min-width: auto;
+  padding: 0 8px;
+  flex-direction: row;
+  gap: 5px;
+  font-size: 12px;
+}
+.ed-meta-row .tb svg { width: 14px; height: 14px; }
+.ed-meta-row .tb span { display: inline; }
 
 /* 分类折叠按钮：默认只显示分类，点击后展开该分类下的按钮 */
 .tb-cat {
@@ -833,7 +853,7 @@ body.read-only .tag-picker { display: none; }
   display: block;
   border: 1px solid var(--border);
   border-top: none;
-  border-radius: 0 0 12px 12px;
+  border-radius: 12px;
   overflow: hidden;
   min-height: 62vh;
   background: var(--panel);
@@ -1304,9 +1324,10 @@ pre.code-enh.wrapped .ln { white-space: pre-wrap; word-break: break-all; }
   .board-view { flex-direction: column; }
   .board-col { min-width: 100%; }
 
-  /* 编辑元信息行竖排 */
-  .ed-meta-row { grid-template-columns: 1fr; gap: 10px; }
-  .ed-toolbar + .ed-meta-row { margin-top: 10px; }
+  /* 编辑元信息行在窄屏下保持紧凑 */
+  .ed-meta-row { gap: 6px; }
+  .ed-meta-row > input#edSummary { width: 120px; min-width: 100px; }
+  .ed-meta-row .tb { padding: 0 6px; font-size: 11px; }
 }
 
 @media (max-width: 480px) {
