@@ -1247,12 +1247,12 @@ pre.code-enh.wrapped .ln { white-space: pre-wrap; word-break: break-all; }
   overflow-wrap: anywhere;
   box-sizing: border-box;
 }
-/* 编辑器里：初始插入的表格每个格子都是正方形（宽高一致，不撑满整行） */
+/* 编辑器里：初始插入的表格格子高度与正文行高接近，略高一点；宽度按内容自适应 */
 .ed-input th, .ed-input td {
   padding: 8px 12px;
-  width: 96px;
-  min-width: 96px;
-  height: 96px;
+  width: auto;
+  min-width: 60px;
+  height: 40px;
   line-height: 1.6;
 }
 .md-body th,
