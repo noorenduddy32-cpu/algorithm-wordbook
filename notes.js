@@ -738,6 +738,28 @@
     if (!rec && !readOnly) setTimeout(function () { edBody().focus(); }, 60);
   }
 
+  // 点已有文章：管理员直接进编辑（并强制显示可编辑正文，避免停在预览模式让人误以为不能改）；
+  // 访客则弹登录门输管理员密码升级为管理员，升级后自动打开该文章编辑。
+  let pendingEditRec = null;
+  function openExisting(x) {
+    if (!x) return;
+    if (isAdmin()) {
+      openEditor(x, { readOnly: false });
+      setMode('edit');
+      return;
+    }
+    pendingEditRec = x;
+    if (window.reopenGate) window.reopenGate();
+    else if (window.AN && window.AN.toast) window.AN.toast('请以管理员身份登录后再编辑', true);
+  }
+  window.addEventListener('an:admin', function () {
+    if (pendingEditRec) {
+      const x = pendingEditRec; pendingEditRec = null;
+      openEditor(x, { readOnly: false });
+      setMode('edit');
+    }
+  });
+
   function restoreDraft() {
     try {
       const d = JSON.parse(localStorage.getItem(LS_DRAFT) || 'null');
@@ -1373,7 +1395,7 @@
       if (!card) return;
       const x = all.find(function (n) { return String(n.id) === String(card.dataset.id); });
       if (!x) return;
-      openEditor(x, { readOnly: !isAdmin() });
+      openExisting(x);
     });
 
     // 分栏：拖动卡片换栏
@@ -1430,9 +1452,7 @@
       const id = card.dataset.id;
       const x = all.find(function (n) { return String(n.id) === String(id); });
       if (!x) return;
-      // 管理员且是草稿/已发布 -> 可编辑；访客/管理员看他人公开文章 -> 只读
-      const canEdit = isAdmin();
-      openEditor(x, { readOnly: !canEdit });
+      openExisting(x);
     });
 
     $('notesTabs').addEventListener('click', function (e) {
@@ -1626,7 +1646,7 @@
       if (m) {
         const tryOpen = function () {
           const x = all.find(function (n) { return String(n.id) === String(m[1]); });
-          if (x) openEditor(x, { readOnly: !isAdmin() });
+          if (x) openExisting(x);
         };
         setTimeout(tryOpen, 400);
         setTimeout(tryOpen, 1400);
