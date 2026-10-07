@@ -277,12 +277,14 @@
       const codeClass = code.className || ('language-' + lang);
       const codeLines = code.innerHTML.split('\n').map(function (html) { return '<div class="code-line">' + html + '</div>'; }).join('');
       const copyIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1"/></svg>';
-      const wrapIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>';
+      // 自动换行开关图标：关闭状态（当前不折行）= 右箭头；打开状态（当前已折行）= 回折箭头
+      const wrapOffIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14"/><path d="M20 5v14"/><path d="M8 12h8"/><path d="M14 12l-3 3"/><path d="M14 12l-3-3"/></svg>';
+      const wrapOnIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14"/><path d="M20 5v14"/><path d="M16 9H9.5a2.5 2.5 0 0 0 0 5H16"/><path d="M12 7l-3 3 3 3"/></svg>';
       const chevronDown = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
       const chevronUp = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
       const bar = '<div class="code-bar"><span class="code-lang">' + esc(lang) + '</span>' +
         '<span class="code-btns">' +
-        '<button type="button" class="code-wrap" title="自动换行" aria-label="自动换行">' + wrapIcon + '</button>' +
+        '<button type="button" class="code-wrap" title="打开自动换行" aria-label="打开自动换行">' + wrapOffIcon + '</button>' +
         '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码">' + copyIcon + '<span>复制</span></button>' +
         '</span></div>';
       const bottomBar = lines.length > 10 ? '<div class="code-bottom-bar"><button type="button" class="code-toggle">' +
@@ -304,7 +306,11 @@
       pre.querySelectorAll('.code-wrap').forEach(function (b) {
         b.addEventListener('click', function () {
           pre.classList.toggle('wrapped');
-          b.classList.toggle('active', pre.classList.contains('wrapped'));
+          const wrapped = pre.classList.contains('wrapped');
+          b.classList.toggle('active', wrapped);
+          b.title = wrapped ? '关闭自动换行' : '打开自动换行';
+          b.setAttribute('aria-label', wrapped ? '关闭自动换行' : '打开自动换行');
+          b.innerHTML = wrapped ? wrapOnIcon : wrapOffIcon;
         });
       });
       pre.querySelectorAll('.code-copy').forEach(function (b) {
