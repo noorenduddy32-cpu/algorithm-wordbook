@@ -34,6 +34,9 @@ function createServer() {
           const raw = Buffer.concat(chunks).toString();
           try { req.body = raw ? JSON.parse(raw) : {}; }
           catch (e) { res.writeHead(400); res.end('Invalid JSON'); return; }
+          if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            res.writeHead(400); res.end('JSON body must be an object'); return;
+          }
         }
         await require('./api/' + name)(req, res);
       } catch (e) {
