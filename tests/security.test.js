@@ -24,13 +24,19 @@ function request(method, body, role) {
   return { method, body, headers: { host: 'localhost', cookie: role ? 'an_sess=' + auth.sign(role) : '' } };
 }
 
-test('未登录不能读；未知角色也不能读', async function () {
-  for (const role of [null, 'owner']) assert.equal((await handleDb({ table: 'notes', action: 'select' }, role)).status, 401);
-  assert.equal(calls.length, 0);
+test('无需登录可读取共享词汇及公开笔记；未知角色被拒绝', async function () {
+  assert.equal((await handleDb({ table: 'words', action: 'select' }, null)).status, 200);
+  assert.equal(calls[0].url.searchParams.has('and'), false);
+  assert.equal((await handleDb({ table: 'notes', action: 'select' }, null)).status, 200);
+  assert.equal(calls[1].url.searchParams.get('and'), '(status.eq.published,visibility.eq.public)');
+  assert.equal((await handleDb({ table: 'notes', action: 'select' }, 'owner')).status, 401);
+  assert.equal(calls.length, 2);
 });
-test('访客所有写入均被拒绝，包括原先的阅读量更新漏洞', async function () {
-  for (const action of ['insert', 'update', 'delete']) {
-    assert.equal((await handleDb({ table: 'notes', action, data: { views: 99 }, filters: { id: 2 } }, 'visitor')).status, 403);
+test('匿名和访客所有写入均被拒绝，包括阅读量更新', async function () {
+  for (const role of [null, 'visitor']) for (const table of ['words', 'notes']) {
+    for (const action of ['insert', 'update', 'delete']) {
+      assert.equal((await handleDb({ table, action, data: { views: 99 }, filters: { id: 2 } }, role)).status, 403);
+    }
   }
   assert.equal(calls.length, 0);
 });
@@ -40,6 +46,18 @@ test('访客请求强制同时限制 published 与 public，且不修改原请�
   assert.equal(calls[0].url.searchParams.get('and'), '(status.eq.published,visibility.eq.public)');
   assert.equal(calls[0].url.searchParams.get('visibility'), 'eq.private');
   assert.equal(op.and, undefined);
+});
+test('公开数据库接口忽略伪造角色与无效管理员 Cookie', async function () {
+  const db = require('../api/db');
+  const req = request('POST', { table: 'notes', action: 'select', role: 'admin' });
+  req.headers.cookie = 'an_sess=forged.admin';
+  let res = response(); await db(req, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls[0].url.searchParams.get('and'), '(status.eq.published,visibility.eq.public)');
+  req.body = { table: 'notes', action: 'delete', filters: { id: 1 }, role: 'admin' };
+  res = response(); await db(req, res);
+  assert.equal(res.statusCode, 403);
+  assert.equal(calls.length, 1);
 });
 test('禁止通过表名、投影、筛选、逻辑表达式和排序绕过数据边界', async function () {
   for (const change of [
@@ -73,23 +91,32 @@ test('签名 Cookie 防篡改、限定角色、拒绝过期时间与默认密钥
   try { assert.throws(() => auth.sign('admin')); assert.equal(auth.verify('a.b'), null); }
   finally { process.env.SESSION_SECRET = secret; }
 });
-test('登录分配角色并设置 HttpOnly Cookie；访客密码不能升级管理员', async function () {
+test('仅管理员密码能取得签名 HttpOnly Cookie；旧访客密码不能登录', async function () {
   const login = require('../api/login');
-  for (const [password, role] of [['test-admin', 'admin'], ['test-visitor', 'visitor']]) {
-    const res = response(); await login(request('POST', { password }), res);
-    assert.equal(res.statusCode, 200); assert.equal(res.body.role, role);
-    assert.match(res.headers['Set-Cookie'], /HttpOnly/);
-    assert.match(res.headers['Cache-Control'], /no-store/);
+  let res = response(); await login(request('POST', { password: 'test-admin' }), res);
+  assert.equal(res.statusCode, 200); assert.equal(res.body.role, 'admin');
+  assert.match(res.headers['Set-Cookie'], /HttpOnly/);
+  assert.match(res.headers['Cache-Control'], /no-store/);
+  for (const password of ['test-visitor', '', 'wrong-password']) {
+    res = response(); await login(request('POST', { password, role: 'admin' }), res);
+    assert.equal(res.statusCode, 401); assert.equal(res.headers['Set-Cookie'], undefined);
   }
-  const res = response(); await login(request('POST', { password: 'test-visitor', role: 'admin' }), res);
-  assert.equal(res.statusCode, 403); assert.equal(res.headers['Set-Cookie'], undefined);
 });
-test('同名密码及缺少会话密钥时关闭登录', async function () {
+test('不要求访客密码；缺少管理员密码或会话密钥时关闭管理员登录', async function () {
   const login = require('../api/login');
-  const password = process.env.ADMIN_PASSWORD;
-  process.env.ADMIN_PASSWORD = process.env.VISITOR_PASSWORD;
-  try { const res = response(); await login(request('POST', { password: 'test-visitor' }), res); assert.equal(res.statusCode, 503); }
-  finally { process.env.ADMIN_PASSWORD = password; }
+  const visitorPassword = process.env.VISITOR_PASSWORD;
+  delete process.env.VISITOR_PASSWORD;
+  try {
+    const res = response(); await login(request('POST', { password: 'test-admin' }), res);
+    assert.equal(res.statusCode, 200);
+  } finally { process.env.VISITOR_PASSWORD = visitorPassword; }
+  for (const key of ['ADMIN_PASSWORD', 'SESSION_SECRET']) {
+    const value = process.env[key]; delete process.env[key];
+    try {
+      const res = response(); await login(request('POST', { password: 'test-admin' }), res);
+      assert.equal(res.statusCode, 503); assert.equal(res.headers['Set-Cookie'], undefined);
+    } finally { process.env[key] = value; }
+  }
 });
 test('拒绝错误请求方法和跨站写入；无效 Cookie 不导致崩溃', async function () {
   const login = require('../api/login');
@@ -98,9 +125,66 @@ test('拒绝错误请求方法和跨站写入；无效 Cookie 不导致崩溃', 
   const crossSite = response(); await login(req, crossSite); assert.equal(crossSite.statusCode, 403);
   assert.deepEqual(http.parseCookies({ headers: { cookie: 'an_sess=%' } }), {});
 });
-test('匿名不能降级取得访客会话，管理员能切换到访客', async function () {
+test('公开访客不依赖会话密钥；无效 Cookie 不能取得管理员身份', async function () {
+  const me = require('../api/me');
+  const secret = process.env.SESSION_SECRET;
+  const adminRequest = request('GET', {}, 'admin');
+  let res = response(); await me(adminRequest, res); assert.equal(res.body.role, 'admin');
+  delete process.env.SESSION_SECRET;
+  try {
+    for (const req of [request('GET', {}), adminRequest]) {
+      res = response(); await me(req, res);
+      assert.equal(res.statusCode, 200); assert.equal(res.body.role, 'visitor');
+      assert.equal(res.headers['Set-Cookie'], undefined);
+    }
+  } finally { process.env.SESSION_SECRET = secret; }
+});
+test('返回公开浏览清除管理员 Cookie，不签发访客 Cookie', async function () {
   const visitor = require('../api/visitor');
-  let res = response(); await visitor(request('POST', {}), res); assert.equal(res.statusCode, 401);
-  res = response(); await visitor(request('POST', {}, 'admin'), res); assert.equal(res.statusCode, 200);
-  assert.equal(auth.verify(res.headers['Set-Cookie'].split(';')[0].slice('an_sess='.length)), 'visitor');
+  for (const role of [null, 'admin']) {
+    const res = response(); await visitor(request('POST', {}, role), res);
+    assert.equal(res.statusCode, 200); assert.equal(res.body.role, 'visitor');
+    assert.match(res.headers['Set-Cookie'], /Max-Age=0/);
+    assert.equal(auth.verify(res.headers['Set-Cookie'].split(';')[0].slice('an_sess='.length)), null);
+  }
+});
+test('公开访问不能使用 AI 或读取访问日志', async function () {
+  const ai = require('../api/ai');
+  const visits = require('../api/visits');
+  let res = response(); await ai(request('POST', {}), res); assert.equal(res.statusCode, 401);
+  res = response(); await visits(request('GET', {}), res); assert.equal(res.statusCode, 403);
+  assert.equal(calls.length, 0);
+});
+test('匿名访问只记录现有字段，服务端指定访客身份且不返回日志数据', async function () {
+  const visits = require('../api/visits');
+  const req = request('POST', {
+    role: 'admin', ip: 'forged-ip', path: 'x'.repeat(300), note_id: 7,
+    note_title: 'n'.repeat(300), duration: -10, extra: 'ignored'
+  });
+  req.headers.origin = 'http://localhost'; req.headers['user-agent'] = 'a'.repeat(500);
+  const res = response(); await visits(req, res);
+  assert.equal(res.statusCode, 201); assert.deepEqual(res.body, { ok: true });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.pathname, '/.cloud/database/rest/visits');
+  assert.equal(calls[0].options.headers.Prefer, 'return=minimal');
+  const payload = JSON.parse(calls[0].options.body);
+  assert.deepEqual(Object.keys(payload).sort(), ['role', 'ip', 'region', 'ua', 'os', 'browser', 'path', 'note_id', 'note_title', 'duration'].sort());
+  assert.equal(payload.role, 'visitor'); assert.equal(payload.ip, '');
+  assert.equal(payload.path.length, 200); assert.equal(payload.note_title.length, 200);
+  assert.equal(payload.ua.length, 400); assert.equal(payload.note_id, 7); assert.equal(payload.duration, 0);
+});
+test('访问记录拒绝跨站请求、错误方法、超大数据和无效字段', async function () {
+  const visits = require('../api/visits');
+  const requests = [
+    [Object.assign(request('POST', {}), { headers: { host: 'localhost', origin: 'https://untrusted.example' } }), 403],
+    [request('PUT', {}), 405],
+    [Object.assign(request('POST', {}), { headers: { host: 'localhost', 'content-length': '9000' } }), 413],
+    [request('POST', { path: 'x'.repeat(9000) }), 413],
+    [request('POST', { note_id: { injected: true } }), 400],
+    [request('POST', null), 400]
+  ];
+  for (const [req, status] of requests) {
+    const res = response(); await visits(req, res); assert.equal(res.statusCode, status);
+  }
+  assert.equal(calls.length, 0);
 });

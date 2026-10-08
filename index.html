@@ -1,39 +1,44 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-auth="pending">
+<html lang="zh-CN" data-theme="light" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>
-(function(){
-  try {
-    var fs = parseInt(localStorage.getItem('wb_font_scale'), 10);
-    if (isNaN(fs) || fs < 1 || fs > 100) fs = 50;
-    var z = fs <= 50 ? 0.5 + (fs - 1) * (0.5 / 49) : 1 + (fs - 50) * (1 / 50);
-    document.documentElement.style.zoom = z;
-    var t = localStorage.getItem('wb_theme_v2');
-    if (t) document.documentElement.setAttribute('data-theme', t);
-  } catch (e) {}
-})();
-</script>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
+<script src="display-init.js"></script>
 <title>学习概览 · 算法竞赛笔记本</title>
 <meta name="description" content="面向 ACM / ICPC 的个人笔记本，积累题面词汇，记录题解与算法。">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="home.css">
 </head>
-<body>
+<body class="home-page">
 
-<div class="aurora-bg" aria-hidden="true"></div>
+
 
 <header id="topbar" class="topbar"></header>
 
-<main class="hub">
+<main id="mainContent" class="hub">
 
-  <section class="hero">
-    <p class="section-kicker">ACM / ICPC · 学习概览</p>
-    <h1 class="hero-title">读懂题面，记住思路。</h1>
-    <p class="hero-sub">把陌生词记下来，把值得复盘的题留下来。<br>这里是我的算法竞赛笔记本。</p>
-    <p class="scope-note" id="homeScope">正在加载积累…</p>
+  <section class="hero" aria-labelledby="homeTitle">
+    <div class="hero-copy">
+      <p class="section-kicker"><span class="kicker-rule" aria-hidden="true"></span> ALGORITHM NOTEBOOK</p>
+      <h1 class="hero-title" id="homeTitle">读懂每道题，<br><span>留下每次突破。</span></h1>
+      <p class="hero-sub">从题面里的一个生词，到解题时的一次顿悟。<br>把思考记下来，让下一次出发更有把握。</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="notes.html">浏览题解 <span aria-hidden="true">↗</span></a>
+        <a class="hero-secondary" href="wordbook.html">去复习词汇 <span aria-hidden="true">→</span></a>
+      </div>
+      <p class="scope-note" id="homeScope">正在翻开笔记本…</p>
+    </div>
+    <aside class="thought-card" aria-label="我的复盘方法">
+      <div class="thought-top"><span>一次好的复盘</span><span class="thought-glyph" aria-hidden="true">{ }</span></div>
+      <div class="thought-line"><span class="thought-node" aria-hidden="true"></span><div><b>先读懂问题</b><small>条件、边界，以及真正的目标</small></div></div>
+      <div class="thought-line"><span class="thought-node" aria-hidden="true"></span><div><b>找到那个不变量</b><small>把直觉变成可以证明的思路</small></div></div>
+      <div class="thought-line"><span class="thought-node final" aria-hidden="true"></span><div><b>留下可复用的解法</b><small>正确性 · 复杂度 · 实现细节</small></div></div>
+      <p class="thought-note"><span aria-hidden="true">//</span> 不只记答案，也记下为什么。</p>
+    </aside>
   </section>
 
   <section class="entries" aria-label="笔记本内容">
@@ -57,6 +62,17 @@
       </div>
       <span class="entry-go"><b class="entry-num" id="entryNotes">—</b><span class="entry-num-label">篇笔记</span><span aria-hidden="true">↗</span></span>
     </a>
+  </section>
+
+  <section class="recent-grid" aria-label="最近记录">
+    <div class="recent-panel">
+      <div class="section-head"><h2>最近整理</h2><a href="notes.html">全部笔记 <span aria-hidden="true">→</span></a></div>
+      <div id="recentNotes" class="recent-list"><p class="recent-empty">正在加载笔记…</p></div>
+    </div>
+    <div class="recent-panel">
+      <div class="section-head"><h2>最近收录</h2><a href="wordbook.html">全部词汇 <span aria-hidden="true">→</span></a></div>
+      <div id="recentWords" class="recent-list"><p class="recent-empty">正在加载词汇…</p></div>
+    </div>
   </section>
 
   <section class="activity" id="activityWrap">
@@ -90,21 +106,12 @@
     <p class="activity-note">记录词汇与笔记的新增、最近一次更新，不计浏览次数。</p>
   </section>
 
-  <section class="recent-grid" aria-label="最近记录">
-    <div class="recent-panel">
-      <div class="section-head"><h2>最近整理</h2><a href="notes.html">全部笔记 <span aria-hidden="true">→</span></a></div>
-      <div id="recentNotes" class="recent-list"><p class="recent-empty">正在加载笔记…</p></div>
-    </div>
-    <div class="recent-panel">
-      <div class="section-head"><h2>最近收录</h2><a href="wordbook.html">全部词汇 <span aria-hidden="true">→</span></a></div>
-      <div id="recentWords" class="recent-list"><p class="recent-empty">正在加载词汇…</p></div>
-    </div>
-  </section>
+
 
 </main>
 
 <footer class="page-foot">
-  <span>算法竞赛笔记本 · 日积月累</span>
+  <span>算法竞赛笔记本 <span aria-hidden="true">/</span> 日积月累，皆有回响</span>
   <span class="muted small" id="footTip">正在连接云端…</span>
 </footer>
 
@@ -125,16 +132,7 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
-     下面的脚本同步加载它，并在 404 时同步回退到入库的 config.example.js。
-     注意必须同步：后两个脚本（common.js / home.js）依赖 APP_CONFIG 已就绪。 -->
-<script src="config.js"></script>
-<script>
-  // config.js 404 时，浏览器不会创建 window.APP_CONFIG，这里补上模板配置
-  if (!window.APP_CONFIG) {
-    document.write('<script src="config.example.js"><\/script>');
-  }
-</script>
+<script src="config.example.js"></script>
 <script src="common.js"></script>
 <script src="api.js"></script>
 <script src="home.js"></script>

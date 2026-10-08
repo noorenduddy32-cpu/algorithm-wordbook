@@ -1,26 +1,25 @@
 /* ============================================================
    common.js —— 三个页面共用：主题 / toast / 弹窗 / 编辑密码 / 导航图标 / 顶栏渲染
-   依赖：config.js（window.APP_CONFIG）
+   依赖：config.example.js（window.APP_CONFIG）
    ============================================================ */
 (function () {
   'use strict';
 
-  // 注：config.js 不入库，线上取不到时由 HTML 里的同步脚本回退到
-  // config.example.js（必须在 common.js 之前完成），这里直接读即可。
+  // 只读取已加载的公开展示配置，服务端凭据不会发送到浏览器。
   const cfg = window.APP_CONFIG || {};
   // 与单词本原有 key 保持一致，这样三个页面共用同一份主题 / 解锁状态
   const LS_THEME = 'wb_theme_v2';
-  const LS_FS = 'wb_font_scale';
+  const LS_FS = 'wb_reading_size';
+  const LS_FS_LEGACY = 'wb_font_scale';
 
   const THEMES = [
-    { id: 'dark', name: '夜间深色', swatch: 'linear-gradient(135deg,#161a22,#0e1116)' },
-    { id: 'light', name: '日间亮色', swatch: 'linear-gradient(135deg,#ffffff,#e9eef7)' },
-    { id: 'glass', name: '玻璃拟态（深）', swatch: 'linear-gradient(135deg,#6d5cff,#00b0ff)' },
-    { id: 'glass-light', name: '玻璃拟态（亮）', swatch: 'linear-gradient(135deg,#f6f8ff,#a8c4ff)' },
-    { id: 'eye', name: '护眼米黄', swatch: 'linear-gradient(135deg,#f2ecd6,#e8e2c9)' },
-    { id: 'eye-green', name: '护眼豆绿', swatch: 'linear-gradient(135deg,#e6efe0,#d8e3d0)' },
-    { id: 'ink', name: '墨绿复古', swatch: 'linear-gradient(135deg,#2a323b,#14181c)' }
+    { id: 'system', name: '跟随系统', swatch: 'linear-gradient(90deg,#f3f6fa 50%,#17253a 50%)' },
+    { id: 'light', name: '日间 · 晴蓝纸面', swatch: '#f3f6fa' },
+    { id: 'dark', name: '夜间 · 深蓝墨色', swatch: '#17253a' },
+    { id: 'eye', name: '柔和 · 青灰纸色', swatch: '#e7eee5' }
   ];
+  const systemTheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  let themeChoice = 'system';
 
   const $ = function (id) { return document.getElementById(id); };
 
@@ -34,110 +33,105 @@
     file: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13.5 3.5V9H19"/><path d="M8.6 13.4h6.8M8.6 16.6h4.6"/></svg>'
   };
 
-  /* ---------------- 主题 ---------------- */
+  /* ---------------- 主题与设置浮层 ---------------- */
 
-  function applyTheme(name) {
-    const t = THEMES.some(function (x) { return x.id === name; }) ? name : 'dark';
-    document.documentElement.setAttribute('data-theme', t);
-    try { localStorage.setItem(LS_THEME, t); } catch (e) {}
-    const btn = $('themeBtn');
-    if (btn) {
-      const ic = $('themeIcon');
-      if (ic) ic.innerHTML = ICONS.theme;
-      btn.title = '主题：' + ((THEMES.find(function (x) { return x.id === t; }) || {}).name || '');
-    }
+  function normalizeTheme(value) {
+    const aliases = { glass: 'dark', ink: 'dark', 'glass-light': 'light', 'eye-green': 'eye' };
+    value = aliases[value] || value;
+    return THEMES.some(function (x) { return x.id === value; }) ? value : 'system';
   }
-
+  function readTheme() {
+    try { return normalizeTheme(localStorage.getItem(LS_THEME)); } catch (e) { return 'system'; }
+  }
+  function applyTheme(name, persist) {
+    themeChoice = normalizeTheme(name);
+    const resolved = themeChoice === 'system' ? (systemTheme && systemTheme.matches ? 'dark' : 'light') : themeChoice;
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.colorScheme = resolved === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.themeChoice = themeChoice;
+    if (persist !== false) {
+      try { localStorage.setItem(LS_THEME, themeChoice); } catch (e) {}
+    }
+    const theme = THEMES.find(function (x) { return x.id === themeChoice; });
+    const btn = $('themeBtn'), icon = $('themeIcon');
+    if (icon) icon.innerHTML = ICONS.theme;
+    if (btn) { btn.title = '外观：' + theme.name; btn.setAttribute('aria-label', btn.title); }
+    buildThemeMenu();
+  }
   function buildThemeMenu() {
     const menu = $('themeMenu');
     if (!menu) return;
-    const active = document.documentElement.getAttribute('data-theme') || 'dark';
-    menu.innerHTML = THEMES.map(function (x) {
-      return '<button type="button" data-theme-id="' + x.id + '"' +
-        (x.id === active ? ' class="active"' : '') + '>' +
-        '<i style="background:' + x.swatch + '"></i><span>' + x.name + '</span></button>';
+    menu.innerHTML = '<p class="menu-caption">笔记本外观</p>' + THEMES.map(function (x) {
+      const active = x.id === themeChoice;
+      return '<button type="button" data-theme-id="' + x.id + '" aria-pressed="' + active + '"' +
+        (active ? ' class="active"' : '') + '><i aria-hidden="true" style="background:' + x.swatch +
+        '"></i><span>' + x.name + '</span></button>';
     }).join('');
   }
-
-  function positionThemeMenu() {
-    const btn = $('themeBtn');
-    const menu = $('themeMenu');
-    if (!btn || !menu) return;
-    const rect = btn.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = (rect.bottom + 8) + 'px';
-    menu.style.right = (window.innerWidth - rect.right) + 'px';
-    menu.style.left = 'auto';
-    menu.style.zIndex = '9999';
+  function placePopup(menuId, buttonId) {
+    const menu = $(menuId), button = $(buttonId);
+    if (!menu || !button) return;
+    const box = button.getBoundingClientRect();
+    menu.style.left = Math.max(16, Math.min(box.right - menu.offsetWidth, window.innerWidth - menu.offsetWidth - 16)) + 'px';
+    menu.style.top = Math.max(12, Math.min(box.bottom + 10, window.innerHeight - menu.offsetHeight - 12)) + 'px';
   }
-
+  function closePopup(menuId, buttonId, restoreFocus) {
+    const menu = $(menuId), button = $(buttonId);
+    if (menu) menu.hidden = true;
+    if (button) { button.setAttribute('aria-expanded', 'false'); if (restoreFocus) button.focus(); }
+  }
+  function bindPopup(menuId, buttonId, wrapper) {
+    const menu = $(menuId), button = $(buttonId);
+    if (!menu || !button) return;
+    button.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const opening = menu.hidden;
+      closePopup('themeMenu', 'themeBtn'); closePopup('fsMenu', 'fsBtn');
+      if (!opening) return;
+      menu.hidden = false; button.setAttribute('aria-expanded', 'true');
+      placePopup(menuId, buttonId);
+      const first = menu.querySelector('.active, input, button');
+      if (first) first.focus();
+    });
+    document.addEventListener('click', function (e) {
+      if (!menu.hidden && !e.target.closest(wrapper)) closePopup(menuId, buttonId);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !menu.hidden) {
+        closePopup(menuId, buttonId, menu.contains(document.activeElement));
+      }
+    });
+    window.addEventListener('resize', function () { if (!menu.hidden) placePopup(menuId, buttonId); });
+    window.addEventListener('scroll', function () { if (!menu.hidden) placePopup(menuId, buttonId); }, true);
+  }
   function initTheme() {
-    let saved = 'dark';
-    try { saved = localStorage.getItem(LS_THEME) || 'dark'; } catch (e) {}
-    applyTheme(saved);
-    buildThemeMenu();
-    const btn = $('themeBtn');
-    if (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const m = $('themeMenu');
-        if (!m) return;
-        m.hidden = !m.hidden;
-        if (!m.hidden) positionThemeMenu();
-      });
-    }
+    applyTheme(readTheme(), false);
+    bindPopup('themeMenu', 'themeBtn', '.theme-wrap');
     const menu = $('themeMenu');
     if (menu) {
       menu.addEventListener('click', function (e) {
-        const b = e.target.closest('[data-theme-id]');
-        if (!b) return;
-        applyTheme(b.dataset.themeId);
-        menu.hidden = true;
+        const button = e.target.closest('[data-theme-id]');
+        if (!button) return;
+        applyTheme(button.dataset.themeId);
+        closePopup('themeMenu', 'themeBtn', true);
+      });
+      menu.addEventListener('keydown', function (e) {
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+        const buttons = Array.from(menu.querySelectorAll('button'));
+        const current = buttons.indexOf(document.activeElement);
+        const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 :
+          (current + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+        e.preventDefault(); buttons[next].focus();
       });
     }
-    document.addEventListener('click', function (e) {
-      const m = $('themeMenu');
-      if (m && !m.hidden && !e.target.closest('.theme-wrap')) m.hidden = true;
-    });
-    // 滚动/缩放时若菜单打开，实时跟随主题按钮，保持浮层不飘
-    window.addEventListener('scroll', function () {
-      const m = $('themeMenu');
-      if (m && !m.hidden) positionThemeMenu();
-    }, true);
-    window.addEventListener('resize', function () {
-      const m = $('themeMenu');
-      if (m && !m.hidden) positionThemeMenu();
-    });
-  }
-
-  /* ---------------- 玻璃主题：缓慢游走的光晕 ---------------- */
-
-  function initAurora() {
-    const box = document.querySelector('.aurora-bg');
-    if (!box) return;
-    const seeds = [
-      { x: 12, y: -8, s: 520, c: 'rgba(124,92,255,.42)' },
-      { x: 88, y: 4, s: 460, c: 'rgba(0,176,255,.34)' },
-      { x: 30, y: 82, s: 480, c: 'rgba(255,92,168,.26)' },
-      { x: 74, y: 74, s: 420, c: 'rgba(77,212,160,.24)' }
-    ];
-    box.innerHTML = seeds.map(function (s, i) {
-      return '<div class="aurora a' + (i + 1) + '" style="width:' + s.s + 'px;height:' + s.s +
-        'px;background:' + s.c + ';left:' + s.x + '%;top:' + s.y + '%"></div>';
-    }).join('');
-    function tick() {
-      const els = box.querySelectorAll('.aurora');
-      for (let i = 0; i < els.length; i++) {
-        const dx = (Math.random() * 26 - 13).toFixed(1);
-        const dy = (Math.random() * 20 - 10).toFixed(1);
-        const sc = (0.82 + Math.random() * 0.42).toFixed(2);
-        const op = (0.34 + Math.random() * 0.34).toFixed(2);
-        els[i].style.transform = 'translate(' + dx + '%,' + dy + '%) scale(' + sc + ')';
-        els[i].style.opacity = op;
-      }
-      setTimeout(tick, 5200 + Math.random() * 4200);
+    const onSystemChange = function () { if (themeChoice === 'system') applyTheme('system', false); };
+    if (systemTheme) {
+      if (systemTheme.addEventListener) systemTheme.addEventListener('change', onSystemChange);
+      else if (systemTheme.addListener) systemTheme.addListener(onSystemChange);
     }
-    setTimeout(tick, 900);
+    window.addEventListener('storage', function (e) {
+      if (e.key === LS_THEME || e.key === null) applyTheme(readTheme(), false);
+    });
   }
 
   /* ---------------- toast ---------------- */
@@ -198,9 +192,9 @@
 
     host.innerHTML =
       '<a class="brand" href="index.html">' +
-        '<span class="logo"><img src="assets/logo.png" alt="logo" draggable="false"></span>' +
+        '<span class="logo" aria-hidden="true"><span class="brand-mark">n<span>+1</span></span></span>' +
         '<span class="brand-text"><span class="brand-name">' + (o.title || '算法学习笔记本') + '</span>' +
-        '<p>' + (o.subtitle || '') + '</p></span>' +
+        '<p>ALGORITHM FIELD NOTES</p></span>' +
       '</a>' +
       '<nav class="top-nav" aria-label="主导航">' + links + '</nav>' +
       '<nav class="mobile-nav" id="mobileNav" aria-label="移动端导航">' + mnLinks + '</nav>' +
@@ -209,21 +203,27 @@
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
         '</button>' +
         '<div class="theme-wrap">' +
-          '<button id="themeBtn" class="icon-btn" title="切换主题"><span id="themeIcon"></span></button>' +
-          '<div id="themeMenu" class="theme-menu" hidden></div>' +
+          '<button id="themeBtn" class="icon-btn" type="button" title="笔记本外观" aria-label="笔记本外观" aria-controls="themeMenu" aria-expanded="false"><span id="themeIcon"></span></button>' +
+          '<div id="themeMenu" class="theme-menu" role="group" aria-label="笔记本外观" hidden></div>' +
         '</div>' +
         '<div class="fs-wrap">' +
-          '<button id="fsBtn" class="icon-btn" title="字号大小" type="button">' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.2h16"/><path d="M7.5 19.2 9 5.5h2.4L10 19.2"/><path d="M14.8 19.2 17.6 9h1.9"/></svg>' +
+          '<button id="fsBtn" class="icon-btn" title="阅读字号" aria-label="阅读字号" aria-controls="fsMenu" aria-expanded="false" type="button">' +
+            '<span class="reading-icon" aria-hidden="true">Aa</span>' +
           '</button>' +
-          '<div id="fsMenu" class="fs-menu" hidden></div>' +
+          '<div id="fsMenu" class="fs-menu" role="group" aria-label="阅读字号" hidden></div>' +
         '</div>' +
       '</div>';
 
-    // 移动端：汉堡菜单开合（桌面端 .nav-toggle 隐藏，此逻辑不触发）
+    // Navigation remains keyboard-accessible in the compact layout.
     const navToggle = host.querySelector('#navToggle');
     const mnav = host.querySelector('#mobileNav');
     if (navToggle && mnav) {
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' || !document.body.classList.contains('nav-open')) return;
+        document.body.classList.remove('nav-open');
+        navToggle.setAttribute('aria-expanded', 'false');
+        navToggle.focus();
+      });
       navToggle.addEventListener('click', function (e) {
         e.stopPropagation();
         const open = document.body.classList.toggle('nav-open');
@@ -305,102 +305,56 @@
     return s.length > n ? s.slice(0, n) + '…' : s;
   }
 
-  /* ---------------- 字号缩放（全局生效，所有页面同步） ---------------- */
-  // 新版：1-100 连续滑杆，50=标准(1.0)，1=最小(0.5)，100=最大(2.0)
+  /* ---------------- 正文字号：14–20 px，不缩放导航与按钮 ---------------- */
 
-  const FS_MIN = 1, FS_MAX = 100, FS_DEFAULT = 50;
-
-  function scaleToZoom(s) {
-    s = Math.min(FS_MAX, Math.max(FS_MIN, parseInt(s, 10) || FS_DEFAULT));
-    if (s <= FS_DEFAULT) {
-      // 1 ~ 50 -> 0.5 ~ 1.0
-      return 0.5 + (s - FS_MIN) * (0.5 / (FS_DEFAULT - FS_MIN));
-    }
-    // 51 ~ 100 -> 1.02 ~ 2.0
-    return 1.0 + (s - FS_DEFAULT) * (1.0 / (FS_MAX - FS_DEFAULT));
-  }
-  function zoomToScale(z) {
-    z = parseFloat(z) || 1.0;
-    if (z <= 1.0) {
-      return Math.round(FS_MIN + (z - 0.5) * ((FS_DEFAULT - FS_MIN) / 0.5));
-    }
-    return Math.round(FS_DEFAULT + (z - 1.0) * (FS_MAX - FS_DEFAULT));
-  }
-  function applyFontScale(scale) {
-    const s = Math.min(FS_MAX, Math.max(FS_MIN, parseInt(scale, 10) || FS_DEFAULT));
-    document.documentElement.style.zoom = scaleToZoom(s);
-    try { localStorage.setItem(LS_FS, String(s)); } catch (e) {}
-  }
+  const FS_MIN = 14, FS_MAX = 20, FS_DEFAULT = 16;
   function getFontScale() {
-    let v = FS_DEFAULT;
     try {
-      const raw = localStorage.getItem(LS_FS);
-      if (!raw) return v;
-      const n = parseInt(raw, 10);
-      if (!isNaN(n) && n >= FS_MIN && n <= FS_MAX) {
-        v = n;
-      } else {
-        // 兼容旧版 zoom 值（如 0.85/1/1.15/1.3）
-        const z = parseFloat(raw);
-        if (!isNaN(z)) v = Math.min(FS_MAX, Math.max(FS_MIN, zoomToScale(z)));
-      }
-    } catch (e) {}
-    return v;
+      const current = Number(localStorage.getItem(LS_FS));
+      if (current >= FS_MIN && current <= FS_MAX) return Math.round(current);
+      const raw = localStorage.getItem(LS_FS_LEGACY);
+      if (raw === null) return FS_DEFAULT;
+      let previous = Number(raw);
+      if (!Number.isFinite(previous)) return FS_DEFAULT;
+      if (previous > 0 && previous < 2 && raw.indexOf('.') >= 0) return Math.max(FS_MIN, Math.min(FS_MAX, Math.round(16 * previous)));
+      previous = Math.max(1, Math.min(100, previous));
+      return Math.round(previous <= 50 ? 14 + (previous - 1) * 2 / 49 : 16 + (previous - 50) * 4 / 50);
+    } catch (e) { return FS_DEFAULT; }
+  }
+  function applyFontScale(value, persist) {
+    const size = Math.max(FS_MIN, Math.min(FS_MAX, Math.round(Number(value) || FS_DEFAULT)));
+    const root = document.documentElement;
+    root.style.removeProperty('zoom');
+    root.style.setProperty('--content-font-size', size + 'px');
+    root.style.setProperty('--content-scale', String(size / 16));
+    if (persist !== false) {
+      try { localStorage.setItem(LS_FS, String(size)); } catch (e) {}
+    }
+    const range = $('fsRange'), label = $('fsVal');
+    if (range) { range.value = size; range.setAttribute('aria-valuetext', size + ' 像素'); }
+    if (label) label.textContent = size + ' px';
   }
   function buildFontMenu() {
     const menu = $('fsMenu');
     if (!menu) return;
-    const cur = getFontScale();
+    const current = getFontScale();
     menu.innerHTML =
-      '<div class="fs-row"><span>小</span><span id="fsVal">' + cur + '</span><span>大</span></div>' +
-      '<input id="fsRange" type="range" min="' + FS_MIN + '" max="' + FS_MAX + '" value="' + cur + '">';
-  }
-  function positionFontMenu() {
-    const btn = $('fsBtn');
-    const menu = $('fsMenu');
-    if (!btn || !menu) return;
-    const rect = btn.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.top = (rect.bottom + 8) + 'px';
-    menu.style.right = (window.innerWidth - rect.right) + 'px';
-    menu.style.left = 'auto';
-    menu.style.zIndex = '9999';
+      '<div class="fs-row"><label for="fsRange">阅读字号</label><output id="fsVal" for="fsRange">' + current + ' px</output></div>' +
+      '<input id="fsRange" type="range" min="' + FS_MIN + '" max="' + FS_MAX + '" step="1" value="' + current + '" aria-valuetext="' + current + ' 像素">' +
+      '<p class="fs-hint">调整词汇与笔记正文的大小</p>' +
+      '<button type="button" class="link-btn fs-reset" id="fsReset">恢复标准字号</button>';
   }
   function initFontScale() {
-    applyFontScale(getFontScale());
     buildFontMenu();
-    const btn = $('fsBtn');
-    if (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const m = $('fsMenu');
-        if (!m) return;
-        m.hidden = !m.hidden;
-        if (!m.hidden) { buildFontMenu(); positionFontMenu(); }
-      });
-    }
+    applyFontScale(getFontScale(), false);
+    bindPopup('fsMenu', 'fsBtn', '.fs-wrap');
     const menu = $('fsMenu');
     if (menu) {
-      // 拖动滑杆时实时更新字号和显示值
-      menu.addEventListener('input', function (e) {
-        if (e.target.id !== 'fsRange') return;
-        const s = parseInt(e.target.value, 10);
-        applyFontScale(s);
-        const label = $('fsVal');
-        if (label) label.textContent = s;
-      });
+      menu.addEventListener('input', function (e) { if (e.target.id === 'fsRange') applyFontScale(e.target.value); });
+      menu.addEventListener('click', function (e) { if (e.target.closest('#fsReset')) applyFontScale(FS_DEFAULT); });
     }
-    document.addEventListener('click', function (e) {
-      const m = $('fsMenu');
-      if (m && !m.hidden && !e.target.closest('.fs-wrap')) m.hidden = true;
-    });
-    window.addEventListener('scroll', function () {
-      const m = $('fsMenu');
-      if (m && !m.hidden) positionFontMenu();
-    }, true);
-    window.addEventListener('resize', function () {
-      const m = $('fsMenu');
-      if (m && !m.hidden) positionFontMenu();
+    window.addEventListener('storage', function (e) {
+      if (e.key === LS_FS || e.key === LS_FS_LEGACY || e.key === null) applyFontScale(getFontScale(), false);
     });
   }
 
@@ -419,7 +373,6 @@
     });
     if (opts.topbar !== false) renderTopbar(opts);
     if (opts.theme !== false) initTheme();
-    if (opts.aurora !== false) initAurora();
     if (opts.modals !== false) initModals();
     if (opts.fontScale !== false) initFontScale();
   }

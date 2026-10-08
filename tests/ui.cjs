@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { createFixtureCloud } = require('./fixture-cloud.cjs');
-const { createServer } = require('../server');
+const { createServer } = process.env.UI_RUNTIME === 'worker' ? require('./worker-server.cjs') : require('../server');
 const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 (async function () {
   const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'] });
@@ -12,7 +12,8 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
   process.env.CLOUD_ENDPOINT = 'http://127.0.0.1:' + fixture.server.address().port;
   process.env.CLOUD_KEY = 'fixture-only';
   process.env.SESSION_SECRET = 'fixture-session-secret-'.repeat(3);
-  process.env.ADMIN_PASSWORD = 'test-admin'; process.env.VISITOR_PASSWORD = 'test-visitor';
+  process.env.ADMIN_PASSWORD = 'test-admin';
+  delete process.env.VISITOR_PASSWORD;
   const server = createServer(); await listen(server);
   const base = 'http://127.0.0.1:' + server.address().port;
   const context = await browser.newContext({ viewport: { width: 1440, height: 1080 }, timezoneId: 'Asia/Shanghai' });
@@ -39,13 +40,35 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
   try {
     await page.goto(base);
     await page.evaluate(() => localStorage.setItem('wb_notes_cache', JSON.stringify([{ title: 'LEGACY_PRIVATE_SENTINEL', status: 'published', visibility: 'private' }])));
+    // 身份接口短暂故障不应重新出现公开访问密码墙。
+    await page.route('**/api/me', route => route.abort());
     await page.reload();
-    await login('test-visitor');
+    await page.waitForFunction(() => document.documentElement.dataset.auth === 'visitor');
+    await page.unroute('**/api/me');
+    assert.equal(await page.locator('#gate').count(), 0);
+    assert.equal((await context.cookies()).some(cookie => cookie.name === 'an_sess'), false);
     await page.waitForFunction(() => document.getElementById('entryNotes').textContent === '3');
+    assert.equal(await page.locator('[data-admin]:visible').count(), 0);
+    await page.locator('.role-tag').click();
+    await page.locator('#gateCancel').click();
+    assert.equal(await page.locator('#gate').count(), 0);
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.auth), 'visitor');
+    const refreshedRole = await page.evaluate(async () => {
+      const original = Auth.me;
+      const pending = [];
+      Auth.me = () => new Promise(resolve => pending.push(resolve));
+      try {
+        const older = syncRole(); const newer = syncRole();
+        pending[1]('visitor'); await newer;
+        pending[0]('admin'); await older;
+        return Auth.role;
+      } finally { Auth.me = original; }
+    });
+    assert.equal(refreshedRole, 'visitor');
     assert.equal(await page.locator('[data-admin]:visible').count(), 0);
     await page.screenshot({ path: path.join(output, 'home-desktop.png'), fullPage: true });
     await noOverflow();
-    console.log('PASS 访客首页仅统计公开笔记');
+    console.log('PASS 无需密码公开浏览；取消管理登录继续阅读；首页仅统计公开笔记');
 
     fixture.db.notes[0].content += '<img src="/missing-test-image" onerror="window.XSS_SENTINEL=1">';
     await page.goto(base + '/notes.html'); await ready('.note-card');
@@ -101,10 +124,53 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
     console.log('PASS 手机和平板三个主页面无水平溢出');
     await page.goto(base + '/wordbook.html?q=permutation'); await ready('#cardGrid .card');
     assert.equal(await page.locator('#searchInput').inputValue(), 'permutation');
-    await page.locator('.role-logout').click(); await ready('#gate');
-    assert.equal(await page.locator('#cardGrid').innerText(), '');
+    await page.locator('.role-tag').click(); await login('test-admin');
+    await page.waitForFunction(() => document.documentElement.dataset.auth === 'admin');
+    await page.locator('.role-logout').click();
+    await page.waitForFunction(() => document.documentElement.dataset.auth === 'visitor');
+    await ready('#cardGrid .card');
+    assert.equal(await page.locator('#gate').count(), 0);
+    assert.equal(await page.locator('[data-admin]:visible').count(), 0);
+    assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith('an_cache:')).length), 0);
+    assert.equal((await context.cookies()).some(cookie => cookie.name === 'an_sess'), false);
     assert.deepEqual(errors, []);
-    console.log('PASS 词汇深链、退出清理和无浏览器脚本异常');
+    console.log('PASS 词汇深链、退出管理后公开浏览、清理会话和无脚本异常');
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const appearancePeer = await context.newPage();
+    await appearancePeer.goto(base + '/wordbook.html');
+    await appearancePeer.waitForFunction(() => document.documentElement.dataset.auth === 'visitor');
+    for (const theme of ['light', 'dark', 'eye']) {
+      await page.goto(base + '/notes.html#n1');
+      await ready('#edPreview');
+      await page.locator('#themeBtn').click();
+      await page.locator('[data-theme-id="' + theme + '"]').click();
+      await appearancePeer.waitForFunction(value => document.documentElement.dataset.theme === value, theme);
+      const before = await page.locator('#topbar').evaluate(el => el.getBoundingClientRect().height);
+      await page.locator('#fsBtn').click();
+      await page.locator('#fsRange').press('End');
+      assert.equal(await page.locator('#fsVal').textContent(), '20 px');
+      await page.locator('#fsRange').press('Escape');
+      assert.equal(await page.locator('#topbar').evaluate(el => el.getBoundingClientRect().height), before);
+      assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).zoom), '1');
+      await noOverflow();
+      await page.screenshot({ path: path.join(output, 'reader-' + theme + '.png'), fullPage: true });
+      await page.setViewportSize({ width: 360, height: 900 });
+      for (const file of ['index.html', 'notes.html', 'wordbook.html']) {
+        await page.goto(base + '/' + file);
+        await page.waitForFunction(() => document.documentElement.dataset.auth === 'visitor');
+        await noOverflow();
+      }
+      await page.setViewportSize({ width: 1440, height: 1000 });
+    }
+    await appearancePeer.close();
+    await page.locator('#themeBtn').click();
+    await page.locator('[data-theme-id="system"]').click();
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+    assert.deepEqual(errors, []);
+    console.log('PASS 三种主题、跨标签页主题同步、跟随系统与最大阅读字号下的360px布局');
   } catch (e) {
     await page.screenshot({ path: path.join(output, 'failure.png'), fullPage: true });
     console.error('Browser errors:', errors);

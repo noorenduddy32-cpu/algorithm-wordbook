@@ -14,8 +14,8 @@
     currentNotes = visibleNotes(notes);
     setText('entryWords', words.length);
     setText('entryNotes', currentNotes.length);
-    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '访客视角 · 词汇只读，笔记仅展示已发布的公开内容');
-    setText('footTip', Auth.role === 'admin' ? '管理全部积累' : '公开内容 · 只读浏览');
+    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '公开笔记，随时翻阅。欢迎一起积累。');
+    setText('footTip', Auth.role === 'admin' ? '管理全部积累' : '公开分享 · 持续积累');
     renderRecent();
     renderYearOptions();
     renderActivity();

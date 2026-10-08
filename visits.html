@@ -1,21 +1,14 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-auth="pending">
+<html lang="zh-CN" data-theme="light" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>
-(function(){
-  try {
-    var fs = parseInt(localStorage.getItem('wb_font_scale'), 10);
-    if (isNaN(fs) || fs < 1 || fs > 100) fs = 50;
-    var z = fs <= 50 ? 0.5 + (fs - 1) * (0.5 / 49) : 1 + (fs - 50) * (1 / 50);
-    document.documentElement.style.zoom = z;
-    var t = localStorage.getItem('wb_theme_v2');
-    if (t) document.documentElement.setAttribute('data-theme', t);
-  } catch (e) {}
-})();
-</script>
-<title>访问记录 · 算法学习笔记本</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
+<script src="display-init.js"></script>
+<title>访问记录 · 算法竞赛笔记本</title>
+<meta name="robots" content="noindex,nofollow">
 <meta name="description" content="算法学习笔记本的访问日志：谁、从哪来、看了哪篇、看了多久。仅管理员可见。">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="base.css">
@@ -23,7 +16,7 @@
 </head>
 <body>
 
-<div class="aurora-bg" aria-hidden="true"></div>
+
 
 <header id="topbar" class="topbar"></header>
 
@@ -53,12 +46,7 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js"></script>
-<script>
-  if (!window.APP_CONFIG) {
-    document.write('<script src="config.example.js"><\/script>');
-  }
-</script>
+<script src="config.example.js"></script>
 <script src="common.js"></script>
 <script src="api.js"></script>
 <script src="visits.js"></script>

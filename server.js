@@ -3,12 +3,7 @@ const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const PUBLIC_FILES = new Set([
-  'index.html', 'wordbook.html', 'notes.html', 'visits.html',
-  'base.css', 'home.css', 'styles.css', 'notes.css', 'visits.css',
-  'common.js', 'api.js', 'home.js', 'app.js', 'notes.js', 'visits.js',
-  'docx.js', 'notes_docx.js', 'config.example.js', 'assets/logo.png', 'vendor/jszip.min.js'
-]);
+const PUBLIC_FILES = new Set(require('./public-files.json'));
 const API_NAMES = new Set(['login', 'logout', 'me', 'visitor', 'db', 'ai', 'visits']);
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png' };
 
