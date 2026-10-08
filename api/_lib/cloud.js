@@ -1,11 +1,12 @@
 // 服务端代理到 WorkBuddy 云端（keyless）。
 // 数据库走 REST（header: x-wb-webapp-access-key），大模型走 /_cloud/llm/chat/completions（SSE）。
-const ENDPOINT = process.env.CLOUD_ENDPOINT || 'https://algorithm-wordbook.app.workbuddy.host';
-const KEY = process.env.CLOUD_KEY || '';
+const runtimeEnv = typeof process !== 'undefined' && process.env ? process.env : {};
+const ENDPOINT = runtimeEnv.CLOUD_ENDPOINT || 'https://algorithm-wordbook.app.workbuddy.host';
+const KEY = runtimeEnv.CLOUD_KEY || '';
 
-async function cloudRequest(path, opts) {
-  const url = ENDPOINT + path;
-  const headers = Object.assign({ 'x-wb-webapp-access-key': KEY, 'Content-Type': 'application/json' }, opts.headers || {});
+async function cloudRequest(path, opts, config) {
+  const url = (config ? config.endpoint : ENDPOINT) + path;
+  const headers = Object.assign({ 'x-wb-webapp-access-key': config ? config.key : KEY, 'Content-Type': 'application/json' }, opts.headers || {});
   const r = await fetch(url, {
     method: opts.method || 'GET',
     headers: headers,
@@ -39,7 +40,9 @@ const TABLE_COLUMNS = {
 };
 const isObject = function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); };
 
-async function handleDb(input, role) {
+async function handleDb(input, role, config) {
+  // 公开访客不需要登录；管理员身份始终由服务端签名会话提供。
+  if (role == null) role = 'visitor';
   if (role !== 'admin' && role !== 'visitor') return { status: 401, error: '请先登录' };
   if (!isObject(input)) return { status: 400, error: '无效查询' };
   // 不允许访问日志、任意表路径、关联查询或用户提供的 PostgREST 表达式。
@@ -82,7 +85,7 @@ async function handleDb(input, role) {
   const headers = {};
   if (isWrite) headers['Prefer'] = 'return=representation';
   const body = (op.action === 'insert' || op.action === 'update') ? op.data : undefined;
-  const r = await cloudRequest(path, { method: method, headers: headers, body: body });
+  const r = await cloudRequest(path, { method: method, headers: headers, body: body }, config);
   if (r.status < 200 || r.status >= 300) {
     const msg = (r.data && r.data.error && (r.data.error.message || r.data.error)) ||
       ('云端返回 ' + r.status);

@@ -1,34 +1,24 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-auth="pending">
+<html lang="zh-CN" data-theme="light" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-<script>
-(function(){
-  try {
-    var fs = parseInt(localStorage.getItem('wb_font_scale'), 10);
-    if (isNaN(fs) || fs < 1 || fs > 100) fs = 50;
-    var z = fs <= 50 ? 0.5 + (fs - 1) * (0.5 / 49) : 1 + (fs - 50) * (1 / 50);
-    document.documentElement.style.zoom = z;
-    var t = localStorage.getItem('wb_theme_v2');
-    if (t) document.documentElement.setAttribute('data-theme', t);
-  } catch (e) {}
-})();
-</script>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
+<script src="display-init.js"></script>
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <title>题解与算法 · 算法竞赛笔记本</title>
 <meta name="description" content="算法竞赛笔记本的笔记模块：题解、思路复盘、模板与踩坑记录。">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="base.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+<link rel="stylesheet" href="vendor/highlight.min.css">
 <link rel="stylesheet" href="notes.css">
 </head>
 <body>
 
-<div class="aurora-bg" aria-hidden="true"></div>
+
 
 <header id="topbar" class="topbar"></header>
 
@@ -336,18 +326,11 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
-     404 时同步回退到入库的 config.example.js -->
-<script src="config.js"></script>
-<script>
-  if (!window.APP_CONFIG) {
-    document.write('<script src="config.example.js"><\/script>');
-  }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="config.example.js"></script>
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="vendor/highlight.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
 <script src="docx.js"></script>
 <script src="notes_docx.js"></script>
 <script src="common.js"></script>

@@ -1,35 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-auth="pending">
+<html lang="zh-CN" data-theme="light" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>
-(function(){
-  try {
-    var fs = parseInt(localStorage.getItem('wb_font_scale'), 10);
-    if (isNaN(fs) || fs < 1 || fs > 100) fs = 50;
-    var z = fs <= 50 ? 0.5 + (fs - 1) * (0.5 / 49) : 1 + (fs - 50) * (1 / 50);
-    document.documentElement.style.zoom = z;
-    var t = localStorage.getItem('wb_theme_v2');
-    if (t) document.documentElement.setAttribute('data-theme', t);
-  } catch (e) {}
-})();
-</script>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
+<script src="display-init.js"></script>
 <title>题面词汇 · 算法竞赛笔记本</title>
+<meta name="description" content="从 Codeforces 与 ICPC 原题积累英文词汇，用例句理解，用自测记住。">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<!-- 玻璃主题的背景光晕：几团大光斑，位置 / 大小 / 色调由 JS 每隔几秒随机换一次目标，
-     CSS 负责用很长的过渡把移动过程抹平，看上去就是缓慢无规则地呼吸 -->
-<div class="aurora-bg" aria-hidden="true">
-  <div class="aurora a1"></div>
-  <div class="aurora a2"></div>
-  <div class="aurora a3"></div>
-  <div class="aurora a4"></div>
-</div>
+
 
 <header id="topbar" class="topbar"></header>
 
@@ -126,7 +112,7 @@
 
 </div><!-- /chrome -->
 
-<main>
+<main id="mainContent">
   <section id="listView">
     <div id="cardGrid" class="card-grid"></div>
     <div id="emptyState" class="empty" hidden>
@@ -443,14 +429,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="vendor/jszip.min.js"></script>
-<!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
-     404 时同步回退到入库的 config.example.js -->
-<script src="config.js"></script>
-<script>
-  if (!window.APP_CONFIG) {
-    document.write('<script src="config.example.js"><\/script>');
-  }
-</script>
+<script src="config.example.js"></script>
 <script src="docx.js"></script>
 <script src="common.js"></script>
 <script src="api.js"></script>

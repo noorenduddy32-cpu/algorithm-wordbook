@@ -9,3 +9,5 @@ words.json
 tests
 server.js
 _dev.js
+public
+csdn_articles.json

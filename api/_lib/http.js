@@ -15,7 +15,7 @@ function parseCookies(req) {
 
 function readBody(req) {
   return new Promise(function (resolve) {
-    if (req.body != null) {
+    if (Object.hasOwn(req, 'body')) {
       try {
         if (typeof req.body === 'string') return resolve(req.body ? JSON.parse(req.body) : {});
         return resolve(req.body);

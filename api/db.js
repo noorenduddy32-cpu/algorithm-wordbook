@@ -1,5 +1,5 @@
 // POST /api/db  ——  前端链式 builder 的序列化入口。
-// 读（select）需登录；写（insert/update/delete）需管理员。后端二次校验，访客直接调用也会被拒。
+// 公开读取共享词汇和已发布的公开笔记；写入需管理员，访客直调也会被拒。
 const { roleFromReq } = require('./_lib/auth');
 const { handleDb } = require('./_lib/cloud');
 const { readBody, sendJson, allowRequest } = require('./_lib/http');
