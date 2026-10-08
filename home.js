@@ -1,214 +1,118 @@
-/* ============================================================
-   home.js —— 主页：统计数字 + 最近文章
-   ============================================================ */
+/* 首页：内容入口、积累日历与最近记录。 */
 (function () {
   'use strict';
+  const $ = AN.$, esc = AN.esc;
+  let currentWords = [], currentNotes = [];
+  AN.boot({ active: 'home' });
 
-  const $ = AN.$;
-  const esc = AN.esc;
-
-  AN.boot({
-    title: '算法学习笔记本',
-    subtitle: '算法竞赛词汇本 · 题目笔记与题解',
-    active: 'home',
-    nav: [
-      { key: 'home', label: '首页', href: 'index.html', icon: AN.ICONS.home },
-      { key: 'wordbook', label: '词汇', href: 'wordbook.html', icon: AN.ICONS.book },
-      { key: 'notes', label: '文章', href: 'notes.html', icon: AN.ICONS.pen },
-      { key: 'visits', label: '访问记录', href: 'visits.html', icon: AN.ICONS.file, adminOnly: true }
-    ]
-  });
-
-  const LS_ACT = 'wb_activity_counts_v1';
-
-  function setText(id, v) { const e = $(id); if (e) e.textContent = v; }
-
-  function activeDays() {
-    let obj = {};
-    try { obj = JSON.parse(localStorage.getItem(LS_ACT) || '{}'); } catch (e) { obj = {}; }
-    return Object.keys(obj).filter(function (k) { return (obj[k] || 0) > 0; }).length;
+  function setText(id, text) { const node = $(id); if (node) node.textContent = text; }
+  function visibleNotes(notes) {
+    return notes.filter(function (n) { return Auth.role === 'admin' || (n.status === 'published' && n.visibility === 'public'); });
   }
-
   function renderStats(words, notes) {
-    let ex = 0;
-    const days = {};
-    words.forEach(function (x) {
-      if (Array.isArray(x.examples)) ex += x.examples.length;
-      if (x.created_at) days[String(x.created_at).slice(0, 10)] = 1;
-    });
-    try {
-      const act = JSON.parse(localStorage.getItem(LS_ACT) || '{}');
-      Object.keys(act).forEach(function (k) { if ((act[k] || 0) > 0) days[k] = 1; });
-    } catch (e) {}
-    notes.forEach(function (x) { if (x.updated_at) days[String(x.updated_at).slice(0, 10)] = 1; });
-    setText('hsWords', String(words.length));
-    setText('hsEx', String(ex));
-    setText('hsNotes', String(notes.length));
-    setText('hsDays', String(Object.keys(days).length));
-    setText('entryWords', String(words.length));
-    setText('entryNotes', String(notes.length));
-    setText('footTip', '数据来自云端数据库 · 随时可写');
-    renderActivityHome(words, notes);
+    currentWords = words;
+    currentNotes = visibleNotes(notes);
+    setText('entryWords', words.length);
+    setText('entryNotes', currentNotes.length);
+    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '访客视角 · 词汇只读，笔记仅展示已发布的公开内容');
+    setText('footTip', Auth.role === 'admin' ? '管理全部积累' : '公开内容 · 只读浏览');
+    renderRecent();
+    renderYearOptions();
+    renderActivity();
   }
-
-  // 缓存显示：仅登录后触发（未登录不渲染，避免未授权泄露本地缓存）
-  function renderHomeCache() {
-    if (!window.Auth || !window.Auth.role) return;
-    try {
-      const c = JSON.parse(localStorage.getItem('wb_home_cache') || 'null');
-      if (c && c.words && c.notes) renderStats(c.words, c.notes);
-    } catch (e) {}
+  function renderRecent() {
+    const notes = currentNotes.slice().sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); }).slice(0, 4);
+    $('recentNotes').innerHTML = notes.length ? notes.map(function (n) {
+      const badge = n.status === 'draft' ? '草稿' : n.visibility === 'private' ? '私密' : '';
+      const tags = Array.isArray(n.tags) ? n.tags.slice(0, 2).join(' · ') : '';
+      return '<a class="recent-row" href="notes.html#n' + encodeURIComponent(n.id) + '">' +
+        '<div class="recent-main"><b>' + esc(n.title || '未命名笔记') + '</b>' +
+        '<span>' + esc(tags || n.summary || '查看笔记') + '</span></div>' +
+        '<div class="recent-side">' + (badge ? '<span class="recent-badge">' + badge + '</span>' : '') +
+        '<time>' + esc(AN.fmtDate(n.updated_at || n.created_at)) + '</time></div></a>';
+    }).join('') : '<p class="recent-empty">' + (Auth.role === 'admin' ? '还没有笔记，从一道值得复盘的题开始。' : '暂时还没有公开笔记。') + '</p>';
+    const words = currentWords.slice().sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }).slice(0, 4);
+    $('recentWords').innerHTML = words.length ? words.map(function (w) {
+      return '<a class="recent-row" href="wordbook.html?q=' + encodeURIComponent(w.word || '') + '">' +
+        '<div class="recent-main"><b class="mono">' + esc(w.word) + '</b><span>' + esc(w.meaning || '查看词条') + '</span></div>' +
+        '<div class="recent-side"><span>' + esc(w.pos || '') + '</span><time>' + esc(AN.fmtDate(w.created_at)) + '</time></div></a>';
+    }).join('') : '<p class="recent-empty">还没有词汇，从题面中的第一个陌生词开始。</p>';
   }
-
-  function loadStats() {
-    const db = AN.getDb();
-    if (!db) {
-      setText('hsWords', '—'); setText('hsEx', '—');
-      setText('hsNotes', '—'); setText('hsDays', String(activeDays()));
-      setText('entryWords', '—'); setText('entryNotes', '—');
-      setText('footTip', '云端未连接，数字暂不可用');
+  async function loadStats() {
+    const cached = NoteCache.get('home');
+    if (cached) renderStats(cached.words, cached.notes);
+    const role = Auth.role;
+    const [w, n] = await Promise.all([
+      DB.from('words').select('id,word,pos,meaning,created_at,updated_at'),
+      DB.from('notes').select('id,title,summary,tags,status,visibility,created_at,updated_at').order('updated_at', { ascending: false })
+    ]);
+    if (Auth.role !== role) return;
+    if (w.error || n.error) {
+      setText('footTip', '暂时无法同步，请刷新重试');
+      if (!cached) {
+        setText('homeScope', '数据暂时无法加载，请刷新重试');
+        setText('activitySum', '数据暂不可用');
+        setText('recentNotes', '笔记加载失败，请刷新重试');
+        setText('recentWords', '词汇加载失败，请刷新重试');
+      }
       return;
     }
-    // 先用本地缓存秒显，消除切换页面时的一秒空白
-    try {
-      const c = JSON.parse(localStorage.getItem('wb_home_cache') || 'null');
-      if (c && c.words && c.notes) renderStats(c.words, c.notes);
-    } catch (e) {}
-    (async function () {
-      try {
-        const [w, n] = await Promise.all([
-          db.from('words').select('id,examples,created_at'),
-          db.from('notes').select('id,title,summary,tags,created_at,updated_at,views')
-            .order('updated_at', { ascending: false })
-        ]);
-        const words = w.data || [];
-        const notes = n.data || [];
-        try { localStorage.setItem('wb_home_cache', JSON.stringify({ words: words, notes: notes })); } catch (e) {}
-        renderStats(words, notes);
-      } catch (e) {
-        setText('hsWords', '—'); setText('hsEx', '—');
-        setText('hsNotes', '—');
-        setText('footTip', '读取失败：' + (e && e.message ? e.message : e));
-      }
-    })();
+    NoteCache.set('home', { words: w.data || [], notes: n.data || [] });
+    renderStats(w.data || [], n.data || []);
   }
 
-  /* ---------------- 活跃度热力图（首页，按自然年 1月→12月 左→右） ---------------- */
-
-  function dayKey(d) {
-    const p = function (x) { return x < 10 ? '0' + x : '' + x; };
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
-  }
-  function actLevel(n) {
-    if (!n) return 0;
-    if (n <= 2) return 1;
-    if (n <= 5) return 2;
-    if (n <= 10) return 3;
-    return 4;
-  }
-
-  function renderActivityHome(words, notes) {
-    const grid = $('activityGrid');
-    if (!grid) return;
-
-    // 汇总每天活跃量：云端单词/文章的创建与更新 + 本机背诵/编辑次数
+  function dayKey(d) { return AN.fmtDate(d); }
+  function activityMap() {
     const map = {};
-    const add = function (iso, n) {
-      const d = String(iso || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
-      map[d] = (map[d] || 0) + n;
-    };
-    (words || []).forEach(function (w) {
-      add(w.created_at, 1);
-      if (String(w.updated_at || '').slice(0, 10) !== String(w.created_at || '').slice(0, 10)) add(w.updated_at, 1);
+    currentWords.concat(currentNotes).forEach(function (row) {
+      const created = dayKey(row.created_at), updated = dayKey(row.updated_at);
+      if (created) map[created] = (map[created] || 0) + 1;
+      if (updated && updated !== created) map[updated] = (map[updated] || 0) + 1;
     });
-    (notes || []).forEach(function (x) {
-      add(x.created_at, 1);
-      if (String(x.updated_at || '').slice(0, 10) !== String(x.created_at || '').slice(0, 10)) add(x.updated_at, 1);
-    });
-    const local = AN.getLocalActivity();
-    Object.keys(local).forEach(function (k) {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(k)) map[k] = (map[k] || 0) + (Number(local[k]) || 0);
-    });
-
-    const year = new Date().getFullYear();
-    const yearStart = new Date(year, 0, 1);
-    const yearEnd = new Date(year, 11, 31);
-    // 对齐到整周（周一为行首），左→右跨月
-    const start = new Date(yearStart);
-    start.setDate(start.getDate() - ((yearStart.getDay() + 6) % 7));
-    const end = new Date(yearEnd);
-    end.setDate(end.getDate() + (6 - ((yearEnd.getDay() + 6) % 7)));
-
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    const months = [];
-    let cells = '';
-    let activeDays = 0, totalOps = 0, lastMonth = -1;
-    const cur = new Date(start);
-    const colOf = function (d) { return Math.floor((d - start) / 86400000 / 7); };
-
-    while (cur <= end) {
-      const m = cur.getMonth();
-      if (cur >= yearStart && cur <= yearEnd && m !== lastMonth) {
-        months.push({ label: monthNames[m], col: colOf(cur) });
-        lastMonth = m;
-      }
-      const inYear = cur >= yearStart && cur <= yearEnd;
-      const key = dayKey(cur);
-      const n = inYear ? (map[key] || 0) : 0;
-      if (inYear && n) { activeDays++; totalOps += n; }
-      const lv = actLevel(n);
-      cells += '<i class="act-day lv' + lv + (inYear ? '' : ' blank') +
-        '" data-date="' + key + '" title="' + key + (inYear ? '：' + (n ? n + ' 次' : '无记录') : '') + '"></i>';
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    grid.innerHTML = cells;
-
-    // 让月份标签与格子严格对齐：按实际周数动态设置列数
-    const totalDays = Math.round((end - start) / 86400000) + 1;
-    const cols = Math.ceil(totalDays / 7);
-    grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
-
-    const seen = {};
-    $('activityMonths').innerHTML = months.filter(function (mm) {
-      if (seen[mm.label]) return false;
-      seen[mm.label] = 1;
-      return true;
-    }).map(function (mm) {
-      // 月份标签左对齐到该月首列左边界，避免相邻标签重叠
-      const leftPct = ((mm.col / cols) * 100).toFixed(2);
-      return '<span style="left:' + leftPct + '%">' + esc(mm.label) + '</span>';
-    }).join('');
-
-    let streak = 0;
-    const walk = new Date(yearEnd > new Date() ? new Date() : yearEnd);
-    while (map[dayKey(walk)]) { streak++; walk.setDate(walk.getDate() - 1); }
-
-    $('actStreak').textContent = streak;
-    $('actTotal').textContent = totalOps;
-    $('actDays').textContent = activeDays;
-    $('activitySum').textContent = year + ' 年 ' + activeDays + ' 天有记录 · 连续 ' + streak + ' 天';
-
-    // 悬停提示
-    if (!$('activityTip')) {
-      const tip = document.createElement('div');
-      tip.id = 'activityTip';
-      tip.className = 'act-tip';
-      document.body.appendChild(tip);
-    }
-    grid.onmousemove = function (e) {
-      const cell = e.target.closest('.act-day');
-      const tip = $('activityTip');
-      if (!cell || !tip) return;
-      tip.textContent = cell.getAttribute('title');
-      tip.style.display = 'block';
-      tip.style.left = Math.min(e.clientX + 12, window.innerWidth - tip.offsetWidth - 10) + 'px';
-      tip.style.top = (e.clientY - 34) + 'px';
-    };
-    grid.onmouseleave = function () { const t = $('activityTip'); if (t) t.style.display = 'none'; };
+    return map;
   }
-
-  renderHomeCache();
+  function renderYearOptions() {
+    const nowYear = new Date().getFullYear();
+    const years = new Set([nowYear]);
+    Object.keys(activityMap()).forEach(function (key) { const y = Number(key.slice(0, 4)); if (y <= nowYear) years.add(y); });
+    const selected = Number($('activityYear').value) || nowYear;
+    $('activityYear').innerHTML = Array.from(years).sort(function (a, b) { return b - a; }).map(function (year) {
+      return '<option value="' + year + '"' + (year === selected ? ' selected' : '') + '>' + year + ' 年</option>';
+    }).join('');
+  }
+  function renderActivity() {
+    const year = Number($('activityYear').value) || new Date().getFullYear();
+    const map = activityMap(), start = new Date(year, 0, 1), end = new Date(year, 11, 31);
+    start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+    end.setDate(end.getDate() + (6 - (end.getDay() + 6) % 7));
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const cur = new Date(start), months = [];
+    let cells = '', index = 0, days = 0, total = 0, run = 0, longest = 0;
+    while (cur <= end) {
+      const inYear = cur.getFullYear() === year, future = cur > today;
+      const key = dayKey(cur), count = inYear && !future ? (map[key] || 0) : 0;
+      if (inYear && cur.getDate() === 1) months.push({ month: cur.getMonth() + 1, col: Math.floor(index / 7) });
+      if (count) { days++; total += count; run++; longest = Math.max(longest, run); } else run = 0;
+      const level = count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 10 ? 3 : 4;
+      const title = key + (future ? '：尚未到来' : '：' + count + ' 条记录');
+      cells += '<i class="act-day lv' + level + (inYear ? '' : ' blank') + (future ? ' future' : '') +
+        (key === dayKey(today) ? ' today' : '') + '" title="' + title + '" aria-hidden="true"></i>';
+      index++; cur.setDate(cur.getDate() + 1);
+    }
+    const cols = index / 7;
+    $('activityGrid').innerHTML = cells;
+    $('activityGrid').style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+    $('activityMonths').innerHTML = months.map(function (m) { return '<span style="left:' + (m.col / cols * 100) + '%">' + m.month + '月</span>'; }).join('');
+    setText('actStreak', longest); setText('actTotal', total); setText('actDays', days);
+    setText('activitySum', year + ' 年 · ' + days + ' 天有积累');
+    $('activityGrid').setAttribute('role', 'img');
+    $('activityGrid').setAttribute('aria-label', year + ' 年，' + days + ' 天有积累，共 ' + total + ' 条记录，最长连续 ' + longest + ' 天');
+  }
+  $('activityYear').addEventListener('change', renderActivity);
+  window.addEventListener('an:session-reset', function () {
+    currentWords = []; currentNotes = [];
+    ['recentWords', 'recentNotes', 'activityGrid', 'activityMonths', 'activityYear'].forEach(function (id) { $(id).replaceChildren(); });
+    setText('entryWords', '—'); setText('entryNotes', '—');
+  });
   window.whenAuthed(loadStats);
 })();

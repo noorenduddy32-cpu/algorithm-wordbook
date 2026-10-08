@@ -24,3 +24,11 @@ config.js
 
 # CSDN 抓取产物（本地一次性导入用，体积大不入库）
 csdn_articles.json
+
+# 服务启动入口需要随仓库发布
+!/_dev.js
+.env.*
+!.env.example
+node_modules/
+playwright-report/
+test-results/

@@ -1,102 +1,105 @@
-# 算法学习笔记本
+# 算法竞赛笔记本
 
-个人算法竞赛用的在线笔记本，两块内容：**算法词汇本**（Codeforces / ICPC 高频词，按原形收录，配词性、中文释义和原题例句）和**我的文章**（所见即所得富文本，写题解、复盘、模板与踩坑）。
+面向 ACM / ICPC 训练的个人笔记本：积累题面词汇，保存值得复盘的题目与算法。
 
-线上站点：**https://algorithm-wordbook.app.workbuddy.host/**（需输入访问密码进入：访客只读、管理员可写）
+- **学习概览**：词汇与笔记入口、按年份查看的积累日历、最近整理与最近收录。
+- **题面词汇**：释义、原题例句、搜索、词汇自测、导入导出。
+- **题解与算法**：题目复盘 / 算法整理模板、富文本与代码块、标签、草稿、公开 / 私密。
 
-## 最近更新
+## 访问权限
 
-- 性能优化：首页 / 词汇 / 文章三页改为「本地缓存先秒显、云端后台刷新」，切换与加载不再空白等待；静态资源 gzip + ETag 条件请求；AI 查词与文章助手统一走非思考型快速模型（hunyuan-chat 等），不再退回慢速思考模型。
-- 文章页给 jsDelivr 加 preconnect，预热 CDN 连接。
-- 文章编辑器：标题下「摘要 / 标签 / 工具栏」整行改为 sticky 吸顶，长文向下滚动时始终可见，随时能撤销、加粗、插入代码等。
-
-## 架构
-
-```
-浏览器 ──同源──> Node 服务 (_dev.js, 单端口)
-                  ├── 静态文件 (index / wordbook / notes / visits)
-                  └── /api/* 函数 (login / db / ai / me / visitor / visits / logout)
-                          │
-                          └── 服务端用 CLOUD_ENDPOINT + CLOUD_KEY 连 WorkBuddy 云数据库
-```
-
-- 前端纯静态（HTML + CSS + 原生 JS），所有读写都走同源 `/api/*`
-- 密码和云库密钥只在**服务端环境变量**，前端零敏感信息
-- 登录态走 HttpOnly 签名 Cookie，前端只看得到「visitor / admin」角色
-
-## 权限（两级密码）
-
-| 角色 | 进入方式 | 权限 |
+| 身份 | 进入方式 | 权限 |
 | --- | --- | --- |
-| 访客 visitor | 输入访客密码 | 查看 / 搜索 / 分类 / 打开；**不能**增删改 |
-| 管理员 admin | 输入管理员密码 | 查看 + 新增 + 修改 + 删除 + AI 辅助 |
+| 访客 | 访客密码 | 读取共享词库与**已发布且公开**的笔记；可搜索、自测与导出已获准读取的内容 |
+| 管理员 | 管理员密码 | 管理全部词汇与笔记，包括草稿和私密笔记；使用 AI 辅助；查看访问记录 |
 
-密码只存服务端、前端不硬编码；写接口由服务端二次校验，访客直调写接口返回 403。
+密码只配置在服务端。浏览器获得 HttpOnly 签名 Cookie，所有数据库与 AI 请求均由服务端校验角色。访客不能通过直接调用 API 写入数据，也不能经通用查询读取访问日志。
 
-## 功能
+右上角身份按钮可升级为管理员或切换到访客视角。退出、切换身份及跨标签页身份变化会清空正文、编辑器和会话缓存。管理员缓存仅保存在当前标签页的 `sessionStorage`，不再将私密正文写入 `localStorage`；访客每次向服务端读取当前可见内容。
 
-**词汇本**
-- 单词卡：拼写 / 词性 / 中文释义 / 例句 / 备注；重复词自动合并例句
-- 从句中选词、AI 查中文（管理员）：粘贴题面自动识别原形 + 释义
-- 背诵模式（英↔中）、多种排序、方块 / 列表排版、导出 Word、JSON 导入
+词汇是共享词库；公开 / 私密以及草稿状态目前用于笔记。将笔记设为“公开”后，仍须“发布”才对访客可见。
 
-**我的文章**
-- 所见即所得富文本（粘贴保真），代码块行号 / 折叠 / 高亮
-- 方块 / 列表 / 分栏看板三视图；标签、摘要、公开 / 私密、草稿箱
-- AI 辅助（续写 / 润色 / 提纲，管理员）；导出 Word、导入 md / html
+## 本地启动
 
-**主页活跃度**
-- GitHub 风格活跃度热力图（1–12 月），颜色越深当天操作越多
+需要 Node.js 22 或更高版本，运行服务无需安装第三方依赖。
 
-**访问记录**（仅管理员）：来访者角色 / IP / 设备 / 浏览文章 / 停留时长
+1. 将 `.env.example` 复制为 `.env.local`。
+2. 填写不同的 `VISITOR_PASSWORD`、`ADMIN_PASSWORD`，以及云端数据库的服务端凭据。
+3. 生成不少于 32 字符的 `SESSION_SECRET`：
 
-## 目录结构
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
 
-```
-.
-├── index.html              主页（密码门 + 入口 + 统计 + 活跃度）
-├── wordbook.html / styles.css / app.js    词汇本
-├── notes.html  / notes.css  / notes.js     文章模块（列表 / 看板 / 编辑器）
-├── visits.html  / visits.css / visits.js    访问记录（仅管理员）
-├── base.css / common.js / api.js           公共层 + 前端数据层
-├── docx.js / notes_docx.js                 前端生成 .docx
-├── config.js / config.example.js           站点配置（无密钥，config.js 不入库）
-├── db/schema.sql                           words + notes 建表参考
-├── vendor/                                  jszip 等本地依赖
-├── api/                    后端函数（login / db / ai / me / visitor / visits / logout + _lib）
-├── _dev.js                 本地与线上共用的单端口 Node 服务（静态 + /api）
-└── .env.local              本地环境变量（gitignore）
-```
+4. 运行：
 
-## 本地开发
+   ```bash
+   npm start
+   ```
+
+打开 `http://127.0.0.1:8787`。原有 `node _dev.js` 命令也可使用。没有有效登录服务时，页面保持锁定。
+
+| 环境变量 | 用途 |
+| --- | --- |
+| `VISITOR_PASSWORD` | 访客密码，不得与管理员密码相同 |
+| `ADMIN_PASSWORD` | 管理员密码 |
+| `SESSION_SECRET` | 至少 32 字符的随机会话签名密钥；更换后旧 Cookie 失效 |
+| `CLOUD_ENDPOINT` | WorkBuddy 云服务地址 |
+| `CLOUD_KEY` | **仅服务端持有**的云服务凭据 |
+| `PORT` | 服务端口，默认 8787 |
+| `HOST` | 默认 127.0.0.1；托管容器通常设置为 0.0.0.0 |
+
+`.env.local` 不会被 Git 提交。`config.example.js` 只存词典链接和导出标题等公开展示配置。
+
+## 部署与现有数据库
+
+项目保持原生 HTML / CSS / JavaScript + Node API 结构，可沿用 WorkBuddy 单端口服务，或使用仓库中的 Vercel API 配置。托管平台需配置上述环境变量；生产环境设置 `NODE_ENV=production`，并通过 HTTPS 使用安全 Cookie。静态 GitHub Pages 无法单独实现这套访问控制。
+
+**仅合并代码不会修改现有云端数据库权限。** 原版 `schema.sql` 向 `anon` / `authenticated` 开放了表的读写，可能允许绕过本站 API。新的建表参考采用默认关闭的权限；已部署的库需要另外执行 `db/security.sql`。
+
+迁移前必须确认 `CLOUD_KEY` 对应服务端专用受信任角色，并在撤销公开角色权限后仍能完成所需读写。如果平台只提供公开角色的 key，应先配置服务端身份，或由平台限制数据库公网直连，再做权限迁移。迁移不会自动运行，也不删除笔记数据。
+
+部署后验收：
+
+- 访客可以读词汇和公开笔记，私密笔记与草稿不可见；所有内容写接口返回 403。
+- 管理员可以保存词条、笔记和草稿，切换访客后私密内容立即消失。
+- 不带服务端凭据访问数据库 REST 地址不能获取数据。
+- `.env.local`、`db/`、`seed/` 和 API 内部源文件不能作为静态文件访问。
+
+`server.js` 使用静态资源白名单；`.vercelignore` 排除环境文件、种子数据、SQL 与测试文件。部署平台应同时启用登录接口的请求限流。
+
+## 日历统计口径
+
+积累日历按浏览器本地日期统计**现有记录的创建日期与最近一次更新日期**；同一天创建和更新只计一次。访客只统计自己可见的内容。未来日期不计入统计，可切换历史年份，展示年度记录数、积累天数和最长连续天数。
+
+这不是完整的操作审计日志，也不代表完成题量。自测次数保留在本机，未混入公开日历。
+
+## 验证
 
 ```bash
-node _dev.js          # 默认 http://127.0.0.1:8787
+npm test
 ```
 
-浏览器打开地址，输入访问密码即可进入（访客只读、管理员可写）。
+使用 Node 内置测试器验证权限边界、私密筛选、Cookie、防跨站写入及静态资源保护。
 
-## 环境变量（服务端，勿入库）
+可选浏览器回归（使用独立的内存测试数据，不连接真实云库）：
 
-| 变量 | 说明 |
-| --- | --- |
-| `VISITOR_PASSWORD` | 访客密码 |
-| `ADMIN_PASSWORD` | 管理员密码 |
-| `CLOUD_ENDPOINT` | 云库 endpoint |
-| `CLOUD_KEY` | 云库密钥 |
-| `SESSION_SECRET` | 签名登录 Cookie 的随机串（`openssl rand -base64 32` 生成）|
+```bash
+npm install --no-save playwright
+npx playwright install chromium
+node tests/ui.cjs
+```
 
-## 部署
+检查访客阅读、管理员模板保存、跨标签页身份切换、退出清理，以及手机 / 平板布局。截图输出在已忽略的 `test-results/`。
 
-仓库作为 WorkBuddy 应用发布（单端口 Node 服务，`node _dev.js`），配好上面五项环境变量即上线；数据库为 WorkBuddy 云数据库，结构见 `db/schema.sql`。
+## 文件结构
 
-## 数据库
-
-| 表 | 用途 |
-| --- | --- |
-| `words` | 词库：word(unique) / pos / meaning / examples(jsonb) / note |
-| `notes` | 文章：title / content(HTML) / summary / tags(jsonb) / category / views / top / status / visibility |
-
-## License
-
-MIT
+- `index.html` / `home.js` / `home.css`：学习概览。
+- `wordbook.html` / `app.js` / `styles.css`：题面词汇。
+- `notes.html` / `notes.js` / `notes.css`：题解与算法。
+- `common.js` / `base.css`：导航、主题与公共界面。
+- `api.js`：前端数据代理、登录与会话清理。
+- `api/`：服务端身份验证、数据与 AI 代理。
+- `server.js` / `_dev.js`：本地及托管服务入口。
+- `db/schema.sql` / `db/security.sql`：建表与现有库权限迁移参考。
+- `tests/`：权限与浏览器回归。

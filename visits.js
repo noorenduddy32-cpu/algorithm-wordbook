@@ -37,15 +37,18 @@
   }
 
   async function loadVisits() {
+    if (Auth.role !== 'admin') return;
     const box = $('visitsList');
     box.innerHTML = '<p class="muted" style="padding:26px 0">读取中…</p>';
     try {
       const r = await fetch('/api/visits', { credentials: 'include' });
       const j = await r.json();
+      if (Auth.role !== 'admin') return;
       if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
       all = j.data || [];
       render();
     } catch (e) {
+      if (Auth.role !== 'admin') return;
       box.innerHTML = '<p class="muted" style="padding:26px 0">读取失败：' + esc(e.message || e) + '</p>';
     }
   }
@@ -99,5 +102,8 @@
     });
   }
 
+  window.addEventListener('an:session-reset', function () {
+    all = []; $('visitsList').replaceChildren(); $('visitsBox').hidden = true;
+  });
   window.whenAuthed(start);
 })();

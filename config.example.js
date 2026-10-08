@@ -8,5 +8,5 @@ window.APP_CONFIG = {
   dictUrl: "https://dictionary.cambridge.org/zhs/搜索/英语-汉语-简体/direct/?q=",
 
   /* 导出 Word 时的标题 */
-  docTitle: "算法学习笔记本"
+  docTitle: "算法竞赛笔记本"
 };

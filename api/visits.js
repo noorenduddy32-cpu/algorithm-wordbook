@@ -2,7 +2,7 @@
 // GET  /api/visits —— 仅管理员可查看
 // DELETE 永远 403：日志不可删除
 const { roleFromReq } = require('./_lib/auth');
-const { readBody, sendJson } = require('./_lib/http');
+const { readBody, sendJson, allowRequest } = require('./_lib/http');
 const { cloudRequest } = require('./_lib/cloud');
 
 function parseUA(ua) {
@@ -43,7 +43,7 @@ async function ipRegion(ip) {
 async function insertVisit(payload) {
   return await cloudRequest('/.cloud/database/rest/visits', {
     method: 'POST',
-    headers: { 'Prefer': 'return=representation' },
+    headers: { 'Prefer': 'return=minimal' },
     body: payload
   });
 }
@@ -65,7 +65,9 @@ module.exports = async function (req, res) {
     return sendJson(res, 200, { data: r.data || [] });
   }
 
-  if (req.method === 'POST' || req.method === 'post') {
+  if (req.method === 'POST') {
+    if (!allowRequest(req, res, 'POST')) return;
+    if (role === 'anon') return sendJson(res, 401, { error: '请先登录' });
     const body = await readBody(req);
     const ip = getIp(req);
     const ua = String(req.headers['user-agent'] || '');
@@ -88,7 +90,7 @@ module.exports = async function (req, res) {
       const msg = (r.data && r.data.error && (r.data.error.message || r.data.error)) || ('云端返回 ' + r.status);
       return sendJson(res, r.status || 500, { error: String(msg) });
     }
-    return sendJson(res, 201, { data: r.data });
+    return sendJson(res, 201, { ok: true });
   }
 
   if (req.method === 'DELETE' || req.method === 'delete') {

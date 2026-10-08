@@ -1,6 +1,6 @@
 -- 算法学习笔记本 数据库结构（PostgreSQL）
 -- 说明：本文件供「自己搭一套」时参考。在 WorkBuddy 云数据库的 SQL 控制台里请**逐条**执行
---      （单次只能跑一条语句）。建表 + RLS 是两道独立的门，GRANT 和 CREATE POLICY 缺一不可。
+--      （单次只能跑一条语句）。现有库请另外参考 security.sql，先确认服务端角色再迁移。
 
 -- ============================================================
 -- 1. 词库：单词本用
@@ -19,15 +19,10 @@ CREATE TABLE IF NOT EXISTS words (
 
 COMMENT ON TABLE words IS '算法学习笔记本 · 词库：拼写 / 词性 / 中文释义 / 例句，word 唯一，重复单词自动合并例句';
 
--- 公开只读：任何人打开网页都能看到词库；写操作由前端密码兜底（见 config.js 的 editPassword）
+-- 浏览器不直连数据库；所有操作经服务端 /api 校验。
+-- CLOUD_KEY 必须对应具有所需权限的服务端角色，不得使用浏览器公开凭据。
 ALTER TABLE words ENABLE ROW LEVEL SECURITY;
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.words TO authenticated, anon;
-
-CREATE POLICY words_read_all   ON words FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY words_insert_all ON words FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY words_update_all ON words FOR UPDATE TO authenticated, anon USING (true) WITH CHECK (true);
-CREATE POLICY words_delete_all ON words FOR DELETE TO authenticated, anon USING (true);
+REVOKE ALL ON TABLE public.words FROM authenticated, anon;
 
 -- ============================================================
 -- 2. 文章：Markdown 题解 / 笔记用（notes.html）
@@ -44,7 +39,7 @@ CREATE TABLE IF NOT EXISTS notes (
   views       BIGINT      NOT NULL DEFAULT 0,           -- 阅读次数，打开文章时 +1
   top         BOOLEAN     NOT NULL DEFAULT false,       -- 是否置顶（预留）
   status      TEXT        NOT NULL DEFAULT 'draft',     -- 状态：draft（草稿）/ published（已发布）
-  visibility  TEXT        NOT NULL DEFAULT 'private',   -- 可见性：public（icpc 可见）/ private（仅 yqx 可见）
+  visibility  TEXT        NOT NULL DEFAULT 'private',   -- 可见性：public（访客可见）/ private（仅管理员可见）
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -53,16 +48,10 @@ COMMENT ON TABLE notes IS '算法学习笔记本 · 文章：Markdown 题解 / �
 
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.notes TO authenticated, anon;
-
--- 后端 /api/db 已按角色二次校验，RLS 仅兜底放行（真正过滤在 api/_lib/cloud.js 中按 role 注入）
-CREATE POLICY notes_read_all   ON notes FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY notes_insert_all ON notes FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY notes_update_all ON notes FOR UPDATE TO authenticated, anon USING (true) WITH CHECK (true);
-CREATE POLICY notes_delete_all ON notes FOR DELETE TO authenticated, anon USING (true);
+REVOKE ALL ON TABLE public.notes FROM authenticated, anon;
 
 -- ============================================================
--- 3. 访问日志：谁、从哪来、看了哪篇、看了多久（仅管理员可读，任何人可写，不可删）
+-- 3. 访问日志：谁、从哪来、看了哪篇、看了多久（仅管理员可读，登录后可记访问，不可删）
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS visits (
@@ -84,8 +73,4 @@ COMMENT ON TABLE visits IS '算法学习笔记本 · 访问日志：不可删除
 
 ALTER TABLE visits ENABLE ROW LEVEL SECURITY;
 
-GRANT SELECT, INSERT, DELETE ON TABLE public.visits TO authenticated, anon;
--- 权限由后端 /api/visits 控制：SELECT 仅 admin，INSERT 任何人，DELETE 永远 403
-CREATE POLICY visits_read_all    ON visits FOR SELECT TO authenticated, anon USING (true);
-CREATE POLICY visits_insert_all  ON visits FOR INSERT TO authenticated, anon WITH CHECK (true);
-CREATE POLICY visits_delete_deny ON visits FOR DELETE TO authenticated, anon USING (false);
+REVOKE ALL ON TABLE public.visits FROM authenticated, anon;

@@ -8,7 +8,7 @@ function parseCookies(req) {
     if (i < 0) return;
     const k = s.slice(0, i).trim();
     const v = s.slice(i + 1).trim();
-    if (k) out[k] = decodeURIComponent(v);
+    if (k) { try { out[k] = decodeURIComponent(v); } catch (e) { /* 忽略无效 Cookie */ } }
   });
   return out;
 }
@@ -35,7 +35,30 @@ function readBody(req) {
 function sendJson(res, code, obj) {
   res.statusCode = code;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.end(JSON.stringify(obj));
 }
 
-module.exports = { parseCookies: parseCookies, readBody: readBody, sendJson: sendJson };
+function allowRequest(req, res, method) {
+  if (req.method !== method) {
+    res.setHeader('Allow', method);
+    sendJson(res, 405, { error: '请求方法不支持' });
+    return false;
+  }
+  if (method !== 'GET') {
+    const origin = req.headers.origin;
+    let sameOrigin = true;
+    if (origin) {
+      try { sameOrigin = new URL(origin).host === req.headers.host; }
+      catch (e) { sameOrigin = false; }
+    }
+    if (!sameOrigin || req.headers['sec-fetch-site'] === 'cross-site') {
+      sendJson(res, 403, { error: '仅允许本站请求' });
+      return false;
+    }
+  }
+  return true;
+}
+
+module.exports = { parseCookies: parseCookies, readBody: readBody, sendJson: sendJson, allowRequest: allowRequest };
