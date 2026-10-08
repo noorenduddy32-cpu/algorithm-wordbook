@@ -7,6 +7,7 @@
    ============================================================ */
 (function () {
   'use strict';
+  let sessionVersion = 0;
 
   /* ---------------- 云端数据库代理（链式 builder） ---------------- */
 
@@ -38,6 +39,7 @@
       return a;
     }
     async function call(op) {
+      const version = sessionVersion;
       let r;
       try {
         r = await fetch('/api/db', {
@@ -51,6 +53,8 @@
       }
       let json = {};
       try { json = await r.json(); } catch (e) { json = {}; }
+      if (version !== sessionVersion) return { data: null, error: { message: '登录身份已改变，请重新加载' } };
+      if (r.status === 401) { resetSession(); buildGate(); }
       if (!r.ok) return { data: null, error: { message: (json && json.error) || ('HTTP ' + r.status) } };
       let data = json.data;
       if (op.single && Array.isArray(data)) data = data[0] || null;
@@ -107,56 +111,85 @@
   };
   window.ANCloud = ANCloud;
 
-  /* ---------------- 登录态 ---------------- */
+  /* ---------------- 登录态与缓存 ---------------- */
+
+  function clearCaches() {
+    // 清理旧版跨角色共用的持久缓存；私密正文只使用当前标签页会话缓存。
+    try {
+      ['wb_home_cache', 'wb_notes_cache', 'wb_words_cache', 'an_note_draft_v2', 'wb_edit_unlocked'].forEach(function (key) { localStorage.removeItem(key); });
+      Object.keys(sessionStorage).filter(function (key) { return key.indexOf('an_cache:') === 0; })
+        .forEach(function (key) { sessionStorage.removeItem(key); });
+    } catch (e) {}
+  }
+  // 只迁移旧缓存，不影响同一管理员标签页内的快速导航。
+  try {
+    ['wb_home_cache', 'wb_notes_cache', 'wb_words_cache', 'an_note_draft_v2', 'wb_edit_unlocked'].forEach(function (key) { localStorage.removeItem(key); });
+  } catch (e) {}
+
+  window.NoteCache = {
+    get: function (name) {
+      // 访客始终读取服务端当前公开数据，避免展示后来转为私密的旧缓存。
+      if (Auth.role !== 'admin') return null;
+      try { return JSON.parse(sessionStorage.getItem('an_cache:admin:' + name) || 'null'); } catch (e) { return null; }
+    },
+    set: function (name, data) {
+      if (Auth.role !== 'admin') return;
+      try { sessionStorage.setItem('an_cache:admin:' + name, JSON.stringify(data)); } catch (e) {}
+    }
+  };
 
   const Auth = {
     role: null,
     async me() {
-      try {
-        const r = await fetch('/api/me', { credentials: 'include' });
-        if (r.ok) { const j = await r.json(); this.role = j.role; }
-        else this.role = null;
-      } catch (e) { this.role = null; }
+      const r = await fetch('/api/me', { credentials: 'include', cache: 'no-store' });
+      const j = r.ok ? await r.json() : {};
+      this.role = ['admin', 'visitor'].includes(j.role) ? j.role : null;
       return this.role;
     },
-    async login(pw) {
+    async login(pw, requiredRole) {
       const r = await fetch('/api/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ password: pw })
+        body: JSON.stringify({ password: pw, role: requiredRole })
       });
-      if (!r.ok) {
-        let m = '密码不正确';
-        try { m = (await r.json()).error || m; } catch (e) {}
-        throw new Error(m);
-      }
-      const j = await r.json();
-      this.role = j.role;
-      return this.role;
+      let j = {};
+      try { j = await r.json(); } catch (e) {}
+      if (!r.ok) throw new Error(j.error || '登录服务暂时不可用，请稍后重试');
+      if (!['admin', 'visitor'].includes(j.role)) throw new Error('登录状态无效，请重试');
+      return j.role;
     },
     async logout() {
-      try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
-      this.role = null;
+      const r = await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      if (!r.ok) throw new Error('退出失败，请重试');
     },
-    // 免密建立只读访客会话（写入 visitor Cookie），读权限才生效
     async visitor() {
-      let role = 'visitor';
-      try {
-        const r = await fetch('/api/visitor', { method: 'POST', credentials: 'include' });
-        if (r.ok) { const j = await r.json(); if (j && j.role) role = j.role; }
-      } catch (e) { /* 后端不可达时退回前端只读视图 */ }
-      this.role = role;
-      return role;
+      const r = await fetch('/api/visitor', { method: 'POST', credentials: 'include' });
+      if (!r.ok) throw new Error('切换失败，请重新登录');
+      const j = await r.json();
+      if (j.role !== 'visitor') throw new Error('访客状态无效');
+      return j.role;
     }
   };
   window.Auth = Auth;
-
-  // 等登录态就绪后再加载数据；未登录则等登录成功后触发
   window.whenAuthed = function (cb) {
+    window.addEventListener('an:authed', cb);
     if (Auth.role) cb();
-    else window.addEventListener('an:authed', function () { cb(); }, { once: true });
   };
 
-  /* ---------------- 登录门 ---------------- */
+  function resetSession() {
+    sessionVersion++;
+    Auth.role = null;
+    window.AN_ROLE = null;
+    clearCaches();
+    document.documentElement.dataset.auth = 'pending';
+    document.querySelectorAll('[data-admin]').forEach(function (n) { n.style.display = 'none'; });
+    window.dispatchEvent(new CustomEvent('an:session-reset'));
+  }
+  function broadcastSession() {
+    try { localStorage.setItem('an_session_changed', Date.now() + ':' + Math.random()); } catch (e) {}
+  }
+  function canChangeSession() {
+    return window.dispatchEvent(new CustomEvent('an:before-session-change', { cancelable: true }));
+  }
 
   function el(html) {
     const t = document.createElement('template');
@@ -164,146 +197,125 @@
     return t.content.firstElementChild;
   }
 
-  function buildGate() {
+  function buildGate(message) {
     if (document.getElementById('gate')) return;
+    const upgrading = !!Auth.role;
+    document.documentElement.dataset.auth = 'pending';
     const g = el(
-      '<div id="gate">' +
+      '<div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">' +
         '<div class="gate-card">' +
-          '<h1>算法竞赛笔记</h1>' +
-          '<p class="muted">输入访问密码以进入</p>' +
-          '<form id="gateForm" autocomplete="off">' +
-            '<input id="gatePw" type="password" placeholder="访问密码" autocomplete="current-password">' +
-            '<button type="submit" class="btn primary">进入笔记</button>' +
+          '<span class="gate-eyebrow">ACM / ICPC · PERSONAL NOTEBOOK</span>' +
+          '<h1 id="gateTitle">' + (upgrading ? '管理员登录' : '算法竞赛笔记本') + '</h1>' +
+          '<p class="muted">' + (upgrading ? '输入管理员密码，继续整理你的积累。' : '积累题面词汇，记录题解与算法。') + '</p>' +
+          '<form id="gateForm">' +
+            '<label class="sr-only" for="gatePw">' + (upgrading ? '管理员密码' : '访问密码') + '</label>' +
+            '<input id="gatePw" type="password" placeholder="' + (upgrading ? '管理员密码' : '访问密码') + '" autocomplete="current-password" required aria-describedby="gateErr">' +
+            '<button type="submit" class="btn primary">' + (upgrading ? '进入管理' : '进入笔记本') + '</button>' +
           '</form>' +
-          '<p id="gateErr" class="err" hidden></p>' +
+          '<p class="gate-roles">访客：浏览公开内容<br>管理员：管理全部词汇与笔记</p>' +
+          (upgrading ? '<button class="btn ghost" id="gateCancel" type="button">继续浏览</button>' : '') +
+          '<p id="gateErr" role="alert" hidden></p>' +
         '</div>' +
       '</div>'
     );
     document.body.appendChild(g);
-    const form = g.querySelector('#gateForm');
     const input = g.querySelector('#gatePw');
     const err = g.querySelector('#gateErr');
-    setTimeout(function () { input.focus(); }, 60);
-    form.addEventListener('submit', async function (e) {
+    if (message) { err.textContent = message; err.hidden = false; }
+    input.focus();
+    const cancel = g.querySelector('#gateCancel');
+    if (cancel) cancel.onclick = function () {
+      g.remove(); document.body.style.overflow = '';
+      document.documentElement.dataset.auth = Auth.role;
+    };
+    g.querySelector('#gateForm').addEventListener('submit', async function (e) {
       e.preventDefault();
-      err.hidden = true;
+      const button = g.querySelector('[type="submit"]');
+      button.disabled = true; err.hidden = true;
       try {
-        const role = await Auth.login(input.value);
-        onAuthed(role, true);
+        const role = await Auth.login(input.value, upgrading ? 'admin' : undefined);
+        resetSession(); broadcastSession(); onAuthed(role);
       } catch (ex) {
-        err.textContent = ex.message;
-        err.hidden = false;
-        input.value = '';
-        input.focus();
-      }
+        err.textContent = ex.message || '连接失败，请检查网络后重试';
+        err.hidden = false; input.value = ''; input.focus();
+      } finally { button.disabled = false; }
     });
     document.body.style.overflow = 'hidden';
   }
 
-  function onAuthed(role, backendMode) {
-    const g = document.getElementById('gate');
-    if (g) { g.remove(); document.body.style.overflow = ''; }
-    // 从访问门进入默认按本地后端处理；明确传 false 才走纯静态分支
-    applyRole(role, backendMode !== false);
+  function onAuthed(role) {
+    Auth.role = role;
     window.AN_ROLE = role;
+    document.documentElement.dataset.auth = role;
+    const g = document.getElementById('gate');
+    if (g) g.remove();
+    document.body.style.overflow = '';
+    applyRole(role);
     window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: role } }));
-    if (role === 'admin') window.dispatchEvent(new CustomEvent('an:admin', { detail: { role: role } }));
+    window.dispatchEvent(new CustomEvent(role === 'admin' ? 'an:admin' : 'an:visitor'));
   }
 
-  function applyRole(role, backendMode) {
-    role = role || Auth.role;
+  function applyRole(role) {
     const admin = role === 'admin';
-    // 有后端（本地 _dev.js）才按角色隐藏管理按钮；纯静态部署没有角色徽标，
-    // 仍靠编辑密码弹窗控制写权限
-    if (backendMode) {
-      document.querySelectorAll('[data-admin]').forEach(function (n) {
-        n.style.display = admin ? '' : 'none';
-      });
-    }
-    // 角色徽标只在本地有后端时显示；纯静态站点没有登录态，不显示访客/管理员标签
-    if (!backendMode) {
-      const bar = document.getElementById('roleBar');
-      if (bar) bar.remove();
-      return;
-    }
-    // 右上角角色徽标 + 退出登录
+    document.querySelectorAll('[data-admin]').forEach(function (n) { n.style.display = admin ? '' : 'none'; });
     let bar = document.getElementById('roleBar');
     if (!bar) {
       bar = el('<div class="role-bar" id="roleBar"></div>');
-      const host = document.querySelector('.top-actions') || document.querySelector('.topbar');
+      const host = document.querySelector('.top-actions');
       if (host) host.appendChild(bar);
     }
-    if (bar) {
-      bar.innerHTML =
-        '<span class="role-tag ' + (admin ? 'admin' : 'visitor') + '" title="' + (admin ? '点击切换为访客模式（只读）' : '点击输入管理员密码进入管理模式') + '">' + (admin ? '管理' : '访客') + '</span>' +
-        '<button type="button" class="role-logout" title="退出登录（回到访问门）">退出</button>';
-      bar.classList.remove('clickable');
-      const tag = bar.querySelector('.role-tag');
-      const logoutBtn = bar.querySelector('.role-logout');
-      tag.onclick = admin
-        ? function () { switchToVisitor(); }
-        : function () { if (window.reopenGate) window.reopenGate(); else location.reload(); };
-      logoutBtn.onclick = function () { doLogout(); };
-    }
+    bar.innerHTML =
+      '<button type="button" class="role-tag ' + (admin ? 'admin' : 'visitor') + '" title="' +
+      (admin ? '切换到访客视角，仅查看公开内容' : '输入管理员密码') + '">' +
+      (admin ? '管理员' : '访客 · 只读') + '</button>' +
+      '<button type="button" class="role-logout" title="退出登录">退出</button>';
+    bar.querySelector('.role-tag').onclick = admin ? switchToVisitor : function () { buildGate(); };
+    bar.querySelector('.role-logout').onclick = doLogout;
   }
 
-  // 管理模式 -> 访客模式：免密建立只读会话，立即刷新 UI（无刷新、无访问门）
   async function switchToVisitor() {
-    try { await Auth.visitor(); } catch (e) {}
-    window.AN_ROLE = 'visitor';
-    applyRole('visitor', true);
-    window.dispatchEvent(new CustomEvent('an:authed', { detail: { role: 'visitor' } }));
-    window.dispatchEvent(new CustomEvent('an:visitor', { detail: { role: 'visitor' } }));
-    if (window.AN && window.AN.toast) window.AN.toast('已切换为访客模式（只读）');
+    if (!canChangeSession()) return;
+    try {
+      await Auth.visitor();
+      resetSession(); broadcastSession(); onAuthed('visitor');
+      AN.toast('已切换为访客，只显示公开内容');
+    } catch (e) { AN.toast(e.message, true); }
   }
-
-  // 主动退出：清除签名会话 Cookie，回到访问门（之后站内跳转 / 刷新将再次要求输密码）
   async function doLogout() {
-    try { await Auth.logout(); } catch (e) {}
-    window.AN_ROLE = null;
-    window.Auth.role = null;
-    const bar = document.getElementById('roleBar');
-    if (bar) bar.remove();
-    document.querySelectorAll('[data-admin]').forEach(function (n) { n.style.display = 'none'; });
-    buildGate();
+    if (!canChangeSession()) return;
+    try {
+      await Auth.logout();
+      resetSession(); broadcastSession();
+      const bar = document.getElementById('roleBar'); if (bar) bar.remove();
+      buildGate();
+    } catch (e) { AN.toast(e.message, true); }
   }
 
   async function init() {
-    // 先探测后端；有后端时 /api/me 会直接返回角色（无会话自动降级为 visitor 并发 Cookie）
-    let resp = null;
-    try { resp = await fetch('/api/me', { credentials: 'include' }); } catch (e) { resp = null; }
-    const hasBackend = !!(resp && resp.status !== 404);
-    window.AN_HAS_BACKEND = hasBackend;
-
-    // 纯静态部署（WorkBuddy）没有 /api/me，不卡访问门，由 lockBtn 编辑模式控制写权限
-    if (!resp || resp.status === 404) {
-      applyRole(null, false);
-      return;
-    }
-
-    // 有后端：/api/me 返回 visitor/admin（已有会话）才静默恢复；无会话则必须先输密码
-    let role = null;
-    try { const j = await resp.json(); role = j && j.role; } catch (e) {}
-    if (role === 'admin' || role === 'visitor') {
-      Auth.role = role;
-      onAuthed(role, true);
-    } else {
-      // 无会话：弹出访问门，必须先输入正确密码才能访问（不再自动免密进入）
-      buildGate();
+    window.AN_HAS_BACKEND = true;
+    try {
+      const role = await Auth.me();
+      if (role) onAuthed(role);
+      else { resetSession(); buildGate(); }
+    } catch (e) {
+      resetSession(); buildGate('登录服务暂时不可用，请检查网络后重试');
     }
   }
-
+  window.addEventListener('storage', function (e) {
+    if (e.key !== 'an_session_changed') return;
+    resetSession();
+    const gate = document.getElementById('gate'); if (gate) gate.remove();
+    init();
+  });
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) { resetSession(); init(); }
+  });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
-
-  // 暴露给页面脚本：重新弹出访问门（本地有后端时，点编辑模式按钮用它升级为管理员）
   window.reopenGate = function () { buildGate(); };
-
-  // 暴露给页面脚本：用已设置的角色 cookie 刷新 UI（本地有后端时，
-  // 在解锁编辑模式弹窗里输管理员密码升级后，调用它让角色门 / 添加按钮即时生效）
   window.syncRole = async function () {
-    const r = await Auth.me();
-    if (r) onAuthed(r, true);
-    return r;
+    const role = await Auth.me();
+    if (role) { resetSession(); broadcastSession(); onAuthed(role); }
+    return role;
   };
 })();

@@ -1,0 +1,11 @@
+.git
+.env*
+config.js
+node_modules
+README.md
+db
+seed
+words.json
+tests
+server.js
+_dev.js

@@ -1363,3 +1363,32 @@ pre.code-enh.wrapped .ln { white-space: pre-wrap; word-break: break-all; }
   .tb-cat svg { width: 14px; height: 14px; }
   .tb-group-body .tb { min-width: 40px; height: 44px; }
 }
+
+/* 列表与首页共用宽度；搜索和管理操作保持清晰分组。 */
+.notes-wrap { max-width: 1180px; padding-top: 30px; }
+.notes-head { align-items: flex-start; }
+.notes-head > div:first-child { width: 100%; }
+.notes-head-actions { width: 100%; flex-wrap: wrap; }
+.notes-head-actions #noteSearch { flex: 1; min-width: 210px; width: auto; }
+.notes-head .section-kicker { font-size: 11px; margin-bottom: 8px; }
+.notes-toolbar { flex-wrap: wrap; }
+.note-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.note-template-bar { display: flex; align-items: center; gap: 8px; padding: 12px 0; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+.note-template-bar .btn { font-size: 12px; }
+.ed-visibility { max-width: 220px; }
+body.read-only .ed-visibility { display: none; }
+body.read-only .ed-title { font-size: clamp(24px, 4vw, 34px); }
+body.read-only .ed-preview { line-height: 1.9; }
+@media (max-width: 560px) {
+  .notes-wrap { padding: 22px 16px 48px; }
+  .notes-head-actions #noteSearch { order: -1; flex-basis: 100%; }
+  .notes-head-actions #newNoteBtn { margin-left: auto; }
+  .ed-bar { flex-wrap: wrap; gap: 8px; }
+  .ed-visibility { max-width: 190px; }
+  .notes-toolbar .tb-spacer { flex-basis: 100%; }
+}
+
+.reader-title { margin: 24px 0; font-size: clamp(24px, 3.2vw, 34px); line-height: 1.5; overflow-wrap: anywhere; }
+body.read-only .ed-preview { min-height: 0; }
+
+body.read-only .ed-panes { min-height: 0; border-top: 1px solid var(--border); }

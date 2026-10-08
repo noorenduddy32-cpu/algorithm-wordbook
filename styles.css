@@ -1189,3 +1189,30 @@ code { background: var(--panel2); border: 1px solid var(--border); border-radius
   #detailModal .detail-box .detail-meaning { font-size: 20px; }
   #detailModal .detail-box .detail-examples li { font-size: 15px; }
 }
+
+/* 窄屏工具栏可换行，搜索始终占据完整的一行。 */
+.stats-bar { flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .toolbar { padding: 12px 16px; gap: 10px; }
+  .toolbar .search-wrap { min-width: 0; max-width: none; flex-basis: 100%; }
+  .toolbar .cols-check { display: none; }
+  .stats-bar { padding: 12px 16px; }
+  .stat-hint { flex-basis: 100%; }
+  .card-grid { grid-template-columns: minmax(0, 1fr) !important; padding-left: 16px; padding-right: 16px; }
+}
+
+.toolbar { display: block; }
+.toolbar-main, .toolbar-options-body { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.toolbar-main .search-wrap { max-width: none; }
+.toolbar-options { margin-top: 10px; }
+.toolbar-options summary { width: fit-content; cursor: pointer; color: var(--muted); font-size: 12px; padding: 4px 0; }
+.toolbar-options-body { padding-top: 12px; }
+@media (max-width: 560px) {
+  .stats-bar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 6px; }
+  .stats-bar .stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .stats-bar .stat b { font-size: 18px; }
+  .stats-bar .stat span { font-size: 11px; }
+  .stats-bar .stat-hint { grid-column: 1 / -1; margin: 0; }
+  .toolbar-main #viewTabs { margin-left: auto; }
+  .toolbar-options-body .cols-check { display: inline-flex; }
+}

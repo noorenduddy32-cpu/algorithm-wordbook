@@ -10,7 +10,6 @@
   const cfg = window.APP_CONFIG || {};
   // 与单词本原有 key 保持一致，这样三个页面共用同一份主题 / 解锁状态
   const LS_THEME = 'wb_theme_v2';
-  const LS_LOCK = 'wb_edit_unlocked';
   const LS_FS = 'wb_font_scale';
 
   const THEMES = [
@@ -174,37 +173,10 @@
 
   /* ---------------- 编辑密码 ---------------- */
 
-  let unlocked = false;
-  try { unlocked = localStorage.getItem(LS_LOCK) === '1'; } catch (e) {}
-
   function askPassword(cb) {
-    if (unlocked) { cb(); return; }
-    const modal = $('passModal');
-    const input = $('passInput');
-    if (!modal) { cb(); return; }
-    input.value = '';
-    modal.hidden = false;
-    setTimeout(function () { input.focus(); }, 40);
-    const form = $('passForm');
-    if (form.dataset.bound !== '1') {
-      form.dataset.bound = '1';
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const v = input.value.trim();
-        if (v === (cfg.editPassword || '')) {
-          unlocked = true;
-          try { localStorage.setItem(LS_LOCK, '1'); } catch (err) {}
-          modal.hidden = true;
-          applyTheme(document.documentElement.getAttribute('data-theme'));
-          toast('已解锁，可以编辑了');
-          cb && cb();
-        } else {
-          toast('密码不对', true);
-          input.value = '';
-          input.focus();
-        }
-      });
-    }
+    if (window.AN_ROLE === 'admin') { if (cb) cb(); return; }
+    if (cb) window.addEventListener('an:admin', cb, { once: true });
+    if (window.reopenGate) window.reopenGate();
   }
 
   /* ---------------- 顶栏 ---------------- */
@@ -213,32 +185,27 @@
   function renderTopbar(o) {
     const host = $('topbar');
     if (!host) return;
-    const isAdmin = window.AN_ROLE === 'admin';
-    const links = (o.nav || []).filter(function (n) {
-      return !n.adminOnly || isAdmin;
-    }).map(function (n) {
-      return '<a class="top-link' + (n.key === o.active ? ' active' : '') + '" href="' + n.href + '">' +
+    const links = (o.nav || []).map(function (n) {
+      return '<a class="top-link' + (n.key === o.active ? ' active' : '') + '"' + (n.adminOnly ? ' data-admin' : '') + (n.key === o.active ? ' aria-current="page"' : '') + ' href="' + n.href + '">' +
         (n.icon || '') + '<span>' + n.label + '</span></a>';
     }).join('');
 
     // 移动端抽屉导航：与 .top-nav 同源，点开后在顶栏下方铺开
-    const mnLinks = (o.nav || []).filter(function (n) {
-      return !n.adminOnly || isAdmin;
-    }).map(function (n) {
-      return '<a class="mn-link' + (n.key === o.active ? ' active' : '') + '" href="' + n.href + '">' +
+    const mnLinks = (o.nav || []).map(function (n) {
+      return '<a class="mn-link' + (n.key === o.active ? ' active' : '') + '"' + (n.adminOnly ? ' data-admin' : '') + (n.key === o.active ? ' aria-current="page"' : '') + ' href="' + n.href + '">' +
         (n.icon || '') + '<span>' + n.label + '</span></a>';
     }).join('');
 
     host.innerHTML =
       '<a class="brand" href="index.html">' +
         '<span class="logo"><img src="assets/logo.png" alt="logo" draggable="false"></span>' +
-        '<span class="brand-text"><h1>' + (o.title || '算法学习笔记本') + '</h1>' +
+        '<span class="brand-text"><span class="brand-name">' + (o.title || '算法学习笔记本') + '</span>' +
         '<p>' + (o.subtitle || '') + '</p></span>' +
       '</a>' +
-      '<nav class="top-nav">' + links + '</nav>' +
-      '<nav class="mobile-nav" id="mobileNav">' + mnLinks + '</nav>' +
+      '<nav class="top-nav" aria-label="主导航">' + links + '</nav>' +
+      '<nav class="mobile-nav" id="mobileNav" aria-label="移动端导航">' + mnLinks + '</nav>' +
       '<div class="top-actions">' +
-        '<button id="navToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单">' +
+        '<button id="navToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单" aria-expanded="false" aria-controls="mobileNav">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
         '</button>' +
         '<div class="theme-wrap">' +
@@ -259,31 +226,19 @@
     if (navToggle && mnav) {
       navToggle.addEventListener('click', function (e) {
         e.stopPropagation();
-        document.body.classList.toggle('nav-open');
+        const open = document.body.classList.toggle('nav-open');
+        navToggle.setAttribute('aria-expanded', String(open));
       });
       mnav.addEventListener('click', function (e) {
-        if (e.target.closest('a')) document.body.classList.remove('nav-open');
+        if (e.target.closest('a')) { document.body.classList.remove('nav-open'); navToggle.setAttribute('aria-expanded', 'false'); }
       });
       document.addEventListener('click', function (e) {
         if (!document.body.classList.contains('nav-open')) return;
         if (e.target.closest('#mobileNav') || e.target.closest('#navToggle')) return;
         document.body.classList.remove('nav-open');
+        navToggle.setAttribute('aria-expanded', 'false');
       });
     }
-  }
-
-  /* ---------------- 云端（keyless） ---------------- */
-
-  let cloud = null, db = null;
-  function initCloud() {
-    const c = cfg.cloud;
-    if (!c || !c.endpoint || !c.publishableKey) return false;
-    if (typeof WorkBuddyCloud === 'undefined') return false;
-    try {
-      cloud = WorkBuddyCloud.createWorkBuddyCloud({ endpoint: c.endpoint, publishableKey: c.publishableKey });
-      db = cloud.database;
-      return !!db;
-    } catch (e) { cloud = null; db = null; return false; }
   }
 
   /* ---------------- 工具 ---------------- */
@@ -452,13 +407,21 @@
   /* ---------------- 启动 ---------------- */
 
   function boot(opts) {
-    opts = opts || {};
+    opts = Object.assign({}, opts || {}, {
+      title: '算法竞赛笔记本',
+      subtitle: '题面词汇 · 题解与算法',
+      nav: [
+        { key: 'home', label: '学习概览', href: 'index.html', icon: ICONS.home },
+        { key: 'wordbook', label: '题面词汇', href: 'wordbook.html', icon: ICONS.book },
+        { key: 'notes', label: '题解与算法', href: 'notes.html', icon: ICONS.pen },
+        { key: 'visits', label: '访问记录', href: 'visits.html', icon: ICONS.file, adminOnly: true }
+      ]
+    });
     if (opts.topbar !== false) renderTopbar(opts);
     if (opts.theme !== false) initTheme();
     if (opts.aurora !== false) initAurora();
     if (opts.modals !== false) initModals();
     if (opts.fontScale !== false) initFontScale();
-    if (opts.cloud !== false) initCloud();
   }
 
   window.AN = {
@@ -469,15 +432,7 @@
     applyTheme: applyTheme,
     toast: toast,
     askPassword: askPassword,
-    isUnlocked: function () { return unlocked; },
-    setUnlocked: function (v) {
-      unlocked = !!v;
-      try {
-        if (unlocked) localStorage.setItem(LS_LOCK, '1');
-        else localStorage.removeItem(LS_LOCK);
-      } catch (e) {}
-      applyTheme(document.documentElement.getAttribute('data-theme'));
-    },
+    isUnlocked: function () { return window.AN_ROLE === 'admin'; },
     boot: boot,
     esc: esc,
     bumpActivity: bumpActivity,
@@ -488,7 +443,7 @@
     autoSummary: autoSummary,
     // 数据层改走 /api 代理（api.js 提供 window.DB / window.ANCloud），
     // 云端密钥与密码只在服务端，前端零敏感信息。
-    getDb: function () { return window.DB || db; },
-    getCloud: function () { return window.ANCloud || cloud; }
+    getDb: function () { return window.DB || null; },
+    getCloud: function () { return window.ANCloud || null; }
   };
 })();

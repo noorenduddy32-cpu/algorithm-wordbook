@@ -14,7 +14,6 @@
   }
 
   const LS_STATS = 'wb_recite_stats_v1';
-  const LS_LOCK = 'wb_edit_unlocked';
   const LS_VIEW = 'wb_view_cfg_v1';
   const LS_ADD_MODE = 'wb_add_mode_v1';
 
@@ -36,7 +35,7 @@
 
   let all = [];
   let filtered = [];
-  let unlocked = localStorage.getItem(LS_LOCK) === '1';
+  let unlocked = false;
   let editingId = null;
   let addMode = (localStorage.getItem(LS_ADD_MODE) || 'pick');
   if (!['pick','batch','import','manual'].includes(addMode)) addMode = 'pick';
@@ -215,7 +214,7 @@
   let pending = null; // 解锁后要补做的动作
 
   function requireUnlock(action) {
-    if (unlocked) return true;
+    if (window.AN_ROLE === 'admin' && unlocked) return true;
     pending = action;
     // 本地有后端：访客点需要权限的操作 → 重新弹出访问门，输管理员密码升级为管理员
     if (window.AN_HAS_BACKEND) {
@@ -289,14 +288,12 @@
   }
 
   /* ---------------- 数据：词库就是云端数据库 public.words ----------------
-     增删改直接写云端 Postgres（keyless，publishableKey 已内嵌），
-     只需先解锁编辑模式（输入 editPassword）即可，不需要任何 GitHub Token / API Key。
-     读取是公开的（RLS SELECT 全开）。 */
+     所有操作通过同源 /api/db；服务端校验登录身份和管理员权限。 */
 
   function init() {
     AN.boot({
-      title: '算法词汇本',
-      subtitle: 'Codeforces / ICPC 高频词 · 例句全部来自原题',
+      title: '题面词汇',
+      subtitle: '积累题面中的词汇与表达，结合原题例句复习',
       active: 'wordbook',
       nav: [
         { key: 'home', label: '首页', href: 'index.html', icon: AN.ICONS.home },
@@ -307,6 +304,8 @@
       cloud: false
     });
     bindUI();
+    const search = new URLSearchParams(location.search).get('q');
+    if (search) $('searchInput').value = search;
     initCloud();
     if (cloudReady && $('aiCnBtn')) $('aiCnBtn').hidden = false;
     applyCols();
@@ -325,37 +324,49 @@
     });
     refreshEditUI();
     window.whenAuthed(function () { renderWordsCache(); loadWords(); });
+    window.addEventListener('an:session-reset', function () {
+      unlocked = false; all = []; filtered = []; editingId = null;
+      closeModals();
+      $('cardGrid').replaceChildren();
+      $('statWords').textContent = '—'; $('statEx').textContent = '—';
+      // 详情和背诵卡也可能持有上一个身份的数据。
+      const detail = $('detailBody'); if (detail) detail.replaceChildren();
+      const recite = $('reciteView'); if (recite) recite.hidden = true;
+      $('listView').hidden = false;
+    });
   }
 
   // 缓存显示：仅登录后触发（未登录不渲染，避免未授权泄露本地缓存）
   function renderWordsCache() {
     if (!window.Auth || !window.Auth.role) return;
     try {
-      const cached = JSON.parse(localStorage.getItem('wb_words_cache') || 'null');
+      const cached = NoteCache.get('words');
       if (cached && cached.length) {
         all = cached.map(function (w) { w._r = Math.random(); if (!Array.isArray(w.examples)) w.examples = []; return w; });
-        setStatus('已从本地缓存加载 ' + all.length + ' 个单词');
+        setStatus('已加载 ' + all.length + ' 个单词');
         render();
       }
     } catch (e) {}
   }
 
   async function loadWords() {
+    const role = Auth.role;
     setStatus('正在连接词库…');
     if (!db) {
-      setStatus('云端未就绪，刷新页面重试');
+      setStatus('词库暂时不可用，请刷新重试');
       toast('云端未连接，无法加载词库（请检查网络后刷新）', true);
       return;
     }
     try {
       const { data, error } = await db.from('words').select('*').order('created_at', { ascending: true });
+      if (Auth.role !== role) return;
       if (error) throw error;
       all = (data || []).map(function (w) {
         w._r = Math.random();
         if (!Array.isArray(w.examples)) w.examples = [];
         return w;
       });
-      try { localStorage.setItem('wb_words_cache', JSON.stringify(all.map(function (w) { const c = Object.assign({}, w); delete c._r; return c; }))); } catch (e) {}
+      NoteCache.set('words', all.map(function (w) { const c = Object.assign({}, w); delete c._r; return c; }));
       setStatus('已同步 ' + all.length + ' 个单词');
       render();
     } catch (err) {
@@ -1850,18 +1861,7 @@
         }
         return;
       }
-      // 纯静态部署：靠 config.js 的编辑密码解锁
-      if (pw === cfg.editPassword) {
-        unlocked = true;
-        localStorage.setItem(LS_LOCK, '1');
-        closeModals();
-        refreshEditUI();
-        toast('已解锁，可以增删改了');
-        if (act === '添加单词') openWordModal(null);
-        else if (act === '批量添加') { $('batchText').value = ''; $('batchModal').hidden = false; }
-      } else {
-        toast('密码不对', true);
-      }
+      toast('请连接登录服务后再编辑', true);
     });
 
     // 合并后的「添加单词」按钮组：主按钮执行当前默认方式（默认从句中选词）

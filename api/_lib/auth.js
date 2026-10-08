@@ -5,28 +5,36 @@ const { parseCookies } = require('./http');
 
 const NAME = 'an_sess';
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 天
-const SECRET = process.env.SESSION_SECRET || 'dev-insecure-change-me';
 const SECURE = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
 function b64u(buf) { return Buffer.from(buf).toString('base64url'); }
+function sessionSecret() {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) throw new Error('请配置至少 32 字符的 SESSION_SECRET');
+  return secret;
+}
 
 function sign(role) {
+  if (role !== 'admin' && role !== 'visitor') throw new Error('无效角色');
   const payload = b64u(JSON.stringify({ role: role, exp: Date.now() + MAX_AGE * 1000 }));
-  const sig = b64u(crypto.createHmac('sha256', SECRET).update(payload).digest());
+  const sig = b64u(crypto.createHmac('sha256', sessionSecret()).update(payload).digest());
   return payload + '.' + sig;
 }
 
 function verify(cookie) {
   if (!cookie) return null;
+  let secret;
+  try { secret = sessionSecret(); } catch (e) { return null; }
   const parts = String(cookie).split('.');
   if (parts.length !== 2) return null;
-  const expect = b64u(crypto.createHmac('sha256', SECRET).update(parts[0]).digest());
+  const expect = b64u(crypto.createHmac('sha256', secret).update(parts[0]).digest());
   const a = Buffer.from(expect), b = Buffer.from(parts[1]);
   if (a.length !== b.length) return null;
   if (!crypto.timingSafeEqual(a, b)) return null;
   let obj;
   try { obj = JSON.parse(Buffer.from(parts[0], 'base64url').toString()); } catch (e) { return null; }
-  if (!obj.exp || obj.exp < Date.now()) return null;
+  if (!obj || !Number.isFinite(obj.exp) || obj.exp <= Date.now()) return null;
+  if (obj.role !== 'admin' && obj.role !== 'visitor') return null;
   return obj.role;
 }
 
@@ -48,7 +56,7 @@ function clearCookie(res) {
 }
 
 module.exports = {
-  NAME: NAME, MAX_AGE: MAX_AGE, SECRET: SECRET,
+  NAME: NAME, MAX_AGE: MAX_AGE, sessionSecret: sessionSecret,
   sign: sign, verify: verify, roleFromReq: roleFromReq,
   setCookie: setCookie, clearCookie: clearCookie
 };

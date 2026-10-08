@@ -33,22 +33,47 @@ function buildQs(op) {
   return p.toString();
 }
 
-async function handleDb(op, role) {
-  if (!role) return { status: 401, error: '请先登录' };
-  const isWrite = op.action === 'insert' || op.action === 'update' || op.action === 'delete';
+const TABLE_COLUMNS = {
+  words: ['id', 'word', 'pos', 'meaning', 'examples', 'note', 'created_at', 'updated_at'],
+  notes: ['id', 'title', 'content', 'summary', 'tags', 'category', 'cover', 'views', 'top', 'status', 'visibility', 'created_at', 'updated_at']
+};
+const isObject = function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); };
 
-  // 访客只能读取已发布且公开的文章
-  if (role === 'visitor' && op.action === 'select' && op.table === 'notes') {
-    op.and = op.and || [];
-    op.and.push({ col: 'status', op: 'eq', val: 'published' });
-    op.and.push({ col: 'visibility', op: 'eq', val: 'public' });
+async function handleDb(input, role) {
+  if (role !== 'admin' && role !== 'visitor') return { status: 401, error: '请先登录' };
+  if (!isObject(input)) return { status: 400, error: '无效查询' };
+  // 不允许访问日志、任意表路径、关联查询或用户提供的 PostgREST 表达式。
+  if (!Object.hasOwn(TABLE_COLUMNS, input.table)) return { status: 403, error: '不允许访问此数据表' };
+  if (!['select', 'insert', 'update', 'delete'].includes(input.action)) return { status: 400, error: '无效操作' };
+  const isWrite = input.action !== 'select';
+  if (isWrite && role !== 'admin') return { status: 403, error: '需要管理员权限' };
+  const columns = TABLE_COLUMNS[input.table];
+  const projection = input.columns || '*';
+  if (typeof projection !== 'string' || (projection !== '*' && !projection.split(',').every(function (c) { return columns.includes(c); }))) {
+    return { status: 400, error: '无效字段' };
   }
-
-  if (isWrite && role !== 'admin') {
-    // 阅读量自增例外：任意已登录角色都允许（纯副作用，不改内容），照常执行
-    const viewsOnly = op.action === 'update' && op.table === 'notes' &&
-      (function () { const ks = Object.keys(op.data || {}); return ks.length === 1 && ks[0] === 'views'; })();
-    if (!viewsOnly) return { status: 403, error: '需要管理员权限' };
+  if (input.and != null || (input.filters != null && !isObject(input.filters))) return { status: 400, error: '无效筛选' };
+  const filters = input.filters || {};
+  if (!Object.keys(filters).every(function (k) {
+    return columns.includes(k) && ['string', 'number', 'boolean'].includes(typeof filters[k]) && String(filters[k]).length <= 1000;
+  })) return { status: 400, error: '无效筛选' };
+  if (input.order != null && (typeof input.order !== 'string' || !columns.some(function (c) {
+    return input.order === c + '.asc' || input.order === c + '.desc';
+  }))) return { status: 400, error: '无效排序' };
+  if (input.limit != null && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 10000)) return { status: 400, error: '无效数量' };
+  if (['update', 'delete'].includes(input.action) && !Object.keys(filters).length) return { status: 400, error: '修改或删除必须指定记录' };
+  if (['insert', 'update'].includes(input.action)) {
+    const rows = input.action === 'insert' && Array.isArray(input.data) ? input.data : [input.data];
+    if (!rows.length || rows.length > 1000 || !rows.every(function (row) {
+      return isObject(row) && Object.keys(row).length && Object.keys(row).every(function (k) { return columns.includes(k); }) &&
+        (!Object.hasOwn(row, 'status') || ['draft', 'published'].includes(row.status)) &&
+        (!Object.hasOwn(row, 'visibility') || ['private', 'public'].includes(row.visibility));
+    })) return { status: 400, error: '无效记录' };
+  }
+  const op = Object.assign({}, input, { columns: projection, filters: filters });
+  // 服务端强制追加条件，访客既看不到草稿，也看不到已发布的私密笔记。
+  if (role === 'visitor' && op.table === 'notes') {
+    op.and = [{ col: 'status', val: 'published' }, { col: 'visibility', val: 'public' }];
   }
 
   const method = { select: 'GET', insert: 'POST', update: 'PATCH', delete: 'DELETE' }[op.action];

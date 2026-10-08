@@ -1,5 +1,5 @@
 /* ============================================================
-   notes.js —— 我的文章：列表 / 阅读 / CSDN 风格富文本编辑器 / AI 辅助
+   notes.js —— 题解与算法：列表 / 阅读 / CSDN 风格富文本编辑器 / AI 辅助
    依赖：common.js(AN)、marked、DOMPurify、highlight.js
    - 正文以 HTML 存储（不再用 Markdown 源码），仿 CSDN 所见即所得
    - 从别处复制的题面 / 博客会原样保真（拦截粘贴、消毒后插入）
@@ -13,18 +13,17 @@
   const isAdmin = function () { return window.AN_ROLE === 'admin'; };
 
   AN.boot({
-    title: '我的文章',
+    title: '题解与算法',
     subtitle: '题解 · 思路复盘 · 模板 · 踩坑记录',
     active: 'notes',
     nav: [
       { key: 'home', label: '首页', href: 'index.html', icon: AN.ICONS.home },
       { key: 'wordbook', label: '词汇', href: 'wordbook.html', icon: AN.ICONS.book },
-      { key: 'notes', label: '文章', href: 'notes.html', icon: AN.ICONS.pen },
+      { key: 'notes', label: '笔记', href: 'notes.html', icon: AN.ICONS.pen },
       { key: 'visits', label: '访问记录', href: 'visits.html', icon: AN.ICONS.file, adminOnly: true }
     ]
   });
 
-  const LS_DRAFT = 'an_note_draft_v2';
   const LS_MODE = 'an_note_mode_v1';
 
   let all = [];
@@ -35,17 +34,18 @@
 
   // 分栏（看板）状态
   let viewMode = localStorage.getItem('an_note_view') || 'grid';    // grid | list | board
-  let colOrder = loadColOrder();   // 自定义栏顺序（localStorage）
+  let colOrder = [];   // 自定义栏顺序（localStorage）
   let listCols = localStorage.getItem('an_note_cols') || 'auto';    // 方块模式每行个数
-  let sortMode = localStorage.getItem('an_note_sort') || 'time';    // time(创建) | updated(修改) | views(浏览)
+  let sortMode = localStorage.getItem('an_note_sort') || 'updated';    // time(创建) | updated(修改) | views(浏览)
   let sortDir = localStorage.getItem('an_note_sortdir') || 'desc';  // asc | desc
-  const selected = new Set();     // 导出 Word 时勾选的文章 id
+  const selected = new Set();     // 导出 Word 时勾选的笔记 id
   let draggedId = null;
 
   const LS_VIEW = 'an_note_view';
-  const LS_COLS = 'an_note_cols';
+  const LS_COLS = 'an_note_column_order';
+  colOrder = loadColOrder();
 
-  /* ---------------- 内置常用标签库（写文章时直接点选） ---------------- */
+  /* ---------------- 内置常用标签库（新建笔记时直接点选） ---------------- */
   // 分类罗列算法竞赛常见名词：动态规划 / 图论 / 数论 / 字符串 / 数据结构 / 数学
   // 搜索枚举 / 贪心构造思维 / 博弈 / 语言实现 / 比赛难度。用户后续可自行挑选删减。
   const TAG_LIBRARY = [
@@ -109,7 +109,10 @@
   })();
 
   function loadColOrder() {
-    try { const a = JSON.parse(localStorage.getItem(LS_COLS) || 'null'); return Array.isArray(a) ? a : []; }
+    try {
+      const a = JSON.parse(localStorage.getItem(LS_COLS) || localStorage.getItem('an_note_cols') || 'null');
+      return Array.isArray(a) ? a : [];
+    }
     catch (e) { return []; }
   }
   function saveColOrder() { try { localStorage.setItem(LS_COLS, JSON.stringify(colOrder)); } catch (e) {} }
@@ -186,7 +189,7 @@
     return t.length > n ? t.slice(0, n) + '…' : t;
   }
 
-  // 旧文章可能是 Markdown：含块级 HTML 标签就当 HTML，含 Markdown 标记就转 HTML，否则当纯文本
+  // 旧笔记可能是 Markdown：含块级 HTML 标签就当 HTML，含 Markdown 标记就转 HTML，否则当纯文本
   function toHtml(content) {
     const s = String(content || '');
     if (/<(p|div|h[1-6]|pre|ul|ol|table|blockquote|img|a|code|span|b|i|strong|em|br|hr|li)\b/i.test(s)) return s;
@@ -197,14 +200,14 @@
   }
 
   const PURIFY = {
-    ADD_TAGS: ['style', 'font', 'section', 'figure', 'figcaption', 'picture', 'source', 'details', 'summary'],
+    ADD_TAGS: [ 'font', 'section', 'figure', 'figcaption', 'picture', 'source', 'details', 'summary'],
     ADD_ATTR: ['style', 'target', 'align', 'loading', 'controls', 'colspan', 'rowspan', 'cellspacing', 'cellpadding'],
-    FORBID_TAGS: ['script', 'iframe', 'form', 'input', 'button', 'textarea', 'select', 'object', 'embed'],
+    FORBID_TAGS: ['style', 'script', 'iframe', 'form', 'input', 'button', 'textarea', 'select', 'object', 'embed'],
     FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'contenteditable']
   };
   function sanitizeHtml(s) {
     if (window.DOMPurify) return DOMPurify.sanitize(s, PURIFY);
-    return s;
+    return '<p>' + esc(s) + '</p>';
   }
 
   // 渲染正文（HTML 消毒 + 标题锚点 + 代码块增强）
@@ -328,9 +331,9 @@
   function renderNotesCache() {
     if (!window.Auth || !window.Auth.role) return;
     try {
-      const cached = JSON.parse(localStorage.getItem('wb_notes_cache') || 'null');
+      const cached = NoteCache.get('notes');
       if (cached && cached.length) {
-        all = cached;
+        all = visibleRecords(cached);
         const tab = $('notesTabs'); if (tab) tab.hidden = !isAdmin();
         if (!isAdmin()) listTab = 'published';
         renderView();
@@ -338,7 +341,12 @@
     } catch (e) {}
   }
 
+  function visibleRecords(rows) {
+    return rows.filter(function (x) { return isAdmin() || (x.status === 'published' && x.visibility === 'public'); });
+  }
+
   async function loadAll() {
+    const role = Auth.role;
     const db = AN.getDb();
     if (!db) {
       $('notesSub').textContent = '云端未连接：请确认能联网加载云端 SDK';
@@ -347,28 +355,30 @@
     }
     // 先用本地缓存秒显，消除切换页面时的一秒空白
     try {
-      const cached = JSON.parse(localStorage.getItem('wb_notes_cache') || 'null');
+      const cached = NoteCache.get('notes');
       if (cached && cached.length) {
-        all = cached;
+        all = visibleRecords(cached);
         $('notesTabs').hidden = !isAdmin();
         if (!isAdmin()) listTab = 'published';
         renderView();
       }
     } catch (e) {}
     const { data, error } = await db.from('notes').select('*').order('updated_at', { ascending: false });
+    if (Auth.role !== role) return;
     if (error) { $('notesSub').textContent = '读取失败：' + (error.message || ''); return; }
-    all = data || [];
-    try { localStorage.setItem('wb_notes_cache', JSON.stringify(all)); } catch (e) {}
+    all = visibleRecords(data || []);
+    NoteCache.set('notes', all);
     $('notesTabs').hidden = !isAdmin();
     // 非管理员只看已发布
     if (!isAdmin()) listTab = 'published';
     renderView();
+    openHashNote();
   }
 
   function updateSub() {
     const el = $('notesSub');
     if (!el || !AN.getDb()) return;
-    el.textContent = '一共 ' + all.length + ' 篇 · 题解、思路复盘、模板与踩坑记录，都存在云端。';
+    el.textContent = (isAdmin() ? '共 ' : '公开笔记 ') + all.length + ' 篇 · 记录关键突破口，整理算法与实现细节。';
   }
 
   /* ---------------- 列表 ---------------- */
@@ -381,7 +391,7 @@
     if (isAdmin()) {
       list = list.filter(function (x) { return (x.status || 'draft') === listTab; });
     } else {
-      list = list.filter(function (x) { return (x.status || 'draft') === 'published'; });
+      list = list.filter(function (x) { return x.status === 'published' && x.visibility === 'public'; });
     }
     if (kw) {
       list = list.filter(function (x) {
@@ -401,7 +411,7 @@
     const isDraft = (x.status || 'draft') === 'draft';
     const isPrivate = (x.visibility || 'private') === 'private';
     const checked = selected.has(String(x.id)) ? ' checked' : '';
-    return '<article class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
+    return '<article tabindex="0" aria-label="' + esc(x.title || '未命名笔记') + '" class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
       '<span class="sel-check" title="选入导出 Word"><input type="checkbox" data-sel="' + x.id + '"' + checked + '></span>' +
       '<div class="note-title-row">' +
         '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
@@ -429,9 +439,9 @@
     box.className = 'note-list layout-' + (viewMode === 'list' ? 'list' : 'grid');
     applyColsToList();
     if (!list.length) {
-      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published'); }).length === 0;
+      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published' && x.visibility === 'public'); }).length === 0;
       $('notesEmpty').hidden = !totallyEmpty;
-      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的文章</p>' : '';
+      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的笔记</p>' : '';
       return;
     }
     $('notesEmpty').hidden = true;
@@ -472,7 +482,7 @@
     updateSelCount();
   }
 
-  // 导出选中的文章为 Word；未勾选则导出当前视图全部
+  // 导出选中的笔记为 Word；未勾选则导出当前视图全部
   async function exportSelected() {
     let list = getFiltered();
     list = sortNotes(list, sortMode, sortDir);
@@ -480,14 +490,14 @@
       const ids = selected;
       list = list.filter(function (x) { return ids.has(String(x.id)); });
     }
-    if (!list.length) { AN.toast('没有可导出的文章', true); return; }
+    if (!list.length) { AN.toast('没有可导出的笔记', true); return; }
     if (typeof DocxExport === 'undefined' || !DocxExport.exportNotesDocx) {
       AN.toast('导出模块未加载', true); return;
     }
     try {
       AN.toast('正在生成 Word…');
       const blob = await DocxExport.exportNotesDocx(list, {
-        title: '算法学习笔记本 · 文章导出',
+        title: '算法学习笔记本 · 笔记导出',
         count: list.length,
         date: (function () {
           const d = new Date(); const p = function (n) { return n < 10 ? '0' + n : '' + n; };
@@ -497,13 +507,13 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = '算法文章_' + (function () {
+      a.download = '算法笔记_' + (function () {
         const d = new Date(); const p = function (n) { return n < 10 ? '0' + n : '' + n; };
         return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
       })() + '.docx';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-      AN.toast('已导出 ' + list.length + ' 篇文章');
+      AN.toast('已导出 ' + list.length + ' 篇笔记');
     } catch (err) {
       AN.toast('导出失败：' + (err && err.message || err), true);
     }
@@ -528,7 +538,7 @@
     $('boardBar').hidden = !board;
     $('notesToolbar').hidden = board; // 排序 / 每行 / 全选 / 导出 只在方块·列表模式显示
     document.querySelectorAll('#viewSeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === viewMode); });
-    $('boardHint').textContent = colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」新建几个栏目，再把卡片拖进去';
+    $('boardHint').textContent = isAdmin() ? (colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」创建栏目') : '按栏目浏览公开笔记';
     // 同步控件条状态
     $('noteCols').value = listCols;
     $('noteSort').value = sortMode;
@@ -538,11 +548,11 @@
     if (board) renderBoard(); else renderList();
   }
 
-  // 自定义栏的栏名与顺序：管理里定义的顺序在前，文章里实际用到的补在后面
+  // 自定义栏的栏名与顺序：管理里定义的顺序在前，笔记里实际用到的补在后面
   function boardColumnNames() {
     const used = {};
     all.forEach(function (x) { const c = (x.category || '').trim(); if (c) used[c] = 1; });
-    const names = colOrder.slice();
+    const names = isAdmin() ? colOrder.slice() : [];
     Object.keys(used).forEach(function (c) { if (names.indexOf(c) < 0) names.push(c); });
     return names;
   }
@@ -553,9 +563,9 @@
     const list = getFiltered();
     const box = $('boardView');
     if (!list.length) {
-      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published'); }).length === 0;
+      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published' && x.visibility === 'public'); }).length === 0;
       $('notesEmpty').hidden = !totallyEmpty;
-      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的文章</p>' : '';
+      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的笔记</p>' : '';
       return;
     }
     $('notesEmpty').hidden = true;
@@ -586,6 +596,7 @@
 
   // 拖动卡片换栏：写回云端 category
   async function moveToColumn(id, col) {
+    if (!isAdmin()) return;
     const db = AN.getDb();
     if (!db) { AN.toast('云端未连接，无法换栏', true); return; }
     const cat = col === '未分栏' ? '' : col;
@@ -641,7 +652,7 @@
     const name = colOrder[i];
     if (!name) return;
     const cnt = all.filter(function (x) { return (x.category || '').trim() === name; }).length;
-    if (!confirm('删除栏「' + name + '」？' + (cnt ? '该栏下 ' + cnt + ' 篇文章会移回「未分栏」。' : ''))) return;
+    if (!confirm('删除栏「' + name + '」？' + (cnt ? '该栏下 ' + cnt + ' 篇笔记会移回「未分栏」。' : ''))) return;
     colOrder.splice(i, 1); saveColOrder();
     if (cnt) {
       const db = AN.getDb();
@@ -734,14 +745,18 @@
   }
 
   /* ---------------- 自动存草稿（写一半退出也进草稿箱） ---------------- */
-  // autosaveId：当前正在写的「新文章/草稿」在云端对应的笔记 id；
+  // autosaveId：当前正在写的「新笔记/草稿」在云端对应的笔记 id；
   // 首次自动保存时插入，之后原地更新，避免每次都新建重复草稿。
   let autosaveId = null;
   let autosaveTimer = null;
+  let initialEditorSnapshot = '';
+  function editorSnapshot() {
+    return JSON.stringify([$('edTitle').value, $('edSummary').value, $('edTags').value, $('edVisibility').value, getHtml()]);
+  }
   function startAutosave() {
     stopAutosave();
     if (readOnly) return;
-    // 已发布的文章不在后台自动存成草稿（避免产生重复草稿）
+    // 已发布的笔记不在后台自动存成草稿（避免产生重复草稿）
     if (editing && (editing.status || 'draft') !== 'draft') return;
     autosaveTimer = setInterval(stashAutosaveDraft, 15000);
   }
@@ -749,8 +764,9 @@
     if (autosaveTimer) { clearInterval(autosaveTimer); autosaveTimer = null; }
   }
   async function stashAutosaveDraft() {
-    if (readOnly) return;
-    // 正在编辑「已发布」文章时不做后台草稿（避免产生一份重复的草稿副本）
+    if (readOnly || !isAdmin()) return;
+    if (!window.DOMPurify) return;
+    // 正在编辑「已发布」笔记时不做后台草稿（避免产生一份重复的草稿副本）
     if (editing && (editing.status || 'draft') !== 'draft') return;
     const html = getHtml().trim();
     if (!html) return;
@@ -786,15 +802,20 @@
 
   function openEditor(rec, opts) {
     opts = opts || {};
+    if (!isAdmin() && (!rec || rec.status !== 'published' || rec.visibility !== 'public')) return;
     editing = rec || null;
-    readOnly = (opts && typeof opts.readOnly === 'boolean') ? opts.readOnly : !isAdmin();
+    readOnly = !isAdmin() || opts.readOnly === true;
 
     $('edTitle').value = rec ? (rec.title || '') : '';
+    $('edTitle').hidden = readOnly;
+    $('readerTitle').hidden = !readOnly;
+    $('readerTitle').textContent = rec ? (rec.title || '未命名笔记') : '';
     $('edSummary').value = rec ? (rec.summary || '') : '';
     $('edTags').value = rec ? arr(rec.tags).join(', ') : '';
     renderTagPicker();
     $('edVisibility').value = rec ? (rec.visibility || 'private') : 'private';
-    edBody().innerHTML = rec ? toHtml(rec.content) : '';
+    edBody().innerHTML = rec ? sanitizeHtml(toHtml(rec.content)) : '';
+    $('noteTemplateBar').hidden = !!rec || readOnly;
     // 编辑/只读模式都增强代码块，保持与预览一致的高亮、行号、工具栏
     edBody().querySelectorAll('pre[data-enh]').forEach(function (pre) { delete pre.dataset.enh; });
     enhanceCodeBlocks(edBody());
@@ -818,49 +839,49 @@
     document.body.classList.toggle('read-only', readOnly);
 
     if (readOnly) {
-      $('edStatus').textContent = '只读预览 · ' + ((rec && rec.visibility === 'public') ? '公开文章' : '私密文章');
+      $('edStatus').textContent = '只读阅读 · ' + ((rec && rec.visibility === 'public') ? '公开笔记' : '私密笔记');
     } else if (rec) {
       const st = (rec.status || 'draft') === 'draft' ? '草稿' : '已发布';
       const vis = (rec.visibility || 'private') === 'public' ? '公开' : '私密';
       $('edStatus').textContent = '编辑 · ' + st + ' · ' + vis;
     } else {
-      $('edStatus').textContent = '新文章';
+      $('edStatus').textContent = '新笔记';
     }
 
-    // 点「写文章」不再自动恢复上次没写完的本地草稿（避免一进编辑器就跳到未发布内容）；
+    // 点「新建笔记」不再自动恢复上次没写完的本地草稿（避免一进编辑器就跳到未发布内容）；
     // 半途内容改为自动存进云端草稿箱（见 startAutosave / stashAutosaveDraft）。
     if (!rec) { autosaveId = null; }
     else { autosaveId = ((rec.status || 'draft') === 'draft') ? rec.id : null; }
     startAutosave();
     setMode(readOnly ? 'preview' : (localStorage.getItem(LS_MODE) || 'edit'));
     updatePreview();
+    initialEditorSnapshot = editorSnapshot();
     show('edit');
     if (rec) startVisit(rec.id, rec.title);
     else startVisit(null);
     if (!rec && !readOnly) setTimeout(function () { edBody().focus(); }, 60);
   }
 
-  // 点已有文章：管理员直接进编辑（并强制显示可编辑正文，避免停在预览模式让人误以为不能改）；
-  // 访客则弹登录门输管理员密码升级为管理员，升级后自动打开该文章编辑。
-  let pendingEditRec = null;
+  // 同一入口：管理员编辑，访客直接阅读当前公开笔记。
   let pendingNew = false;
   function openExisting(x) {
     if (!x) return;
-    if (isAdmin()) {
-      openEditor(x, { readOnly: false });
-      setMode('edit');
-      return;
+    openEditor(x, { readOnly: !isAdmin() });
+    if (isAdmin()) setMode('edit');
+    history.replaceState(null, '', '#n' + encodeURIComponent(x.id));
+  }
+  function openHashNote() {
+    const m = location.hash.match(/^#n(\d+)$/);
+    if (!m) return;
+    const x = all.find(function (n) { return String(n.id) === m[1]; });
+    if (x) openExisting(x);
+    else {
+      stopAutosave(); editing = null; readOnly = true;
+      edBody().replaceChildren(); $('edPreview').replaceChildren(); $('edTitle').value = '';
+      show('list'); AN.toast('这篇笔记不存在或当前不可见', true);
     }
-    pendingEditRec = x;
-    if (window.reopenGate) window.reopenGate();
-    else if (window.AN && window.AN.toast) window.AN.toast('请以管理员身份登录后再编辑', true);
   }
   window.addEventListener('an:admin', function () {
-    if (pendingEditRec) {
-      const x = pendingEditRec; pendingEditRec = null;
-      openEditor(x, { readOnly: false });
-      setMode('edit');
-    }
     if (pendingNew) {
       pendingNew = false;
       openEditor(null);
@@ -868,12 +889,9 @@
   });
 
   function saveDraftLocal() {
-    try {
-      localStorage.setItem(LS_DRAFT, JSON.stringify({
-        title: $('edTitle').value, summary: $('edSummary').value,
-        tags: $('edTags').value, content: getHtml()
-      }));
-    } catch (e) {}
+    if (!isAdmin() || readOnly) return;
+    NoteCache.set('draft', { title: $('edTitle').value, summary: $('edSummary').value,
+      tags: $('edTags').value, content: getHtml() });
   }
 
   function parseTags() {
@@ -1175,7 +1193,7 @@
   function renderBgPicker() { renderColorGrid('bgPickerGrid', 'hiliteColor'); }
 
   function showHistory() {
-    if (!editing) { AN.toast('新文章，尚未保存'); return; }
+    if (!editing) { AN.toast('新笔记，尚未保存'); return; }
     const created = editing.created_at ? new Date(editing.created_at).toLocaleString('zh-CN') : '未知';
     const updated = editing.updated_at ? new Date(editing.updated_at).toLocaleString('zh-CN') : '未知';
     AN.toast('创建：' + created + '；更新：' + updated);
@@ -1249,14 +1267,15 @@
   /* ---------------- 保存 / 发布 ---------------- */
 
   async function saveNote(publish) {
-    if (readOnly) { AN.toast('只读模式不能保存', true); return; }
+    if (readOnly || !isAdmin()) { AN.toast('只读模式不能保存', true); return; }
+    if (!window.DOMPurify) { AN.toast('编辑组件加载失败，请刷新后再保存', true); return; }
     const db = AN.getDb();
     if (!db) { AN.toast('云端未连接，无法保存', true); return; }
     const title = $('edTitle').value.trim();
     if (!title) { AN.toast('先起个标题', true); $('edTitle').focus(); return; }
     const content = sanitizeHtml(getHtml());
     if (publish && !stripHtml(content).trim()) { AN.toast('正文还是空的', true); return; }
-    // 编辑页已去掉分栏选择器，保存时保留原有分栏（看板拖拽设置），新建文章默认未分栏
+    // 编辑页已去掉分栏选择器，保存时保留原有分栏（看板拖拽设置），新建笔记默认未分栏
     const category = editing && editing.category ? editing.category : '';
 
     const btn = publish ? $('publishBtn') : $('saveDraftBtn');
@@ -1280,7 +1299,7 @@
         if (error) throw new Error(error.message || '更新失败');
         rec.id = editing.id; rec.created_at = editing.created_at; rec.views = editing.views;
       } else if (autosaveId) {
-        // 新建文章：复用自动保存时已建好的云端草稿，原地更新为发布/草稿，避免留下重复草稿
+        // 新建笔记：复用自动保存时已建好的云端草稿，原地更新为发布/草稿，避免留下重复草稿
         const { error } = await db.from('notes').update(rec).eq('id', autosaveId);
         if (error) throw new Error(error.message || '写入失败');
         rec.id = autosaveId; rec.created_at = new Date().toISOString(); rec.views = 0;
@@ -1294,7 +1313,8 @@
       const i = all.findIndex(function (n) { return String(n.id) === String(rec.id); });
       if (i >= 0) all[i] = rec; else all.push(rec);
       all.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
-      try { localStorage.removeItem(LS_DRAFT); } catch (e) {}
+      NoteCache.set('notes', all);
+      NoteCache.set('draft', null);
       AN.toast(publish ? '已发布' : '草稿已保存');
       editing = null;
       listTab = rec.status;
@@ -1334,7 +1354,7 @@
     improve: '请润色下面这段竞赛题解文字，让它更清晰紧凑，保持 Markdown 格式，只输出润色后的内容。\n\n---\n',
     outline: '围绕下面的内容，给出一个简洁的 Markdown 小标题提纲（用 ## 和 ###，不要正文）。\n\n---\n',
     explain: '用简洁清晰的中文解释下面这段内容，如果涉及算法请说明复杂度和适用场景。只输出解释部分。\n\n---\n',
-    summary: '为下面的文章写一句 60-90 字的概括摘要，只输出摘要本身，不要引号。\n\n---\n',
+    summary: '为下面的笔记写一句 60-90 字的概括摘要，只输出摘要本身，不要引号。\n\n---\n',
     title: '为下面这篇算法题解起 5 个简洁有力的中文标题，每行一个，不要编号。\n\n---\n'
   };
 
@@ -1494,7 +1514,7 @@
       else if (b.dataset.act === 'del') delColumn(i);
     });
 
-    // 分栏：点卡片打开文章
+    // 分栏：点卡片打开笔记
     $('boardView').addEventListener('click', function (e) {
       const card = e.target.closest('.note-card');
       if (!card) return;
@@ -1540,12 +1560,27 @@
       moveToColumn(id, body.dataset.col || '未分栏');
     });
 
+    $('noteTemplateBar').addEventListener('click', function (e) {
+      const button = e.target.closest('[data-template]');
+      if (!button || !isAdmin() || readOnly) return;
+      if (getHtml().trim() && !confirm('使用模板会替换当前正文，是否继续？')) return;
+      const problem = button.dataset.template === 'problem';
+      const sections = problem
+        ? ['题目链接与难度', '题意与关键条件', '突破口：为什么想到这个方法', '解法与正确性', '时间与空间复杂度', '实现代码', '易错点与复盘']
+        : ['要解决的问题', '核心原理与适用条件', '算法步骤', '正确性与复杂度', '实现模板', '边界情况与常见错误', '相关练习'];
+      edBody().innerHTML = sections.map(function (title) { return '<h2>' + title + '</h2><p><br></p>'; }).join('');
+      $('edTags').value = problem ? '题目复盘' : '算法整理';
+      renderTagPicker(); updatePreview();
+    });
+    $('noteList').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && e.target.classList.contains('note-card')) e.target.click();
+    });
     $('newNoteBtn').addEventListener('click', function () {
       // 访客/只读模式没有发布权限：先弹登录门升级为管理员，登录成功后再开空白编辑器
       if (!isAdmin()) {
         pendingNew = true;
         if (window.reopenGate) window.reopenGate();
-        else if (window.AN && window.AN.toast) window.AN.toast('请以管理员身份登录后再写文章', true);
+        else if (window.AN && window.AN.toast) window.AN.toast('请以管理员身份登录后再新建笔记', true);
         return;
       }
       openEditor(null);
@@ -1757,22 +1792,29 @@
     bind();
     renderNotesCache();
     window.whenAuthed(loadAll);
-    if (location.hash) {
-      const m = location.hash.match(/#n(\d+)/);
-      if (m) {
-        const tryOpen = function () {
-          const x = all.find(function (n) { return String(n.id) === String(m[1]); });
-          if (x) openExisting(x);
-        };
-        setTimeout(tryOpen, 400);
-        setTimeout(tryOpen, 1400);
-      }
-    }
+    window.addEventListener('hashchange', openHashNote);
     window.addEventListener('beforeunload', function () {
-      if (!$('editView').hidden && getHtml().trim() && !readOnly) { saveDraftLocal(); stashAutosaveDraft(); }
+      if (isAdmin() && !$('editView').hidden && getHtml().trim() && !readOnly) { saveDraftLocal(); stashAutosaveDraft(); }
       reportVisit(Date.now() - visitStart, visitNoteId, visitNoteTitle);
     });
   }
+
+  window.addEventListener('an:before-session-change', function (e) {
+    if (isAdmin() && !$('editView').hidden && !readOnly && editorSnapshot() !== initialEditorSnapshot) {
+      if (!confirm('当前笔记有未保存的修改。切换身份会关闭编辑器，确定继续吗？')) e.preventDefault();
+    }
+  });
+  window.addEventListener('an:session-reset', function () {
+    stopAutosave(); all = []; selected.clear(); editing = null; autosaveId = null; readOnly = true;
+    listTab = 'published';
+    ['edBody', 'edPreview', 'readerTitle', 'noteList', 'boardView'].forEach(function (id) { $(id).replaceChildren(); });
+    ['edTitle', 'edSummary', 'edTags'].forEach(function (id) { $(id).value = ''; });
+    $('notesTabs').hidden = true;
+    document.querySelectorAll('#notesTabs .tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === 'published'); });
+    document.body.classList.remove('read-only');
+    document.querySelectorAll('.modal').forEach(function (m) { m.hidden = true; });
+    visitNoteId = null; visitNoteTitle = ''; show('list');
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="dark" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,8 +15,8 @@
   } catch (e) {}
 })();
 </script>
-<title>算法学习笔记本</title>
-<meta name="description" content="个人算法学习笔记本：算法竞赛词汇本 + 题目笔记与题解文章。">
+<title>学习概览 · 算法竞赛笔记本</title>
+<meta name="description" content="面向 ACM / ICPC 的个人笔记本，积累题面词汇，记录题解与算法。">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="home.css">
@@ -30,21 +30,48 @@
 <main class="hub">
 
   <section class="hero">
-    <h1 class="hero-title">算法学习笔记本</h1>
-    <p class="hero-sub">题面里读不懂的词，收进词库；做过的题，写成文章。</p>
+    <p class="section-kicker">ACM / ICPC · 学习概览</p>
+    <h1 class="hero-title">读懂题面，记住思路。</h1>
+    <p class="hero-sub">把陌生词记下来，把值得复盘的题留下来。<br>这里是我的算法竞赛笔记本。</p>
+    <p class="scope-note" id="homeScope">正在加载积累…</p>
+  </section>
+
+  <section class="entries" aria-label="笔记本内容">
+    <a class="entry" href="wordbook.html">
+      <span class="entry-mark" aria-hidden="true">Aa</span>
+      <div class="entry-body">
+        <span class="section-kicker">VOCABULARY</span>
+        <h2>题面词汇</h2>
+        <p>从原题中积累单词，在语境中记住含义。</p>
+        <span class="entry-caption">释义 · 原题例句 · 生词复习</span>
+      </div>
+      <span class="entry-go"><b class="entry-num" id="entryWords">—</b><span class="entry-num-label">个词条</span><span aria-hidden="true">↗</span></span>
+    </a>
+    <a class="entry" href="notes.html">
+      <span class="entry-mark" aria-hidden="true">&lt;/&gt;</span>
+      <div class="entry-body">
+        <span class="section-kicker">SOLUTIONS &amp; ALGORITHMS</span>
+        <h2>题解与算法</h2>
+        <p>留下关键突破口，整理可以复用的思路。</p>
+        <span class="entry-caption">题目复盘 · 算法整理 · 实现细节</span>
+      </div>
+      <span class="entry-go"><b class="entry-num" id="entryNotes">—</b><span class="entry-num-label">篇笔记</span><span aria-hidden="true">↗</span></span>
+    </a>
   </section>
 
   <section class="activity" id="activityWrap">
     <div class="activity-head">
-      <h3>活跃度</h3>
-      <span class="activity-sum" id="activitySum">今年 0 天有记录</span>
+      <h2>积累日历</h2>
+      <label class="sr-only" for="activityYear">查看年份</label>
+      <select id="activityYear" class="activity-year" aria-label="查看年份"></select>
+      <span class="activity-sum" id="activitySum">正在加载…</span>
       <div class="activity-scale">
         <span class="muted small">少</span>
         <i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i>
         <span class="muted small">多</span>
       </div>
     </div>
-    <div class="activity-calendar">
+    <div class="activity-calendar" tabindex="0" aria-label="全年积累日历，可横向滚动查看">
       <div class="activity-calendar-inner">
         <div class="activity-months" id="activityMonths"></div>
         <div class="activity-body">
@@ -56,16 +83,28 @@
       </div>
     </div>
     <div class="activity-foot">
-      <span><b id="actStreak">0</b> 天连续</span>
-      <span><b id="actTotal">0</b> 次操作</span>
-      <span><b id="actDays">0</b> 天活跃</span>
+      <span><b id="actStreak">0</b> 天最长连续</span>
+      <span><b id="actTotal">0</b> 条记录</span>
+      <span><b id="actDays">0</b> 天有积累</span>
+    </div>
+    <p class="activity-note">记录词汇与笔记的新增、最近一次更新，不计浏览次数。</p>
+  </section>
+
+  <section class="recent-grid" aria-label="最近记录">
+    <div class="recent-panel">
+      <div class="section-head"><h2>最近整理</h2><a href="notes.html">全部笔记 <span aria-hidden="true">→</span></a></div>
+      <div id="recentNotes" class="recent-list"><p class="recent-empty">正在加载笔记…</p></div>
+    </div>
+    <div class="recent-panel">
+      <div class="section-head"><h2>最近收录</h2><a href="wordbook.html">全部词汇 <span aria-hidden="true">→</span></a></div>
+      <div id="recentWords" class="recent-list"><p class="recent-empty">正在加载词汇…</p></div>
     </div>
   </section>
 
 </main>
 
 <footer class="page-foot">
-  <span>算法学习笔记本 · 个人项目</span>
+  <span>算法竞赛笔记本 · 日积月累</span>
   <span class="muted small" id="footTip">正在连接云端…</span>
 </footer>
 
@@ -84,7 +123,7 @@
   </div>
 </div>
 
-<div id="toast" class="toast" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- config.js 不入库（gitignore），GitHub Pages 上取不到；
      下面的脚本同步加载它，并在 404 时同步回退到入库的 config.example.js。
