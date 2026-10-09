@@ -1,9 +1,10 @@
-// POST /api/visitor -> 清除管理员会话，返回无需登录的公开浏览模式。
-const { clearCookie } = require('./_lib/auth');
+// POST /api/visitor -> 将有效的管理员会话降级为访客会话。
+const { roleFromReq, sign, setCookie } = require('./_lib/auth');
 const { sendJson, allowRequest } = require('./_lib/http');
 
 module.exports = async function (req, res) {
   if (!allowRequest(req, res, 'POST')) return;
-  clearCookie(res);
+  if (roleFromReq(req) !== 'admin') return sendJson(res, 401, { error: '请先以管理员身份登录' });
+  setCookie(res, sign('visitor'));
   return sendJson(res, 200, { role: 'visitor' });
 };

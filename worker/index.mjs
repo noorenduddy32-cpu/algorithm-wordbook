@@ -10,22 +10,24 @@ function b64(bytes) { return btoa(String.fromCharCode(...bytes)).replace(/=/g, '
 function unb64(value) { return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); }
 async function key(secret) { return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']); }
 function validSecret(env) { return typeof env.SESSION_SECRET === 'string' && env.SESSION_SECRET.length >= 32; }
-export async function signAdmin(env) {
+export async function signRole(role, env) {
   if (!validSecret(env)) throw new Error('Missing session secret');
-  const payload = b64(encoder.encode(JSON.stringify({ role: 'admin', exp: Date.now() + MAX_AGE * 1000 })));
+  if (role !== 'admin' && role !== 'visitor') throw new Error('Invalid role');
+  const payload = b64(encoder.encode(JSON.stringify({ role, exp: Date.now() + MAX_AGE * 1000 })));
   return payload + '.' + b64(new Uint8Array(await crypto.subtle.sign('HMAC', await key(env.SESSION_SECRET), encoder.encode(payload))));
 }
+export async function signAdmin(env) { return signRole('admin', env); }
 export async function roleOf(request, env) {
-  if (!validSecret(env)) return 'visitor';
+  if (!validSecret(env)) return null;
   const match = (request.headers.get('cookie') || '').match(/(?:^|;\s*)an_sess=([^;]*)/);
-  if (!match) return 'visitor';
+  if (!match) return null;
   try {
     const parts = decodeURIComponent(match[1]).split('.');
-    if (parts.length !== 2) return 'visitor';
-    if (!await crypto.subtle.verify('HMAC', await key(env.SESSION_SECRET), unb64(parts[1]), encoder.encode(parts[0]))) return 'visitor';
+    if (parts.length !== 2) return null;
+    if (!await crypto.subtle.verify('HMAC', await key(env.SESSION_SECRET), unb64(parts[1]), encoder.encode(parts[0]))) return null;
     const value = JSON.parse(new TextDecoder().decode(unb64(parts[0])));
-    return value.role === 'admin' && Number.isFinite(value.exp) && value.exp > Date.now() ? 'admin' : 'visitor';
-  } catch { return 'visitor'; }
+    return (value.role === 'admin' || value.role === 'visitor') && Number.isFinite(value.exp) && value.exp > Date.now() ? value.role : null;
+  } catch { return null; }
 }
 function cookie(value, maxAge = MAX_AGE) { return SESSION + '=' + value + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + maxAge; }
 function guard(request, method) {
@@ -88,18 +90,25 @@ export async function handleRequest(request, env = {}) {
   const config = { endpoint: (env.CLOUD_ENDPOINT || 'https://algorithm-wordbook.app.workbuddy.host').replace(/\/$/, ''), key: env.CLOUD_KEY || '' };
   try {
     if (name === 'me') return json(200, { role });
-    if (name === 'logout' || name === 'visitor') return json(200, { role: 'visitor' }, { 'Set-Cookie': cookie('', 0) });
+    if (name === 'logout') return json(200, { role: null }, { 'Set-Cookie': cookie('', 0) });
+    if (name === 'visitor') {
+      if (role !== 'admin') return json(401, { error: '请先以管理员身份登录' });
+      return json(200, { role: 'visitor' }, { 'Set-Cookie': cookie(await signRole('visitor', env)) });
+    }
     if (name === 'login') {
-      if (!env.ADMIN_PASSWORD || !validSecret(env)) return json(503, { error: '管理员登录尚未配置' });
       const body = await readObject(request, 8192);
-      if (typeof body.password !== 'string' || !await equalPassword(body.password, env.ADMIN_PASSWORD)) return json(401, { error: '管理员密码不正确' });
-      return json(200, { role: 'admin' }, { 'Set-Cookie': cookie(await signAdmin(env)) });
+      if (body.role !== 'admin' && body.role !== 'visitor') return json(400, { error: '请选择访客或管理员身份' });
+      const expected = body.role === 'admin' ? env.ADMIN_PASSWORD : env.VISITOR_PASSWORD;
+      if (!expected || !validSecret(env)) return json(503, { error: body.role === 'admin' ? '管理员登录尚未配置' : '访客访问尚未配置' });
+      if (typeof body.password !== 'string' || !await equalPassword(body.password, expected)) return json(401, { error: '密码不正确，请重试' });
+      return json(200, { role: body.role }, { 'Set-Cookie': cookie(await signRole(body.role, env)) });
     }
     if (name === 'db') {
       const result = await handleDb(await readObject(request), role, config);
       return json(result.status, result.error ? { error: result.error } : { data: result.data });
     }
     if (name === 'ai') {
+      if (!role) return json(401, { error: '请先输入访问密码' });
       if (role !== 'admin') return json(403, { error: '需要管理员权限' });
       const body = await readObject(request);
       body.model ||= 'auto'; body.stream = true;
@@ -116,7 +125,7 @@ export async function handleRequest(request, env = {}) {
       const body = await readObject(request, 8192);
       if (body.note_id != null && !((Number.isSafeInteger(body.note_id) && body.note_id > 0) || (typeof body.note_id === 'string' && /^[1-9]\d{0,18}$/.test(body.note_id)))) return json(400, { error: '无效笔记编号' });
       const ua = (request.headers.get('user-agent') || '').slice(0, 400);
-      const payload = { role, ip: request.headers.get('cf-connecting-ip') || '', region: [request.cf?.country, request.cf?.region, request.cf?.city].filter(Boolean).join(' · '), ua, ...clientInfo(ua), path: String(body.path || '').slice(0, 200), note_id: body.note_id || null, note_title: String(body.note_title || '').slice(0, 200), duration: Math.min(2147483647, Math.max(0, parseInt(body.duration || 0, 10) || 0)) };
+      const payload = { role: role || 'visitor', ip: request.headers.get('cf-connecting-ip') || '', region: [request.cf?.country, request.cf?.region, request.cf?.city].filter(Boolean).join(' · '), ua, ...clientInfo(ua), path: String(body.path || '').slice(0, 200), note_id: body.note_id || null, note_title: String(body.note_title || '').slice(0, 200), duration: Math.min(2147483647, Math.max(0, parseInt(body.duration || 0, 10) || 0)) };
       const result = await cloudRequest('/.cloud/database/rest/visits', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: payload }, config);
       return result.status >= 200 && result.status < 300 ? json(201, { ok: true }) : json(502, { error: '访问记录暂时无法保存' });
     }

@@ -14,29 +14,31 @@
     currentNotes = visibleNotes(notes);
     setText('entryWords', words.length);
     setText('entryNotes', currentNotes.length);
-    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '公开笔记，随时翻阅。欢迎一起积累。');
+    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '公开阅读 · 无需登录，随时翻阅。');
     setText('footTip', Auth.role === 'admin' ? '管理全部积累' : '公开分享 · 持续积累');
     renderRecent();
     renderYearOptions();
     renderActivity();
   }
   function renderRecent() {
-    const notes = currentNotes.slice().sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); }).slice(0, 4);
-    $('recentNotes').innerHTML = notes.length ? notes.map(function (n) {
-      const badge = n.status === 'draft' ? '草稿' : n.visibility === 'private' ? '私密' : '';
-      const tags = Array.isArray(n.tags) ? n.tags.slice(0, 2).join(' · ') : '';
-      return '<a class="recent-row" href="notes.html#n' + encodeURIComponent(n.id) + '">' +
-        '<div class="recent-main"><b>' + esc(n.title || '未命名笔记') + '</b>' +
-        '<span>' + esc(tags || n.summary || '查看笔记') + '</span></div>' +
-        '<div class="recent-side">' + (badge ? '<span class="recent-badge">' + badge + '</span>' : '') +
-        '<time>' + esc(AN.fmtDate(n.updated_at || n.created_at)) + '</time></div></a>';
-    }).join('') : '<p class="recent-empty">' + (Auth.role === 'admin' ? '还没有笔记，从一道值得复盘的题开始。' : '暂时还没有公开笔记。') + '</p>';
-    const words = currentWords.slice().sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }).slice(0, 4);
-    $('recentWords').innerHTML = words.length ? words.map(function (w) {
-      return '<a class="recent-row" href="wordbook.html?q=' + encodeURIComponent(w.word || '') + '">' +
-        '<div class="recent-main"><b class="mono">' + esc(w.word) + '</b><span>' + esc(w.meaning || '查看词条') + '</span></div>' +
-        '<div class="recent-side"><span>' + esc(w.pos || '') + '</span><time>' + esc(AN.fmtDate(w.created_at)) + '</time></div></a>';
-    }).join('') : '<p class="recent-empty">还没有词汇，从题面中的第一个陌生词开始。</p>';
+    const notes = currentNotes.slice().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 3);
+    $('recentNotes').innerHTML = notes.length ? notes.map(function (note) {
+      const badge = note.status === 'draft' ? '草稿' : note.visibility === 'private' ? '私密' : '';
+      const tags = Array.isArray(note.tags) ? note.tags.slice(0, 2).join(' / ') : '';
+      return '<a class="recent-note" href="notes.html#n' + encodeURIComponent(note.id) + '">' +
+        '<div class="note-row-meta"><span>' + esc(tags || '解题记录') + (badge ? '<span class="recent-badge">' + badge + '</span>' : '') + '</span><time>' + esc(AN.fmtDate(note.updated_at || note.created_at)) + '</time></div>' +
+        '<h3>' + esc(note.title || '未命名笔记') + '</h3><p>' + esc(note.summary || '打开笔记，回到当时的思考。') + '</p></a>';
+    }).join('') : '<p class="empty-state">' + (Auth.role === 'admin' ? '从一道值得复盘的题开始。<a href="notes.html">写下第一篇笔记 →</a>' : '第一篇公开笔记正在路上。<a href="wordbook.html">先翻翻题面词汇 →</a>') + '</p>';
+    const words = currentWords.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 4);
+    $('recentWords').innerHTML = words.length ? words.map(function (word) {
+      return '<a class="word-row" href="wordbook.html?q=' + encodeURIComponent(word.word || '') + '"><div class="word-row-main"><b>' + esc(word.word) + ' <small>' + esc(word.pos || '') + '</small></b><p>' + esc(word.meaning || '查看词条') + '</p></div><span aria-hidden="true">↗</span></a>';
+    }).join('') : '<p class="empty-state">从题面中的第一个陌生词开始。</p>';
+    const counts = new Map();
+    currentNotes.forEach(note => (Array.isArray(note.tags) ? [...new Set(note.tags)] : []).forEach(tag => {
+      if (typeof tag === 'string' && tag.trim()) counts.set(tag.trim(), (counts.get(tag.trim()) || 0) + 1);
+    }));
+    const topics = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN')).slice(0, 8);
+    $('topicLinks').innerHTML = topics.length ? topics.map(([tag, count]) => '<a href="notes.html?q=' + encodeURIComponent(tag) + '">' + esc(tag) + '<span>' + count + '</span></a>').join('') : '<span class="muted small">笔记的主题标签会出现在这里。</span>';
   }
   async function loadStats() {
     const cached = NoteCache.get('home');
@@ -111,8 +113,19 @@
   $('activityYear').addEventListener('change', renderActivity);
   window.addEventListener('an:session-reset', function () {
     currentWords = []; currentNotes = [];
-    ['recentWords', 'recentNotes', 'activityGrid', 'activityMonths', 'activityYear'].forEach(function (id) { $(id).replaceChildren(); });
+    ['recentWords', 'recentNotes', 'topicLinks', 'activityGrid', 'activityMonths', 'activityYear'].forEach(function (id) { $(id).replaceChildren(); });
     setText('entryWords', '—'); setText('entryNotes', '—');
+  });
+  $('todayLabel').textContent = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
+  document.addEventListener('keydown', function (event) {
+    if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        !event.target.closest('input,textarea,select,[contenteditable="true"]') && !document.querySelector('.modal:not([hidden]),#gate')) {
+      event.preventDefault(); $('homeQuery').focus();
+    }
+  });
+  $('homeSearch').addEventListener('submit', function (event) {
+    $('homeQuery').value = $('homeQuery').value.trim();
+    if (!$('homeQuery').value) { event.preventDefault(); $('homeQuery').focus(); }
   });
   window.whenAuthed(loadStats);
 })();

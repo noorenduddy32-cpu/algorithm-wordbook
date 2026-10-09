@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141722" media="(prefers-color-scheme: dark)">
 <script src="display-init.js"></script>
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<title>题解与算法 · 算法竞赛笔记本</title>
-<meta name="description" content="算法竞赛笔记本的笔记模块：题解、思路复盘、模板与踩坑记录。">
-<link rel="icon" href="assets/logo.png">
+<title>笔记库 · 算法手记</title>
+<meta name="description" content="算法手记：题解复盘、算法整理和实现模板，把每一次思考变成可以查阅的积累。">
+<link rel="icon" href="assets/mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="vendor/highlight.min.css">
 <link rel="stylesheet" href="notes.css">
@@ -22,17 +22,33 @@
 
 <header id="topbar" class="topbar"></header>
 
-<!-- ============ 列表视图 ============ -->
+<!-- 笔记库 -->
 <main id="listView" class="notes-wrap">
-
-  <div class="notes-head">
+  <header class="notes-head">
     <div>
-      <p class="section-kicker">SOLUTIONS &amp; ALGORITHMS</p>
-      <h1>题解与算法</h1>
-      <p class="muted" id="notesSub">记录关键突破口，整理算法与实现细节。</p>
+      <p class="section-kicker">THE NOTEBOOK</p>
+      <h1>每一道题，都有迹可循。</h1>
+      <p class="muted" id="notesSub">收藏解题的突破口，整理下次用得上的思路。</p>
     </div>
-    <div class="notes-head-actions">
-      <div class="view-seg" id="viewSeg" title="卡片 / 列表 / 分栏视图">
+    <button id="newNoteBtn" class="btn primary" data-admin type="button">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>写一篇笔记
+    </button>
+  </header>
+  <section class="notes-discovery" aria-label="查找笔记">
+    <div class="notes-search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+      <input id="noteSearch" type="search" aria-label="搜索题号、算法或笔记" placeholder="搜索题号、算法，或某个思路…" autocomplete="off">
+      <span class="search-hint">标题 · 标签 · 正文</span>
+    </div>
+    <div id="noteTopics" class="note-topics" aria-label="按标签筛选"></div>
+  </section>
+  <div class="notes-index-bar">
+    <div class="notes-tabs" id="notesTabs" hidden>
+      <button class="tab-btn active" type="button" data-tab="published">已发布 <span id="publishedCount">0</span></button>
+      <button class="tab-btn" type="button" data-tab="draft">草稿箱 <span id="draftCount">0</span></button>
+    </div>
+    <p id="notesResult" class="notes-result" aria-live="polite">正在读取笔记…</p>
+    <div class="view-seg" id="viewSeg" title="卡片 / 列表 / 分栏视图">
         <button class="seg-btn active" data-view="grid" title="卡片排列">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
           <span class="btn-label">卡片</span>
@@ -46,99 +62,62 @@
           <span class="btn-label">分栏</span>
         </button>
       </div>
-      <input id="noteSearch" type="search" aria-label="搜索笔记" placeholder="搜索题号、算法、标题或正文" autocomplete="off">
-      <button id="newNoteBtn" class="btn primary" data-admin>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></svg>
-        新建笔记
-      </button>
-    </div>
   </div>
-
-  <div class="notes-tabs" id="notesTabs" hidden>
-    <button class="tab-btn active" data-tab="published">已发布</button>
-    <button class="tab-btn" data-tab="draft">草稿箱</button>
-  </div>
-
   <div class="board-bar" id="boardBar" hidden>
-    <span class="board-hint muted small" id="boardHint">拖动卡片到别的栏即可换栏</span>
-    <button id="manageColBtn" class="btn ghost" data-admin>管理栏</button>
+    <span class="board-hint muted small" id="boardHint">按栏目浏览笔记</span>
+    <button id="manageColBtn" class="btn ghost" data-admin type="button">管理栏目</button>
   </div>
-
   <div class="notes-toolbar" id="notesToolbar">
     <div class="sort-wrap">
-      <select id="noteSort" title="排序方式">
-        <option value="time">创建时间</option>
-        <option value="updated">最近更新</option>
-        <option value="views">阅读量</option>
-      </select>
-      <button id="noteSortDir" class="icon-btn sort-dir" title="升序 / 降序切换">
-        <span id="noteSortDirIcon"></span>
-      </button>
+      <label class="sr-only" for="noteSort">笔记排序</label>
+      <select id="noteSort"><option value="updated">最近更新</option><option value="time">创建时间</option><option value="views">阅读量</option></select>
+      <button id="noteSortDir" class="icon-btn sort-dir" type="button" title="升序 / 降序切换" aria-label="切换排序方向"><span id="noteSortDirIcon"></span></button>
     </div>
-    <label class="check cols-check" title="卡片排列时每行放几篇">
-      每行
-      <select id="noteCols" class="col-select">
-        <option value="auto">自动</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
-      篇
-    </label>
     <span class="tb-spacer"></span>
-    <label class="check sel-all"><input type="checkbox" id="selAll"> 全选</label>
-    <button id="exportDocxBtn" class="btn ghost">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-      导出 Word
-    </button>
-    <span class="sel-count muted small" id="selCount"></span>
+    <details class="notes-options">
+      <summary>显示与导出</summary>
+      <div class="notes-options-body">
+        <label class="check cols-check">每行 <select id="noteCols" class="col-select"><option value="auto">自动</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select> 篇</label>
+        <label class="check sel-all"><input type="checkbox" id="selAll"> 全选当前结果</label>
+        <button id="exportDocxBtn" class="btn ghost" type="button">导出 Word</button>
+        <span class="sel-count muted small" id="selCount"></span>
+      </div>
+    </details>
   </div>
-
-  <div id="noteList" class="note-list"></div>
-  <div id="boardView" class="board" hidden></div>
-
-  <div id="notesEmpty" class="empty" hidden>
-    <p>还没有笔记</p>
-    <p class="muted" data-admin>点右上角「新建笔记」开始记第一篇</p>
+  <div id="noteList" class="note-list" aria-label="笔记列表"></div>
+  <div id="boardView" class="board" aria-label="笔记分栏" hidden></div>
+  <div id="notesEmpty" class="notes-empty" hidden>
+    <span class="empty-mark" aria-hidden="true">∅</span>
+    <h2 id="notesEmptyTitle">第一篇笔记，从一个好问题开始。</h2>
+    <p id="notesEmptyHint">一道题的突破口、一段算法的原理，都值得记下来。</p>
+    <button id="clearNoteFilters" class="btn ghost" type="button" hidden>清除筛选</button>
   </div>
-
 </main>
 
-<!-- ============ 编辑器 ============ -->
+<!-- 阅读与编辑共用一份安全正文 -->
 <main id="editView" class="editor" hidden>
-
   <div class="ed-bar">
-    <button id="edBack" class="btn ghost">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
-      返回
-    </button>
+    <button id="edBack" class="btn ghost" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m14 6-6 6 6 6"/></svg>笔记库</button>
     <span class="ed-status muted small" id="edStatus">草稿</span>
-    <div class="spacer"></div>
-    <div class="ed-count"><span id="edWords">0</span> 字</div>
-    <div class="ed-mode" id="edMode" title="视图切换">
-      <button class="seg-btn active" data-mode="edit" title="直接编辑">编辑</button>
-      <button class="seg-btn" data-mode="preview" title="查看效果">预览</button>
-    </div>
-      <select id="edVisibility" class="ed-visibility" title="发布后谁可见">
-        <option value="public">公开 · 发布后访客可见</option>
-        <option value="private">私密 · 仅管理员可见</option>
-      </select>
-      <button id="delNoteBtn" class="btn ghost" data-admin hidden>删除</button>
-      <button id="saveDraftBtn" class="btn ghost" data-admin>存草稿</button>
-      <button id="publishBtn" class="btn primary" data-admin>发布</button>
+    <span class="spacer"></span>
+    <span class="ed-count"><span id="edWords">0</span> 字</span>
+    <button id="readerEditBtn" class="btn primary" data-admin type="button" hidden>编辑笔记</button>
+    <div class="ed-mode" id="edMode" aria-label="编辑视图"><button class="seg-btn active" type="button" data-mode="edit">编辑</button><button class="seg-btn" type="button" data-mode="preview">预览</button></div>
+    <select id="edVisibility" class="ed-visibility" aria-label="发布后谁可见"><option value="public">公开 · 发布后访客可见</option><option value="private">私密 · 仅管理员可见</option></select>
+    <button id="delNoteBtn" class="btn ghost" data-admin type="button" hidden>删除</button>
+    <button id="saveDraftBtn" class="btn ghost" data-admin type="button">存草稿</button>
+    <button id="publishBtn" class="btn primary" data-admin type="button">发布</button>
   </div>
-
-  <div class="note-template-bar" id="noteTemplateBar" data-admin hidden>
-    <span>从模板开始</span>
-    <button type="button" class="btn ghost" data-template="problem">题目复盘</button>
-    <button type="button" class="btn ghost" data-template="algorithm">算法整理</button>
-  </div>
-  <h1 id="readerTitle" class="reader-title" hidden></h1>
-  <input id="edTitle" class="ed-title" placeholder="给这篇笔记起个标题…" maxlength="120" autocomplete="off">
-
-  <!-- 摘要 + 标签 合并到同一行 -->
-  <div class="ed-meta-row">
-    <input id="edSummary" placeholder="一句话记下核心思路，留空自动生成" autocomplete="off" title="摘要">
+  <section class="editor-sheet">
+    <div class="note-template-bar" id="noteTemplateBar" data-admin hidden><span>给思路一个起点</span><button type="button" class="btn ghost" data-template="problem">题目复盘</button><button type="button" class="btn ghost" data-template="algorithm">算法整理</button></div>
+    <p class="reader-eyebrow" id="readerEyebrow" hidden>FIELD NOTE</p>
+    <h1 id="readerTitle" class="reader-title" hidden></h1>
+    <div id="readerMeta" class="reader-meta" hidden></div>
+    <p id="readerSummary" class="reader-summary" hidden></p>
+    <input id="edTitle" class="ed-title" aria-label="笔记标题" placeholder="给这次思考起个标题…" maxlength="120" autocomplete="off">
+    <div class="ed-meta-row">
+      <label class="sr-only" for="edSummary">笔记摘要</label>
+      <input id="edSummary" placeholder="一句话概括核心思路，留空自动生成" autocomplete="off" title="摘要">
     <div class="tag-picker" id="tagPicker">
     <div class="tag-picker-bar">
       <span class="tag-label" title="可直接输入，或展开常用标签库点选">标签</span>
@@ -152,8 +131,7 @@
     </div>
     <div class="tag-picker-body" id="tagPickerBody"></div>
   </div>
-
-  <!-- 工具栏：全部高频功能平铺常驻，不再折叠 -->
+    </div>
   <div class="ed-toolbar" id="edToolbar" data-admin>
     <button class="tb" data-cmd="undo" title="撤消 Ctrl+Z" type="button">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
@@ -240,14 +218,19 @@
       </div>
     </div>
   </div>
-</div>
-
-  <!-- 编辑区 + 预览区（CSDN 风格富文本：粘贴从别处复制的题目/博客原样保真） -->
-  <div class="ed-panes" id="edPanes">
-    <div id="edBody" class="ed-input md-body" contenteditable="true" spellcheck="false" data-placeholder="在这里写正文，或直接粘贴从 Codeforces / CSDN 等地方复制的题面与笔记，格式会原样保留…"></div>
-    <div class="ed-preview md-body" id="edPreview"></div>
-  </div>
-
+    <div class="reader-layout">
+      <div class="ed-panes" id="edPanes">
+        <div id="edBody" class="ed-input md-body" contenteditable="true" role="textbox" aria-label="笔记正文" aria-multiline="true" spellcheck="false" data-placeholder="从关键条件开始，写下你的观察、推导与实现。也可以粘贴题面、插入代码，或选一个模板开始。"></div>
+        <div class="ed-preview md-body" id="edPreview"></div>
+      </div>
+      <details id="readerOutline" class="reader-outline" open hidden>
+        <summary>本篇目录 <span>CONTENTS</span></summary>
+        <nav id="readerToc" aria-label="本篇笔记目录"></nav>
+        <button id="readerTop" type="button">↑ 回到开头</button>
+      </details>
+    </div>
+    <div id="editorSaveState" class="editor-save-state" role="status" aria-live="polite" hidden>草稿会每 15 秒自动保存</div>
+  </section>
 </main>
 
 <!-- AI 面板 -->
@@ -334,6 +317,7 @@
 <script src="docx.js"></script>
 <script src="notes_docx.js"></script>
 <script src="common.js"></script>
+<script src="data-client.js"></script>
 <script src="api.js"></script>
 <script src="notes.js"></script>
 </body>

@@ -41,8 +41,8 @@ const TABLE_COLUMNS = {
 const isObject = function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); };
 
 async function handleDb(input, role, config) {
-  // 公开访客不需要登录；管理员身份始终由服务端签名会话提供。
-  if (role == null) role = 'visitor';
+  // 访客与管理员都必须通过服务端签名会话登录。
+  if (role == null) return { status: 401, error: '请先输入访问密码' };
   if (role !== 'admin' && role !== 'visitor') return { status: 401, error: '请先登录' };
   if (!isObject(input)) return { status: 400, error: '无效查询' };
   // 不允许访问日志、任意表路径、关联查询或用户提供的 PostgREST 表达式。

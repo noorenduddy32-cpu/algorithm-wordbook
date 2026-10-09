@@ -13,7 +13,7 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
   process.env.CLOUD_KEY = 'fixture-only';
   process.env.SESSION_SECRET = 'fixture-session-secret-'.repeat(3);
   process.env.ADMIN_PASSWORD = 'test-admin';
-  delete process.env.VISITOR_PASSWORD;
+  process.env.VISITOR_PASSWORD = 'test-visitor';
   const server = createServer(); await listen(server);
   const base = 'http://127.0.0.1:' + server.address().port;
   const context = await browser.newContext({ viewport: { width: 1440, height: 1080 }, timezoneId: 'Asia/Shanghai' });
@@ -27,7 +27,8 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
   const page = await context.newPage();
   const output = process.env.UI_OUTPUT_DIR || path.join(__dirname, '../test-results');
   fs.mkdirSync(output, { recursive: true });
-  async function login(password) {
+  async function login(password, role = 'visitor') {
+    if (await page.locator('#gate').getAttribute('data-role') !== role) await page.locator('#gateRoleToggle').click();
     await page.locator('#gatePw').fill(password);
     await page.locator('#gateForm button').click();
     await page.locator('#gate').waitFor({ state: 'detached' });
@@ -40,13 +41,15 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
   try {
     await page.goto(base);
     await page.evaluate(() => localStorage.setItem('wb_notes_cache', JSON.stringify([{ title: 'LEGACY_PRIVATE_SENTINEL', status: 'published', visibility: 'private' }])));
-    // 身份接口短暂故障不应重新出现公开访问密码墙。
+    // 身份接口故障时应保留访问密码墙，不加载或展示公开数据。
     await page.route('**/api/me', route => route.abort());
     await page.reload();
-    await page.waitForFunction(() => document.documentElement.dataset.auth === 'visitor');
+    await page.locator('#gate').waitFor({ state: 'visible' });
     await page.unroute('**/api/me');
-    assert.equal(await page.locator('#gate').count(), 0);
+    assert.equal(await page.locator('#gate').getAttribute('data-role'), 'visitor');
+    assert.equal(await page.locator('#entryNotes').innerText(), '—');
     assert.equal((await context.cookies()).some(cookie => cookie.name === 'an_sess'), false);
+    await login('test-visitor', 'visitor');
     await page.waitForFunction(() => document.getElementById('entryNotes').textContent === '3');
     assert.equal(await page.locator('[data-admin]:visible').count(), 0);
     await page.locator('.role-tag').click();
@@ -68,7 +71,7 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
     assert.equal(await page.locator('[data-admin]:visible').count(), 0);
     await page.screenshot({ path: path.join(output, 'home-desktop.png'), fullPage: true });
     await noOverflow();
-    console.log('PASS 无需密码公开浏览；取消管理登录继续阅读；首页仅统计公开笔记');
+    console.log('PASS 访客密码门、身份接口故障锁定；首页仅统计公开笔记');
 
     fixture.db.notes[0].content += '<img src="/missing-test-image" onerror="window.XSS_SENTINEL=1">';
     await page.goto(base + '/notes.html'); await ready('.note-card');
@@ -85,9 +88,9 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
     await page.screenshot({ path: path.join(output, 'reader-desktop.png'), fullPage: true });
     await page.goto(base + '/notes.html#n3'); await ready('.note-card');
     assert.doesNotMatch(await page.locator('body').innerText(), /PRIVATE_NOTE_SENTINEL|DRAFT_NOTE_SENTINEL/);
-    console.log('PASS 访客直接阅读；私密链接不可读');
+    console.log('PASS 访客密码登录后可阅读；私密链接不可读');
 
-    await page.locator('.role-tag').click(); await login('test-admin');
+    await page.locator('.role-tag').click(); await login('test-admin', 'admin');
     await page.waitForFunction(() => document.querySelectorAll('.note-card').length === 4);
     // hash 指向私密笔记，管理员登录后允许打开；返回列表再验证新建与模板。
     if (await page.locator('#editView').isVisible()) await page.locator('#edBack').click();
@@ -124,17 +127,22 @@ const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', re
     console.log('PASS 手机和平板三个主页面无水平溢出');
     await page.goto(base + '/wordbook.html?q=permutation'); await ready('#cardGrid .card');
     assert.equal(await page.locator('#searchInput').inputValue(), 'permutation');
-    await page.locator('.role-tag').click(); await login('test-admin');
+    await page.locator('.role-tag').click(); await login('test-admin', 'admin');
     await page.waitForFunction(() => document.documentElement.dataset.auth === 'admin');
-    await page.locator('.role-logout').click();
+    await page.locator('.role-tag').click();
     await page.waitForFunction(() => document.documentElement.dataset.auth === 'visitor');
+    await page.locator('.role-logout').click();
+    await page.locator('#gate').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#gate').getAttribute('data-role'), 'visitor');
+    assert.equal(await page.locator('#cardGrid .card:visible').count(), 0);
+    assert.equal((await context.cookies()).some(cookie => cookie.name === 'an_sess'), false);
+    await login('test-visitor', 'visitor');
     await ready('#cardGrid .card');
-    assert.equal(await page.locator('#gate').count(), 0);
     assert.equal(await page.locator('[data-admin]:visible').count(), 0);
     assert.equal(await page.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith('an_cache:')).length), 0);
-    assert.equal((await context.cookies()).some(cookie => cookie.name === 'an_sess'), false);
+    assert.equal((await context.cookies()).some(cookie => cookie.name === 'an_sess'), true);
     assert.deepEqual(errors, []);
-    console.log('PASS 词汇深链、退出管理后公开浏览、清理会话和无脚本异常');
+    console.log('PASS 词汇深链、退出访问后重新输入访客密码、缓存清理和无脚本异常');
     await page.setViewportSize({ width: 1440, height: 1000 });
     const appearancePeer = await context.newPage();
     await appearancePeer.goto(base + '/wordbook.html');

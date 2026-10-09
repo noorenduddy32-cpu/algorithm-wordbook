@@ -1,140 +1,70 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light" data-auth="pending">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
-<script src="display-init.js"></script>
-<title>学习概览 · 算法竞赛笔记本</title>
-<meta name="description" content="面向 ACM / ICPC 的个人笔记本，积累题面词汇，记录题解与算法。">
-<link rel="icon" href="assets/logo.png">
-<link rel="stylesheet" href="base.css">
-<link rel="stylesheet" href="home.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141722" media="(prefers-color-scheme: dark)">
+  <script src="display-init.js"></script>
+  <title>学习工作台 · 算法手记</title>
+  <meta name="description" content="一本持续生长的算法手记。读题、推演、复盘，积累 ACM / ICPC 题面词汇与解题思路。">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="home.css">
 </head>
 <body class="home-page">
-
-
-
-<header id="topbar" class="topbar"></header>
-
-<main id="mainContent" class="hub">
-
-  <section class="hero" aria-labelledby="homeTitle">
-    <div class="hero-copy">
-      <p class="section-kicker"><span class="kicker-rule" aria-hidden="true"></span> ALGORITHM NOTEBOOK</p>
-      <h1 class="hero-title" id="homeTitle">读懂每道题，<br><span>留下每次突破。</span></h1>
-      <p class="hero-sub">从题面里的一个生词，到解题时的一次顿悟。<br>把思考记下来，让下一次出发更有把握。</p>
-      <div class="hero-actions">
-        <a class="btn primary" href="notes.html">浏览题解 <span aria-hidden="true">↗</span></a>
-        <a class="hero-secondary" href="wordbook.html">去复习词汇 <span aria-hidden="true">→</span></a>
+  <header id="topbar" class="topbar"></header>
+  <main id="mainContent" class="workspace">
+    <div class="workspace-top"><span>学习工作台</span><time id="todayLabel"></time></div>
+    <section class="welcome" aria-labelledby="homeTitle">
+      <div class="welcome-copy">
+        <p class="section-kicker">A NOTEBOOK IN PROGRESS</p>
+        <h1 id="homeTitle">把问题想清楚，<br>把思路<span>留下来。</span></h1>
+        <p class="welcome-sub">题面里的词，解题时的转折，值得再读的证明。<br>整理每次思考，慢慢长成自己的算法地图。</p>
+        <div class="welcome-actions"><a class="btn primary" href="notes.html">翻开题解笔记 <span aria-hidden="true">↗</span></a><a href="wordbook.html" class="quiet-link">复习题面词汇 →</a></div>
+        <p id="homeScope" class="scope-note">正在加载笔记本…</p>
       </div>
-      <p class="scope-note" id="homeScope">正在翻开笔记本…</p>
+      <section class="algorithm-lab" aria-labelledby="labTitle">
+        <div class="lab-header"><span class="lab-label"><i aria-hidden="true"></i> 思维练习</span><span class="lab-complexity">O(log n)</span></div>
+        <h2 id="labTitle">每一步，缩小一半。</h2>
+        <p class="lab-sub">点一下，看看二分查找如何排除不可能。</p>
+        <div id="labCells" class="lab-cells" aria-label="有序数组"></div>
+        <p id="labStatus" class="lab-status" role="status" aria-live="polite"></p>
+        <div class="lab-controls"><label for="labTarget">查找<select id="labTarget"><option value="42">42</option><option value="14">14</option><option value="3">3</option><option value="25">25（不在数组中）</option></select></label><button type="button" id="labReset" class="lab-reset" aria-label="重新开始二分查找" title="重新开始">↺</button><button type="button" id="labNext" class="btn primary">下一步 →</button></div>
+      </section>
+    </section>
+    <section class="notebook-overview" aria-label="笔记本概况">
+      <a class="overview-item" href="notes.html"><span class="overview-icon" aria-hidden="true">⌘</span><span class="overview-copy">题解笔记<small>证明、实现与复盘</small></span><b id="entryNotes">—</b><span class="overview-unit">篇 ↗</span></a>
+      <a class="overview-item" href="wordbook.html"><span class="overview-icon" aria-hidden="true">Aa</span><span class="overview-copy">题面词汇<small>从语境中理解题意</small></span><b id="entryWords">—</b><span class="overview-unit">条 ↗</span></a>
+      <form id="homeSearch" class="overview-search" action="notes.html"><label class="sr-only" for="homeQuery">搜索题解笔记</label><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="homeQuery" name="q" placeholder="搜索题解、算法、标签" autocomplete="off"><button type="submit" aria-label="搜索笔记">↵</button></form>
+    </section>
+    <div class="content-grid">
+      <section class="content-panel notes-panel" aria-labelledby="recentTitle">
+        <div class="section-head"><div><p class="section-kicker">RECENT NOTES</p><h2 id="recentTitle">最近的思考</h2></div><a href="notes.html">全部笔记 ↗</a></div>
+        <div id="recentNotes" class="recent-notes"><p class="empty-state">正在加载笔记…</p></div>
+      </section>
+      <section class="content-panel words-panel" aria-labelledby="wordsTitle">
+        <div class="section-head"><div><p class="section-kicker">WORDS IN CONTEXT</p><h2 id="wordsTitle">读懂题面的开始</h2></div><a href="wordbook.html" aria-label="查看全部词汇">↗</a></div>
+        <div id="recentWords" class="recent-words"><p class="empty-state">正在加载词汇…</p></div>
+        <a class="review-link" href="wordbook.html">去词汇本，开始一轮复习 <span aria-hidden="true">→</span></a>
+      </section>
     </div>
-    <aside class="thought-card" aria-label="我的复盘方法">
-      <div class="thought-top"><span>一次好的复盘</span><span class="thought-glyph" aria-hidden="true">{ }</span></div>
-      <div class="thought-line"><span class="thought-node" aria-hidden="true"></span><div><b>先读懂问题</b><small>条件、边界，以及真正的目标</small></div></div>
-      <div class="thought-line"><span class="thought-node" aria-hidden="true"></span><div><b>找到那个不变量</b><small>把直觉变成可以证明的思路</small></div></div>
-      <div class="thought-line"><span class="thought-node final" aria-hidden="true"></span><div><b>留下可复用的解法</b><small>正确性 · 复杂度 · 实现细节</small></div></div>
-      <p class="thought-note"><span aria-hidden="true">//</span> 不只记答案，也记下为什么。</p>
-    </aside>
-  </section>
-
-  <section class="entries" aria-label="笔记本内容">
-    <a class="entry" href="wordbook.html">
-      <span class="entry-mark" aria-hidden="true">Aa</span>
-      <div class="entry-body">
-        <span class="section-kicker">VOCABULARY</span>
-        <h2>题面词汇</h2>
-        <p>从原题中积累单词，在语境中记住含义。</p>
-        <span class="entry-caption">释义 · 原题例句 · 生词复习</span>
-      </div>
-      <span class="entry-go"><b class="entry-num" id="entryWords">—</b><span class="entry-num-label">个词条</span><span aria-hidden="true">↗</span></span>
-    </a>
-    <a class="entry" href="notes.html">
-      <span class="entry-mark" aria-hidden="true">&lt;/&gt;</span>
-      <div class="entry-body">
-        <span class="section-kicker">SOLUTIONS &amp; ALGORITHMS</span>
-        <h2>题解与算法</h2>
-        <p>留下关键突破口，整理可以复用的思路。</p>
-        <span class="entry-caption">题目复盘 · 算法整理 · 实现细节</span>
-      </div>
-      <span class="entry-go"><b class="entry-num" id="entryNotes">—</b><span class="entry-num-label">篇笔记</span><span aria-hidden="true">↗</span></span>
-    </a>
-  </section>
-
-  <section class="recent-grid" aria-label="最近记录">
-    <div class="recent-panel">
-      <div class="section-head"><h2>最近整理</h2><a href="notes.html">全部笔记 <span aria-hidden="true">→</span></a></div>
-      <div id="recentNotes" class="recent-list"><p class="recent-empty">正在加载笔记…</p></div>
-    </div>
-    <div class="recent-panel">
-      <div class="section-head"><h2>最近收录</h2><a href="wordbook.html">全部词汇 <span aria-hidden="true">→</span></a></div>
-      <div id="recentWords" class="recent-list"><p class="recent-empty">正在加载词汇…</p></div>
-    </div>
-  </section>
-
-  <section class="activity" id="activityWrap">
-    <div class="activity-head">
-      <h2>积累日历</h2>
-      <label class="sr-only" for="activityYear">查看年份</label>
-      <select id="activityYear" class="activity-year" aria-label="查看年份"></select>
-      <span class="activity-sum" id="activitySum">正在加载…</span>
-      <div class="activity-scale">
-        <span class="muted small">少</span>
-        <i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i>
-        <span class="muted small">多</span>
-      </div>
-    </div>
-    <div class="activity-calendar" tabindex="0" aria-label="全年积累日历，可横向滚动查看">
-      <div class="activity-calendar-inner">
-        <div class="activity-months" id="activityMonths"></div>
-        <div class="activity-body">
-          <div class="activity-weekdays">
-            <span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span>
-          </div>
-          <div class="activity-grid" id="activityGrid"></div>
-        </div>
-      </div>
-    </div>
-    <div class="activity-foot">
-      <span><b id="actStreak">0</b> 天最长连续</span>
-      <span><b id="actTotal">0</b> 条记录</span>
-      <span><b id="actDays">0</b> 天有积累</span>
-    </div>
-    <p class="activity-note">记录词汇与笔记的新增、最近一次更新，不计浏览次数。</p>
-  </section>
-
-
-
-</main>
-
-<footer class="page-foot">
-  <span>算法竞赛笔记本 <span aria-hidden="true">/</span> 日积月累，皆有回响</span>
-  <span class="muted small" id="footTip">正在连接云端…</span>
-</footer>
-
-<!-- 密码 -->
-<div class="modal" id="passModal" hidden>
-  <div class="modal-box narrow">
-    <h2>编辑模式</h2>
-    <p class="muted small">输入密码解锁「添加 / 编辑 / 删除 / 发布」。</p>
-    <form id="passForm" autocomplete="off">
-      <input id="passInput" type="password" placeholder="密码" autocomplete="off" required>
-      <div class="modal-actions">
-        <button type="button" class="btn ghost" data-close>取消</button>
-        <button type="submit" class="btn primary">解锁</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-
-<script src="config.example.js"></script>
-<script src="common.js"></script>
+    <section class="topic-section" aria-labelledby="topicsTitle"><h2 id="topicsTitle">沿着一个主题继续</h2><div id="topicLinks" class="topic-links"><span class="muted small">正在整理标签…</span></div></section>
+    <section class="activity content-panel" id="activityWrap" aria-labelledby="activityTitle">
+      <div class="activity-head"><div><p class="section-kicker">SMALL STEPS, OVER TIME</p><h2 id="activityTitle">积累的痕迹</h2></div><span class="activity-sum" id="activitySum">正在加载…</span><label class="sr-only" for="activityYear">查看年份</label><select id="activityYear" class="activity-year" aria-label="查看年份"></select></div>
+      <div class="activity-calendar" tabindex="0" aria-label="全年积累日历，可横向滚动查看"><div class="activity-calendar-inner"><div class="activity-months" id="activityMonths"></div><div class="activity-body"><div class="activity-weekdays"><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span></div><div class="activity-grid" id="activityGrid"></div></div></div></div>
+      <div class="activity-bottom"><p class="activity-note">按词汇与笔记的创建、最近更新时间记录。</p><div class="activity-scale"><span>少</span><i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i><span>多</span></div></div>
+      <div class="activity-foot"><span><b id="actDays">0</b> 天有积累</span><span><b id="actTotal">0</b> 条记录</span><span><b id="actStreak">0</b> 天最长连续</span></div>
+    </section>
+    <footer class="page-foot"><span>算法手记 <span aria-hidden="true">/</span> 每一次理解，都算数。</span><span id="footTip">正在同步…</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="config.example.js"></script>
+  <script src="common.js"></script>
+  <script src="data-client.js"></script>
 <script src="api.js"></script>
-<script src="home.js"></script>
+  <script src="algorithm-lab.js"></script>
+  <script src="home.js"></script>
 </body>
 </html>

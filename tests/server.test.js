@@ -11,12 +11,12 @@ test('启动入口可运行，静态白名单保护源文件与数据', async fu
     assert.equal((await fetch(base + '/' + name)).status, 404, name);
   }
   const me = await fetch(base + '/api/me');
-  assert.equal(me.status, 200); assert.deepEqual(await me.json(), { role: 'visitor' });
+  assert.equal(me.status, 200); assert.deepEqual(await me.json(), { role: null });
   assert.match(me.headers.get('cache-control'), /no-store/);
   assert.equal((await fetch(base + '/api/db')).status, 405);
-  assert.equal((await fetch(base + '/api/db', { method: 'POST', body: '{' })).status, 400);
+  assert.equal((await fetch(base + '/api/db', { method: 'POST', body: '{' })).status, 401);
   for (const body of ['null', '[]', 'false', '123', '"text"']) {
     const response = await fetch(base + '/api/db', { method: 'POST', body, signal: AbortSignal.timeout(2000) });
-    assert.equal(response.status, 400, body);
+    assert.equal(response.status, 401, body);
   }
 });
