@@ -11,6 +11,7 @@ const listen = (server, port) => new Promise((resolve, reject) => {
   process.env.CLOUD_ENDPOINT = 'http://127.0.0.1:' + fixture.server.address().port;
   process.env.CLOUD_KEY = 'local-demo-only';
   process.env.ADMIN_PASSWORD = 'demo-admin';
+  process.env.VISITOR_PASSWORD = 'icpc';
   process.env.SESSION_SECRET = randomBytes(32).toString('hex');
   process.env.NODE_ENV = 'development';
   fixture.db.notes.find(note => note.id === 3).title = '待整理：线段树的合并逻辑';

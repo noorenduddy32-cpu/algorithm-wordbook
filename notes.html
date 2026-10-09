@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light" data-auth="pending">
+<html lang="zh-CN" data-theme="aurora" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,26 +26,26 @@
 <main id="listView" class="notes-wrap">
   <header class="notes-head">
     <div>
-      <p class="section-kicker">THE NOTEBOOK</p>
-      <h1>每一道题，都有迹可循。</h1>
-      <p class="muted" id="notesSub">收藏解题的突破口，整理下次用得上的思路。</p>
+      <p class="section-kicker" data-i18n="notes.kicker">ALGORITHM FIELDNOTES</p>
+      <h1 data-i18n="notes.title">每一道题，都有迹可循。</h1>
+      <p class="muted" id="notesSub" data-i18n="notes.subtitle">收藏解题的突破口，整理下次用得上的思路。</p>
     </div>
     <button id="newNoteBtn" class="btn primary" data-admin type="button">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>写一篇笔记
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="notes.new">写一篇笔记</span>
     </button>
   </header>
   <section class="notes-discovery" aria-label="查找笔记">
     <div class="notes-search">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
-      <input id="noteSearch" type="search" aria-label="搜索题号、算法或笔记" placeholder="搜索题号、算法，或某个思路…" autocomplete="off">
+      <input id="noteSearch" type="search" aria-label="搜索题号、算法或笔记" placeholder="搜索题号、算法，或某个思路…" data-i18n-placeholder="notes.search" autocomplete="off">
       <span class="search-hint">标题 · 标签 · 正文</span>
     </div>
     <div id="noteTopics" class="note-topics" aria-label="按标签筛选"></div>
   </section>
   <div class="notes-index-bar">
     <div class="notes-tabs" id="notesTabs" hidden>
-      <button class="tab-btn active" type="button" data-tab="published">已发布 <span id="publishedCount">0</span></button>
-      <button class="tab-btn" type="button" data-tab="draft">草稿箱 <span id="draftCount">0</span></button>
+      <button class="tab-btn active" type="button" data-tab="published"><span data-i18n="notes.published">已发布</span> <span id="publishedCount">0</span></button>
+      <button class="tab-btn" type="button" data-tab="draft"><span data-i18n="notes.drafts">草稿箱</span> <span id="draftCount">0</span></button>
     </div>
     <p id="notesResult" class="notes-result" aria-live="polite">正在读取笔记…</p>
     <div class="view-seg" id="viewSeg" title="卡片 / 列表 / 分栏视图">
@@ -310,6 +310,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="config.example.js"></script>
+<script src="i18n.js"></script>
 <script src="vendor/marked.min.js"></script>
 <script src="vendor/purify.min.js"></script>
 <script src="vendor/highlight.min.js"></script>

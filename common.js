@@ -13,10 +13,10 @@
   const LS_FS_LEGACY = 'wb_font_scale';
 
   const THEMES = [
-    { id: 'system', name: '跟随系统', swatch: 'linear-gradient(90deg,#f6f7fb 50%,#1c2030 50%)' },
-    { id: 'light', name: '日间 · 雾白', swatch: '#f6f7fb' },
-    { id: 'dark', name: '夜间 · 靛墨', swatch: '#1c2030' },
-    { id: 'eye', name: '柔和 · 青叶', swatch: '#e7eee5' }
+    { id: 'system', name: '跟随系统', swatch: 'linear-gradient(90deg,#edf5ff 50%,#07111f 50%)' },
+    { id: 'aurora', name: '极光赛场', swatch: 'linear-gradient(135deg,#07111f,#24d1c1 55%,#8b6cff)' },
+    { id: 'paper', name: '纸上推演', swatch: 'linear-gradient(135deg,#f5f8ff,#c9dcff 55%,#ffffff)' },
+    { id: 'sunset', name: '终场余晖', swatch: 'linear-gradient(135deg,#17112b,#ff8a4c 55%,#7c63ff)' }
   ];
   const systemTheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   let themeChoice = 'system';
@@ -36,7 +36,7 @@
   /* ---------------- 主题与设置浮层 ---------------- */
 
   function normalizeTheme(value) {
-    const aliases = { glass: 'dark', ink: 'dark', 'glass-light': 'light', 'eye-green': 'eye' };
+    const aliases = { glass: 'aurora', ink: 'aurora', dark: 'aurora', 'glass-light': 'paper', light: 'paper', 'eye-green': 'paper', eye: 'paper' };
     value = aliases[value] || value;
     return THEMES.some(function (x) { return x.id === value; }) ? value : 'system';
   }
@@ -45,12 +45,12 @@
   }
   function applyTheme(name, persist) {
     themeChoice = normalizeTheme(name);
-    const resolved = themeChoice === 'system' ? (systemTheme && systemTheme.matches ? 'dark' : 'light') : themeChoice;
+    const resolved = themeChoice === 'system' ? (systemTheme && systemTheme.matches ? 'aurora' : 'paper') : themeChoice;
     document.documentElement.dataset.theme = resolved;
-    document.documentElement.style.colorScheme = resolved === 'dark' ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = resolved === 'aurora' || resolved === 'sunset' ? 'dark' : 'light';
     document.documentElement.dataset.themeChoice = themeChoice;
     document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
-      meta.content = resolved === 'dark' ? '#141722' : resolved === 'eye' ? '#edf1eb' : '#f6f7fb';
+      meta.content = resolved === 'aurora' ? '#07111f' : resolved === 'sunset' ? '#17112b' : '#eef4ff';
     });
     if (persist !== false) {
       try { localStorage.setItem(LS_THEME, themeChoice); } catch (e) {}
@@ -226,13 +226,13 @@
     if (!host) return;
     const links = (o.nav || []).map(function (n) {
       return '<a class="top-link' + (n.key === o.active ? ' active' : '') + '"' + (n.adminOnly ? ' data-admin' : '') + (n.key === o.active ? ' aria-current="page"' : '') + ' href="' + n.href + '">' +
-        (n.icon || '') + '<span>' + n.label + '</span></a>';
+        (n.icon || '') + '<span data-i18n="nav.' + (n.key === 'wordbook' ? 'words' : n.key) + '">' + n.label + '</span></a>';
     }).join('');
 
     // 移动端抽屉导航：与 .top-nav 同源，点开后在顶栏下方铺开
     const mnLinks = (o.nav || []).map(function (n) {
       return '<a class="mn-link' + (n.key === o.active ? ' active' : '') + '"' + (n.adminOnly ? ' data-admin' : '') + (n.key === o.active ? ' aria-current="page"' : '') + ' href="' + n.href + '">' +
-        (n.icon || '') + '<span>' + n.label + '</span></a>';
+        (n.icon || '') + '<span data-i18n="nav.' + (n.key === 'wordbook' ? 'words' : n.key) + '">' + n.label + '</span></a>';
     }).join('');
 
     host.innerHTML =
@@ -249,6 +249,7 @@
         '<button id="navToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单" aria-expanded="false" aria-controls="mobileNav">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
         '</button>' +
+        '<button id="languageBtn" class="icon-btn language-btn" type="button" aria-label="切换界面语言" title="界面语言"><span>中</span></button>' +
         '<div class="theme-wrap">' +
           '<button id="themeBtn" class="icon-btn" type="button" title="笔记本外观" aria-label="笔记本外观" aria-controls="themeMenu" aria-expanded="false"><span id="themeIcon"></span></button>' +
           '<div id="themeMenu" class="theme-menu" role="group" aria-label="笔记本外观" hidden></div>' +
@@ -260,6 +261,8 @@
           '<div id="fsMenu" class="fs-menu" role="group" aria-label="阅读字号" hidden></div>' +
         '</div>' +
       '</div>';
+
+    if (window.ANI18n) window.ANI18n.apply(host);
 
     // Navigation remains keyboard-accessible in the compact layout.
     const navToggle = host.querySelector('#navToggle');
@@ -285,6 +288,30 @@
         document.body.classList.remove('nav-open');
         navToggle.setAttribute('aria-expanded', 'false');
       });
+    }
+  }
+
+  function initLanguage() {
+    const button = $('languageBtn');
+    if (!button || !window.ANI18n) return;
+    function update() {
+      const english = ANI18n.language === 'en';
+      button.querySelector('span').textContent = english ? 'EN' : '中';
+      button.title = english ? 'Switch to Chinese' : '切换到 English';
+      button.setAttribute('aria-label', button.title);
+    }
+    button.addEventListener('click', function () { ANI18n.set(ANI18n.language === 'en' ? 'zh' : 'en'); });
+    window.addEventListener('an:language', update);
+    update();
+  }
+
+  function initFastNavigation() {
+    const urls = ['index.html', 'wordbook.html', 'notes.html'];
+    urls.forEach(function (href) {
+      const link = document.createElement('link'); link.rel = 'prefetch'; link.href = href; document.head.appendChild(link);
+    });
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
     }
   }
 
@@ -428,6 +455,8 @@
       document.body.prepend(skip);
     }
     if (opts.theme !== false) initTheme();
+    initLanguage();
+    initFastNavigation();
     if (opts.modals !== false) initModals();
     if (opts.fontScale !== false) initFontScale();
   }
