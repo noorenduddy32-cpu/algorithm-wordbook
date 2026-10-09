@@ -1,116 +1,7 @@
-/* ============================================================
-   api.js —— 前端数据层 + 公开浏览 + 管理员登录（无密钥、无密码）
-   - DB：链式 builder 序列化后 POST /api/db（服务端再连云端，密钥只在服务端）
-   - Auth：登录态走 HttpOnly Cookie，前端只看得到角色
-   - 访客：只读；管理员：增删改 + AI
-   必须在本文件之前加载 config.js，之后加载各页面脚本。
-   ============================================================ */
+/* Public reading, administrator sessions and cache isolation. Transport: data-client.js. */
 (function () {
   'use strict';
   let sessionVersion = 0;
-
-  /* ---------------- 云端数据库代理（链式 builder） ---------------- */
-
-  const DB = (function () {
-    function build(table) {
-      const op = { table: table || null, action: null, columns: '*', filters: {}, order: null, limit: null, data: null, single: false };
-      const a = {
-        from: function (t) { op.table = t; return a; },
-        select: function (c) {
-          // 链式：insert/update/delete 之后的 .select() 表示“返回写入后的行”（Supabase 语义），
-          // 不能把 action 覆盖成 select。
-          if (op.action && op.action !== 'select') {
-            op.returning = true;
-            if (c) op.columns = c;
-            return a;
-          }
-          op.action = 'select'; op.columns = (c || '*'); return a;
-        },
-        insert: function (rows) { op.action = 'insert'; op.data = rows; return a; },
-        update: function (o) { op.action = 'update'; op.data = o; return a; },
-        delete: function () { op.action = 'delete'; return a; },
-        eq: function (k, v) { op.filters[k] = v; return a; },
-        order: function (c, o) { op.order = c + '.' + (o && o.ascending === false ? 'desc' : 'asc'); return a; },
-        limit: function (n) { op.limit = n; return a; },
-        maybeSingle: function () { op.single = true; return a; },
-        single: function () { op.single = true; return a; },
-        then: function (res, rej) { return call(op).then(res, rej); }
-      };
-      return a;
-    }
-    async function call(op) {
-      const version = sessionVersion;
-      let r;
-      try {
-        r = await fetch('/api/db', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(op)
-        });
-      } catch (e) {
-        return { data: null, error: { message: '网络错误：' + (e && e.message ? e.message : e) } };
-      }
-      let json = {};
-      try { json = await r.json(); } catch (e) { json = {}; }
-      if (version !== sessionVersion) return { data: null, error: { message: '登录身份已改变，请重新加载' } };
-      if (r.status === 401) { resetSession(); onAuthed('visitor'); }
-      if (!r.ok) return { data: null, error: { message: (json && json.error) || ('HTTP ' + r.status) } };
-      let data = json.data;
-      if (op.single && Array.isArray(data)) data = data[0] || null;
-      return { data: data, error: null };
-    }
-    return { from: function (t) { return build(t); } };
-  })();
-  window.DB = DB;
-
-  /* ---------------- 云端大模型代理（SSE 流式，供编辑器 AI 辅助） ---------------- */
-
-  const ANCloud = {
-    llm: {
-      models: { list: function () { return Promise.resolve([{ id: 'auto', name: 'Auto', disabled: false }]); } },
-      chat: {
-        completions: {
-          async *create(opts) {
-            let r;
-            try {
-              r = await fetch('/api/ai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(opts)
-              });
-            } catch (e) { throw new Error('网络错误：' + (e && e.message ? e.message : e)); }
-            if (!r.ok || !r.body) {
-              let t = ''; try { t = await r.text(); } catch (e) {}
-              throw new Error('AI 接口异常：' + (t.slice(0, 120) || ('HTTP ' + r.status)));
-            }
-            const dec = new TextDecoder();
-            let buf = '';
-            for await (const chunk of r.body) {
-              buf += dec.decode(chunk, { stream: true });
-              let idx;
-              while ((idx = buf.indexOf('\n\n')) >= 0) {
-                const raw = buf.slice(0, idx);
-                buf = buf.slice(idx + 2);
-                const line = raw.split('\n').find(function (l) { return l.indexOf('data:') === 0; });
-                if (!line) continue;
-                const payload = line.slice(5).trim();
-                if (payload === '[DONE]') continue;
-                let o; try { o = JSON.parse(payload); } catch (e) { continue; }
-                const d = o.choices && o.choices[0] && o.choices[0].delta;
-                if (d) {
-                  yield { choices: [{ delta: { content: d.content || '', reasoning_content: d.reasoning_content || '' } }] };
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  };
-  window.ANCloud = ANCloud;
-
   /* ---------------- 登录态与缓存 ---------------- */
 
   function clearCaches() {
@@ -141,27 +32,28 @@
   const Auth = {
     role: null,
     async me() {
-      const r = await fetch('/api/me', { credentials: 'include', cache: 'no-store' });
-      const j = r.ok ? await r.json() : {};
-      return j.role === 'admin' ? 'admin' : 'visitor';
+      const r = await ANRequest('/api/me', { credentials: 'include', cache: 'no-store' });
+      if (!r.ok) throw new Error('无法验证访问权限');
+      const j = await r.json();
+      return j.role === 'admin' || j.role === 'visitor' ? j.role : null;
     },
     async login(pw, requiredRole) {
-      const r = await fetch('/api/login', {
+      const r = await ANRequest('/api/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ password: pw, role: requiredRole })
       });
       let j = {};
       try { j = await r.json(); } catch (e) {}
       if (!r.ok) throw new Error(j.error || '登录服务暂时不可用，请稍后重试');
-      if (j.role !== 'admin') throw new Error('管理员登录状态无效，请重试');
+      if (j.role !== requiredRole) throw new Error('登录状态无效，请重试');
       return j.role;
     },
     async logout() {
-      const r = await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      const r = await ANRequest('/api/logout', { method: 'POST', credentials: 'include' });
       if (!r.ok) throw new Error('退出失败，请重试');
     },
     async visitor() {
-      const r = await fetch('/api/visitor', { method: 'POST', credentials: 'include' });
+      const r = await ANRequest('/api/visitor', { method: 'POST', credentials: 'include' });
       if (!r.ok) throw new Error('切换失败，请重新登录');
       const j = await r.json();
       if (j.role !== 'visitor') throw new Error('访客状态无效');
@@ -196,21 +88,30 @@
     return t.content.firstElementChild;
   }
 
-  function buildGate(message) {
-    if (document.getElementById('gate')) return;
+  function buildGate(message, requiredRole) {
+    requiredRole = requiredRole === 'admin' ? 'admin' : 'visitor';
+    const existing = document.getElementById('gate');
+    if (existing) {
+      if (existing.dataset.role === requiredRole) {
+        const error = existing.querySelector('#gateErr');
+        if (message && error) { error.textContent = message; error.hidden = false; }
+        return;
+      }
+      existing.remove();
+    }
     const g = el(
       '<div id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">' +
         '<div class="gate-card">' +
-          '<span class="gate-eyebrow">ACM / ICPC · PERSONAL NOTEBOOK</span>' +
-          '<h1 id="gateTitle">管理员登录</h1>' +
-          '<p class="muted">输入管理员密码，继续整理你的积累。</p>' +
+          '<span class="gate-eyebrow">ALGORITHM FIELDNOTES · ACCESS</span>' +
+          '<h1 id="gateTitle"></h1>' +
+          '<p class="muted" id="gateDescription"></p>' +
           '<form id="gateForm">' +
-            '<label class="sr-only" for="gatePw">管理员密码</label>' +
-            '<input id="gatePw" type="password" placeholder="管理员密码" autocomplete="current-password" required aria-describedby="gateErr">' +
-            '<button type="submit" class="btn primary">进入管理</button>' +
+            '<label class="sr-only" id="gatePwLabel" for="gatePw"></label>' +
+            '<input id="gatePw" type="password" autocomplete="current-password" required aria-describedby="gateErr">' +
+            '<button type="submit" class="btn primary" id="gateSubmit"></button>' +
           '</form>' +
-          '<p class="gate-roles">公开内容无需登录。管理员可整理词汇、编辑笔记与查看私密内容。</p>' +
-          '<button class="btn ghost" id="gateCancel" type="button">继续公开浏览</button>' +
+          '<p class="gate-roles">访客可阅读词汇与已发布的公开笔记。管理员可编辑内容并查看私密笔记。</p>' +
+          '<div class="gate-actions"><button class="btn ghost" id="gateRoleToggle" type="button"></button><button class="btn ghost" id="gateCancel" type="button" hidden>返回公开阅读</button></div>' +
           '<p id="gateErr" role="alert" hidden></p>' +
         '</div>' +
       '</div>'
@@ -218,29 +119,48 @@
     document.body.appendChild(g);
     const input = g.querySelector('#gatePw');
     const err = g.querySelector('#gateErr');
+    const roleToggle = g.querySelector('#gateRoleToggle');
+    const cancel = g.querySelector('#gateCancel');
+    function updateRole() {
+      const admin = requiredRole === 'admin';
+      g.dataset.role = requiredRole;
+      g.querySelector('#gateTitle').textContent = admin ? '管理员登录' : '输入访客密码';
+      g.querySelector('#gateDescription').textContent = admin ? '进入管理空间，继续整理你的积累。' : '验证访客密码后，可阅读公开的词汇与算法笔记。';
+      g.querySelector('#gatePwLabel').textContent = admin ? '管理员密码' : '访客密码';
+      input.placeholder = admin ? '管理员密码' : '访客密码';
+      g.querySelector('#gateSubmit').textContent = admin ? '进入管理' : '进入公开阅读';
+      g.querySelector('#gateRoleToggle').textContent = admin ? '访客访问' : '管理员登录';
+      cancel.hidden = !Auth.role;
+      input.value = '';
+      err.hidden = true;
+    }
+    updateRole();
     if (message) { err.textContent = message; err.hidden = false; }
     input.focus();
-    const cancel = g.querySelector('#gateCancel');
     cancel.onclick = function () {
       g.remove(); document.body.style.overflow = '';
-      if (!Auth.role) onAuthed('visitor');
+    };
+    roleToggle.onclick = function () {
+      requiredRole = requiredRole === 'admin' ? 'visitor' : 'admin';
+      updateRole(); input.focus();
     };
     g.querySelector('#gateForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       const button = g.querySelector('[type="submit"]');
-      button.disabled = true; cancel.disabled = true; err.hidden = true;
+      button.disabled = true; cancel.disabled = true; roleToggle.disabled = true; err.hidden = true;
       try {
-        const role = await Auth.login(input.value, 'admin');
+        const role = await Auth.login(input.value, requiredRole);
         resetSession(); broadcastSession(); onAuthed(role);
       } catch (ex) {
         err.textContent = ex.message || '连接失败，请检查网络后重试';
         err.hidden = false; input.value = ''; input.focus();
-      } finally { button.disabled = false; cancel.disabled = false; }
+      } finally { button.disabled = false; cancel.disabled = false; roleToggle.disabled = false; }
     });
     document.body.style.overflow = 'hidden';
   }
 
   function onAuthed(role) {
+    if (role !== 'admin' && role !== 'visitor') { buildGate('', 'visitor'); return; }
     Auth.role = role;
     window.AN_ROLE = role;
     document.documentElement.dataset.auth = role;
@@ -264,9 +184,9 @@
     bar.innerHTML =
       '<button type="button" class="role-tag ' + (admin ? 'admin' : 'visitor') + '" title="' +
       (admin ? '切换到访客视角，仅查看公开内容' : '输入管理员密码') + '">' +
-      (admin ? '管理员 · 返回公开浏览' : '管理员登录') + '</button>' +
-      (admin ? '<button type="button" class="role-logout" title="退出管理并继续公开浏览">退出管理</button>' : '');
-    bar.querySelector('.role-tag').onclick = admin ? switchToVisitor : function () { buildGate(); };
+      (admin ? '公开视角' : '管理员登录') + '</button>' +
+      (admin ? '' : '<button type="button" class="role-logout" title="退出访客访问">退出访问</button>');
+    bar.querySelector('.role-tag').onclick = admin ? switchToVisitor : function () { buildGate('', 'admin'); };
     const logout = bar.querySelector('.role-logout');
     if (logout) logout.onclick = doLogout;
   }
@@ -283,9 +203,14 @@
     if (!canChangeSession()) return;
     try {
       await Auth.logout();
-      resetSession(); broadcastSession(); onAuthed('visitor');
-      AN.toast('已退出管理，继续公开浏览');
+      requireLogin('已退出访问，请重新输入访客密码。');
     } catch (e) { AN.toast(e.message, true); }
+  }
+
+  function requireLogin(message) {
+    resetSession();
+    broadcastSession();
+    buildGate(message || '访问会话已过期，请重新输入访问密码。', 'visitor');
   }
 
   async function init() {
@@ -294,13 +219,19 @@
     try {
       const role = await Auth.me();
       if (version !== sessionVersion) return;
+      if (!role) {
+        resetSession();
+        buildGate('', 'visitor');
+        return;
+      }
       if (role !== 'admin') resetSession();
       onAuthed(role);
     } catch (e) {
       if (version !== sessionVersion) return;
-      resetSession(); onAuthed('visitor');
+      requireLogin('暂时无法验证访问权限，请检查连接后重试。');
     }
   }
+  window.addEventListener('an:session-expired', function () { requireLogin(); });
   window.addEventListener('storage', function (e) {
     if (e.key !== 'an_session_changed') return;
     resetSession();
@@ -312,13 +243,14 @@
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
-  window.reopenGate = function () { buildGate(); };
+  window.reopenGate = function () { buildGate('', 'admin'); };
   window.syncRole = async function () {
     const version = sessionVersion;
     let role;
-    try { role = await Auth.me(); } catch (e) { role = 'visitor'; }
+    try { role = await Auth.me(); } catch (e) { role = null; }
     if (version !== sessionVersion) return Auth.role;
     if (role) { resetSession(); broadcastSession(); onAuthed(role); }
+    else requireLogin('访问会话已过期，请重新输入访问密码。');
     return role;
   };
 })();

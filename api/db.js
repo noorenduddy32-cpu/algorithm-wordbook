@@ -1,5 +1,5 @@
 // POST /api/db  ——  前端链式 builder 的序列化入口。
-// 公开读取共享词汇和已发布的公开笔记；写入需管理员，访客直调也会被拒。
+// 访客会话只读共享词汇与已发布的公开笔记；写入需管理员。
 const { roleFromReq } = require('./_lib/auth');
 const { handleDb } = require('./_lib/cloud');
 const { readBody, sendJson, allowRequest } = require('./_lib/http');
@@ -7,6 +7,7 @@ const { readBody, sendJson, allowRequest } = require('./_lib/http');
 module.exports = async function (req, res) {
   if (!allowRequest(req, res, 'POST')) return;
   const role = roleFromReq(req);
+  if (!role) return sendJson(res, 401, { error: '请先输入访问密码' });
   const op = await readBody(req);
   let result;
   try { result = await handleDb(op, role); }

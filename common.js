@@ -13,10 +13,10 @@
   const LS_FS_LEGACY = 'wb_font_scale';
 
   const THEMES = [
-    { id: 'system', name: '跟随系统', swatch: 'linear-gradient(90deg,#f3f6fa 50%,#17253a 50%)' },
-    { id: 'light', name: '日间 · 晴蓝纸面', swatch: '#f3f6fa' },
-    { id: 'dark', name: '夜间 · 深蓝墨色', swatch: '#17253a' },
-    { id: 'eye', name: '柔和 · 青灰纸色', swatch: '#e7eee5' }
+    { id: 'system', name: '跟随系统', swatch: 'linear-gradient(90deg,#f6f7fb 50%,#1c2030 50%)' },
+    { id: 'light', name: '日间 · 雾白', swatch: '#f6f7fb' },
+    { id: 'dark', name: '夜间 · 靛墨', swatch: '#1c2030' },
+    { id: 'eye', name: '柔和 · 青叶', swatch: '#e7eee5' }
   ];
   const systemTheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   let themeChoice = 'system';
@@ -49,6 +49,9 @@
     document.documentElement.dataset.theme = resolved;
     document.documentElement.style.colorScheme = resolved === 'dark' ? 'dark' : 'light';
     document.documentElement.dataset.themeChoice = themeChoice;
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
+      meta.content = resolved === 'dark' ? '#141722' : resolved === 'eye' ? '#edf1eb' : '#f6f7fb';
+    });
     if (persist !== false) {
       try { localStorage.setItem(LS_THEME, themeChoice); } catch (e) {}
     }
@@ -150,6 +153,37 @@
   /* ---------------- 弹窗通用关闭 ---------------- */
 
   function initModals() {
+    let activeDialog = null;
+    let lastOutside = document.activeElement;
+    const openers = new WeakMap();
+    const focusable = 'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
+    function candidates(dialog) {
+      return Array.from(dialog.querySelectorAll(focusable)).filter(node => node.getClientRects().length && !node.closest('[hidden]'));
+    }
+    function syncDialog() {
+      const open = Array.from(document.querySelectorAll('.modal:not([hidden]),#gate'));
+      const next = open[open.length - 1] || null;
+      if (next === activeDialog) return;
+      const previous = activeDialog;
+      activeDialog = next;
+      if (next) {
+        openers.set(next, lastOutside);
+        next.setAttribute('role', 'dialog'); next.setAttribute('aria-modal', 'true'); next.tabIndex = -1;
+        const title = next.querySelector('h1,h2');
+        if (title && !next.hasAttribute('aria-labelledby')) {
+          if (!title.id) title.id = next.id + 'Title';
+          next.setAttribute('aria-labelledby', title.id);
+        }
+        if (!next.contains(document.activeElement)) (candidates(next)[0] || next).focus();
+      } else if (previous) {
+        const opener = openers.get(previous);
+        if (opener && opener.isConnected && opener.getClientRects().length) opener.focus();
+      }
+    }
+    document.addEventListener('focusin', function (event) {
+      if (!event.target.closest('.modal,#gate')) lastOutside = event.target;
+    });
+    new MutationObserver(syncDialog).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
     document.addEventListener('click', function (e) {
       const c = e.target.closest('[data-close]');
       if (c) {
@@ -159,7 +193,18 @@
       if (e.target.classList && e.target.classList.contains('modal')) e.target.hidden = true;
     });
     document.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab' && activeDialog) {
+        const items = candidates(activeDialog);
+        const first = items[0] || activeDialog, last = items[items.length - 1] || activeDialog;
+        if (e.shiftKey && (document.activeElement === first || !activeDialog.contains(document.activeElement))) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || !activeDialog.contains(document.activeElement))) {
+          e.preventDefault(); first.focus();
+        }
+      }
       if (e.key !== 'Escape') return;
+      const gateCancel = $('gateCancel');
+      if (gateCancel && !gateCancel.disabled) gateCancel.click();
       const open = document.querySelectorAll('.modal:not([hidden])');
       for (let i = 0; i < open.length; i++) open[i].hidden = true;
     });
@@ -192,12 +237,14 @@
 
     host.innerHTML =
       '<a class="brand" href="index.html">' +
-        '<span class="logo" aria-hidden="true"><span class="brand-mark">n<span>+1</span></span></span>' +
-        '<span class="brand-text"><span class="brand-name">' + (o.title || '算法学习笔记本') + '</span>' +
-        '<p>ALGORITHM FIELD NOTES</p></span>' +
+        '<span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 5-5 7 5 7m8-14 5 7-5 7m-3-16-2 20"/></svg></span>' +
+        '<span class="brand-text"><span class="brand-name">' + (o.title || '算法手记') + '</span>' +
+        '<p>ALGORITHM FIELDNOTES</p></span>' +
       '</a>' +
+      '<p class="nav-caption">NOTEBOOK / 笔记本</p>' +
       '<nav class="top-nav" aria-label="主导航">' + links + '</nav>' +
       '<nav class="mobile-nav" id="mobileNav" aria-label="移动端导航">' + mnLinks + '</nav>' +
+      '<div class="rail-note"><span class="rail-formula">think. solve. repeat.</span><p>读懂题意，拆解问题。<br>把每次思考，留给下一次。</p><a class="rail-source" href="https://github.com/noorenduddy32-cpu/algorithm-wordbook" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>' +
       '<div class="top-actions">' +
         '<button id="navToggle" class="icon-btn nav-toggle" type="button" title="菜单" aria-label="打开菜单" aria-expanded="false" aria-controls="mobileNav">' +
           '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' +
@@ -362,16 +409,24 @@
 
   function boot(opts) {
     opts = Object.assign({}, opts || {}, {
-      title: '算法竞赛笔记本',
+      title: '算法手记',
       subtitle: '题面词汇 · 题解与算法',
       nav: [
-        { key: 'home', label: '学习概览', href: 'index.html', icon: ICONS.home },
+        { key: 'home', label: '学习工作台', href: 'index.html', icon: ICONS.home },
         { key: 'wordbook', label: '题面词汇', href: 'wordbook.html', icon: ICONS.book },
-        { key: 'notes', label: '题解与算法', href: 'notes.html', icon: ICONS.pen },
+        { key: 'notes', label: '题解笔记', href: 'notes.html', icon: ICONS.pen },
         { key: 'visits', label: '访问记录', href: 'visits.html', icon: ICONS.file, adminOnly: true }
       ]
     });
     if (opts.topbar !== false) renderTopbar(opts);
+    const main = document.querySelector('main');
+    if (main && !document.querySelector('.skip-link')) {
+      if (!main.id) main.id = 'mainContent';
+      main.tabIndex = -1;
+      const skip = document.createElement('a');
+      skip.className = 'skip-link'; skip.href = '#' + main.id; skip.textContent = '跳到主要内容';
+      document.body.prepend(skip);
+    }
     if (opts.theme !== false) initTheme();
     if (opts.modals !== false) initModals();
     if (opts.fontScale !== false) initFontScale();

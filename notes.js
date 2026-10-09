@@ -31,6 +31,10 @@
   let mode = 'edit';
   let listTab = 'published';   // published | draft
   let readOnly = false;
+  let activeTopic = '';
+  let editorEpoch = 0;
+  let tocObserver = null;
+  let saveInProgress = false;
 
   // 分栏（看板）状态
   let viewMode = localStorage.getItem('an_note_view') || 'grid';    // grid | list | board
@@ -212,13 +216,54 @@
 
   // 渲染正文（HTML 消毒 + 标题锚点 + 代码块增强）
   function renderContent(html) {
-    let out = sanitizeHtml(String(html || ''));
-    out = out.replace(/<h([1-6])>([\s\S]*?)<\/h\1>/g, function (all_, lv, inner) {
-      const plain = stripHtml(inner);
-      const id = 'h-' + Math.abs(hash(plain)).toString(36);
-      return '<h' + lv + ' id="' + id + '">' + inner + '</h' + lv + '>';
+    return sanitizeHtml(String(html || ''));
+  }
+
+  function readingMinutes(content) {
+    const plain = stripHtml(content);
+    const chinese = (plain.match(/[\u3400-\u9fff]/g) || []).length;
+    const words = (plain.replace(/[\u3400-\u9fff]/g, ' ').match(/[A-Za-z0-9_]+/g) || []).length;
+    return Math.max(1, Math.ceil(chinese / 400 + words / 220));
+  }
+
+  function stopReaderOutline() {
+    if (tocObserver) { tocObserver.disconnect(); tocObserver = null; }
+  }
+
+  function updateReaderOutline() {
+    stopReaderOutline();
+    const outline = $('readerOutline'), nav = $('readerToc');
+    nav.replaceChildren();
+    const headings = Array.from($('edPreview').querySelectorAll('h1,h2,h3'));
+    outline.hidden = !readOnly || !headings.length;
+    if (outline.hidden) return;
+    outline.open = window.innerWidth > 1100;
+    headings.forEach(function (heading, index) {
+      heading.id = 'note-section-' + (index + 1);
+      const link = document.createElement('a');
+      link.href = '#' + heading.id;
+      link.textContent = heading.textContent || '未命名章节';
+      link.className = 'toc-link toc-level-' + heading.tagName.slice(1);
+      if (!index) link.setAttribute('aria-current', 'location');
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        heading.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        nav.querySelectorAll('a').forEach(function (a) { a.removeAttribute('aria-current'); });
+        link.setAttribute('aria-current', 'location');
+      });
+      nav.appendChild(link);
     });
-    return out;
+    if (window.IntersectionObserver) {
+      tocObserver = new IntersectionObserver(function (entries) {
+        const current = entries.find(function (entry) { return entry.isIntersecting; });
+        if (!current) return;
+        nav.querySelectorAll('a').forEach(function (a) {
+          if (a.hash === '#' + current.target.id) a.setAttribute('aria-current', 'location');
+          else a.removeAttribute('aria-current');
+        });
+      }, { rootMargin: '-80px 0px -65% 0px' });
+      headings.forEach(function (heading) { tocObserver.observe(heading); });
+    }
   }
 
   // 把 <code>（可能含 contenteditable 产生的嵌套 div/p）还原成带换行的纯文本
@@ -241,8 +286,12 @@
     const mark = function () {
       if (!btn) return;
       btn.classList.add('copied');
-      btn.title = '已复制';
-      setTimeout(function () { btn.classList.remove('copied'); btn.title = '复制代码'; }, 1500);
+      btn.title = '已复制'; btn.setAttribute('aria-label', '代码已复制');
+      const label = btn.querySelector('span'); if (label) label.textContent = '已复制';
+      setTimeout(function () {
+        btn.classList.remove('copied'); btn.title = '复制代码'; btn.setAttribute('aria-label', '复制代码');
+        if (label) label.textContent = '复制';
+      }, 1800);
     };
     const fallback = function () {
       const ta = document.createElement('textarea');
@@ -252,7 +301,7 @@
       ta.style.opacity = '0';
       document.body.appendChild(ta);
       ta.focus(); ta.select();
-      try { document.execCommand('copy'); mark(); } catch (e) {}
+      try { if (document.execCommand('copy')) mark(); else AN.toast('复制失败，请选中代码手动复制', true); } catch (e) { AN.toast('复制失败，请选中代码手动复制', true); }
       document.body.removeChild(ta);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -365,7 +414,11 @@
     } catch (e) {}
     const { data, error } = await db.from('notes').select('*').order('updated_at', { ascending: false });
     if (Auth.role !== role) return;
-    if (error) { $('notesSub').textContent = '读取失败：' + (error.message || ''); return; }
+    if (error) {
+      $('notesResult').textContent = '笔记暂时无法加载';
+      $('notesSub').textContent = '读取失败，请刷新重试。' + (error.message || '');
+      return;
+    }
     all = visibleRecords(data || []);
     NoteCache.set('notes', all);
     $('notesTabs').hidden = !isAdmin();
@@ -376,9 +429,44 @@
   }
 
   function updateSub() {
-    const el = $('notesSub');
-    if (!el || !AN.getDb()) return;
-    el.textContent = (isAdmin() ? '共 ' : '公开笔记 ') + all.length + ' 篇 · 记录关键突破口，整理算法与实现细节。';
+    $('notesSub').textContent = isAdmin() ? '题解、模板与复盘，记录属于你的思考过程。' : '公开分享的题解与算法，留住每一次思考的线索。';
+    $('publishedCount').textContent = all.filter(function (n) { return n.status === 'published'; }).length;
+    $('draftCount').textContent = all.filter(function (n) { return (n.status || 'draft') === 'draft'; }).length;
+    $('notesResult').textContent = getFiltered().length + ' 篇' + (activeTopic ? ' · ' + activeTopic : '笔记');
+    renderTopicFilters();
+  }
+
+  function scopeNotes() {
+    return all.filter(function (n) {
+      return isAdmin() ? (n.status || 'draft') === listTab : n.status === 'published' && n.visibility === 'public';
+    });
+  }
+
+  function renderTopicFilters() {
+    const counts = new Map();
+    scopeNotes().forEach(function (n) { arr(n.tags).forEach(function (tag) { counts.set(tag, (counts.get(tag) || 0) + 1); }); });
+    const topics = Array.from(counts).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8);
+    if (activeTopic && !topics.some(function (item) { return item[0] === activeTopic; })) topics.push([activeTopic, counts.get(activeTopic) || 0]);
+    $('noteTopics').innerHTML = '<button type="button" data-topic="" aria-pressed="' + !activeTopic + '" class="topic-chip' + (!activeTopic ? ' active' : '') + '">全部主题</button>' +
+      topics.map(function (item) {
+        return '<button type="button" class="topic-chip' + (activeTopic === item[0] ? ' active' : '') + '" data-topic="' + esc(item[0]) + '" aria-pressed="' + (activeTopic === item[0]) + '">' + esc(item[0]) + '<span>' + item[1] + '</span></button>';
+      }).join('');
+  }
+
+  function updateSearchUrl() {
+    const url = new URL(location.href), query = $('noteSearch').value.trim();
+    if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+    if (activeTopic) url.searchParams.set('tag', activeTopic); else url.searchParams.delete('tag');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  }
+
+  function renderEmptyState(list) {
+    $('notesEmpty').hidden = !!list.length;
+    if (list.length) return;
+    const filtered = !!($('noteSearch').value.trim() || activeTopic);
+    $('notesEmptyTitle').textContent = filtered ? '还没有找到这条思路。' : listTab === 'draft' && isAdmin() ? '草稿箱很清爽。' : isAdmin() ? '第一篇笔记，从一个好问题开始。' : '笔记还在整理中。';
+    $('notesEmptyHint').textContent = filtered ? '试试更短的关键词，或切换一个算法标签。' : listTab === 'draft' && isAdmin() ? '未发布的想法会保存在这里，随时接着写。' : isAdmin() ? '用一篇题目复盘或算法模板，开始你的积累。' : '公开笔记发布后会出现在这里。';
+    $('clearNoteFilters').hidden = !filtered;
   }
 
   /* ---------------- 列表 ---------------- */
@@ -386,17 +474,13 @@
   // 状态 + 搜索过滤：列表与分栏共用
   function getFiltered() {
     const kw = ($('noteSearch').value || '').trim().toLowerCase();
-    let list = all;
-    // 草稿箱仅管理员可见；访客永远只看已发布
-    if (isAdmin()) {
-      list = list.filter(function (x) { return (x.status || 'draft') === listTab; });
-    } else {
-      list = list.filter(function (x) { return x.status === 'published' && x.visibility === 'public'; });
-    }
+    let list = scopeNotes();
+    if (activeTopic) list = list.filter(function (x) { return arr(x.tags).includes(activeTopic); });
     if (kw) {
       list = list.filter(function (x) {
         return (x.title || '').toLowerCase().indexOf(kw) >= 0 ||
           (x.summary || '').toLowerCase().indexOf(kw) >= 0 ||
+          (x.category || '').toLowerCase().indexOf(kw) >= 0 ||
           (stripHtml(x.content) || '').toLowerCase().indexOf(kw) >= 0 ||
           arr(x.tags).join(' ').toLowerCase().indexOf(kw) >= 0;
       });
@@ -406,29 +490,17 @@
 
   // 列表与分栏共用同一张卡片
   function cardHtml(x) {
-    const tags = arr(x.tags);
-    const sum = x.summary || autoSummary(x.content);
-    const isDraft = (x.status || 'draft') === 'draft';
-    const isPrivate = (x.visibility || 'private') === 'private';
+    const tags = arr(x.tags), sum = x.summary || autoSummary(x.content);
+    const isDraft = (x.status || 'draft') === 'draft', isPrivate = x.visibility !== 'public';
     const checked = selected.has(String(x.id)) ? ' checked' : '';
-    return '<article tabindex="0" aria-label="' + esc(x.title || '未命名笔记') + '" class="note-card" data-id="' + x.id + '" data-status="' + (x.status || 'draft') + '">' +
-      '<span class="sel-check" title="选入导出 Word"><input type="checkbox" data-sel="' + x.id + '"' + checked + '></span>' +
-      '<div class="note-title-row">' +
-        '<h3 class="note-title">' + esc(x.title || '无标题') + '</h3>' +
-        '<span class="note-badge ' + (isDraft ? 'draft' : isPrivate ? 'private' : 'public') + '">' +
-          (isDraft ? '草稿' : isPrivate ? '私密' : '公开') +
-        '</span>' +
-      '</div>' +
-      (sum ? '<p class="note-sum">' + esc(sum) + '</p>' : '') +
-      '<div class="note-meta">' +
-        '<span class="nm-time">' + AN.relTime(x.updated_at || x.created_at) + '</span>' +
-        '<span class="nm-words">' + countWords(x.content) + ' 字</span>' +
-        '<span class="nm-views">' + (x.views || 0) + ' 阅读</span>' +
-      '</div>' +
-      (tags.length ? '<div class="note-tags">' + tags.map(function (t) {
-        return '<span class="ntag ntag-' + tagColorIndex(t) + '" data-tag="' + esc(t) + '">' + esc(t) + '</span>';
-      }).join('') + '</div>' : '') +
-    '</article>';
+    return '<article tabindex="0" aria-label="阅读：' + esc(x.title || '未命名笔记') + '" class="note-card" data-id="' + esc(x.id) + '" data-status="' + (isDraft ? 'draft' : 'published') + '">' +
+      '<label class="sel-check" title="选入导出 Word"><input type="checkbox" aria-label="选择笔记：' + esc(x.title || '未命名笔记') + '" data-sel="' + esc(x.id) + '"' + checked + '></label>' +
+      '<div class="note-card-top"><span class="note-category">' + esc(x.category || tags[0] || '思考记录') + '</span>' +
+      (isAdmin() ? '<span class="note-badge ' + (isDraft ? 'draft' : isPrivate ? 'private' : 'public') + '">' + (isDraft ? '草稿' : isPrivate ? '私密' : '公开') + '</span>' : '') + '</div>' +
+      '<h2 class="note-title">' + esc(x.title || '未命名笔记') + '</h2>' +
+      '<p class="note-sum">' + esc(sum || '从这篇笔记中，找回当时的思路。') + '</p>' +
+      '<div class="note-tags">' + tags.slice(0, 4).map(function (tag) { return '<span class="ntag" data-tag="' + esc(tag) + '">' + esc(tag) + '</span>'; }).join('') + '</div>' +
+      '<div class="note-meta"><time>' + esc(AN.fmtDate(x.updated_at || x.created_at)) + '</time><span>约 ' + readingMinutes(x.content) + ' 分钟</span><span class="note-read-arrow" aria-hidden="true">↗</span></div></article>';
   }
 
   function renderList() {
@@ -438,13 +510,7 @@
     const box = $('noteList');
     box.className = 'note-list layout-' + (viewMode === 'list' ? 'list' : 'grid');
     applyColsToList();
-    if (!list.length) {
-      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published' && x.visibility === 'public'); }).length === 0;
-      $('notesEmpty').hidden = !totallyEmpty;
-      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的笔记</p>' : '';
-      return;
-    }
-    $('notesEmpty').hidden = true;
+    renderEmptyState(list);
     box.innerHTML = list.map(cardHtml).join('');
     box.querySelectorAll('[data-sel]').forEach(function (cb) { cb.checked = selected.has(cb.dataset.sel); });
   }
@@ -469,7 +535,7 @@
     if (mode === 'updated') {
       a.sort(function (x, y) { return s * String(y.updated_at || '').localeCompare(String(x.updated_at || '')); });
     } else if (mode === 'views') {
-      a.sort(function (x, y) { return s * ((Number(x.views) || 0) - (Number(y.views) || 0)); });
+      a.sort(function (x, y) { return s * ((Number(y.views) || 0) - (Number(x.views) || 0)); });
     } else {
       a.sort(function (x, y) { return s * String(y.created_at || '').localeCompare(String(x.created_at || '')); });
     }
@@ -497,7 +563,7 @@
     try {
       AN.toast('正在生成 Word…');
       const blob = await DocxExport.exportNotesDocx(list, {
-        title: '算法学习笔记本 · 笔记导出',
+        title: '算法手记 · 笔记导出',
         count: list.length,
         date: (function () {
           const d = new Date(); const p = function (n) { return n < 10 ? '0' + n : '' + n; };
@@ -537,7 +603,9 @@
     $('boardView').hidden = !board;
     $('boardBar').hidden = !board;
     $('notesToolbar').hidden = board; // 排序 / 每行 / 全选 / 导出 只在方块·列表模式显示
-    document.querySelectorAll('#viewSeg .seg-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.view === viewMode); });
+    document.querySelectorAll('#viewSeg .seg-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.view === viewMode); b.setAttribute('aria-pressed', String(b.dataset.view === viewMode));
+    });
     $('boardHint').textContent = isAdmin() ? (colOrder.length ? '拖动卡片到别的栏即可换栏' : '点「管理栏」创建栏目') : '按栏目浏览公开笔记';
     // 同步控件条状态
     $('noteCols').value = listCols;
@@ -560,15 +628,10 @@
   // 分栏（看板）：自定义栏 或 按标签自动分栏
   function renderBoard() {
     updateSub();
-    const list = getFiltered();
+    const list = sortNotes(getFiltered(), sortMode, sortDir);
     const box = $('boardView');
-    if (!list.length) {
-      const totallyEmpty = all.filter(function (x) { return isAdmin() ? true : (x.status === 'published' && x.visibility === 'public'); }).length === 0;
-      $('notesEmpty').hidden = !totallyEmpty;
-      box.innerHTML = (all.length && !totallyEmpty) ? '<p class="muted" style="padding:26px 0">没有匹配的笔记</p>' : '';
-      return;
-    }
-    $('notesEmpty').hidden = true;
+    renderEmptyState(list);
+    if (!list.length) { box.replaceChildren(); return; }
     const names = boardColumnNames();
     let cols = names.map(function (n) {
       return { name: n, items: list.filter(function (x) { return (x.category || '').trim() === n; }) };
@@ -700,7 +763,7 @@
   /* ---------------- 视图切换 ---------------- */
 
   function show(which) {
-    if (which !== 'edit') stopAutosave();
+    if (which !== 'edit') { stopAutosave(); stopReaderOutline(); document.body.classList.remove('read-only'); }
     $('listView').hidden = which !== 'list';
     $('editView').hidden = which !== 'edit';
     if (which === 'list') startVisit(null);
@@ -741,6 +804,7 @@
     $('edPreview').innerHTML = renderContent(html);
     enhanceCodeBlocks($('edPreview'));
     $('edWords').textContent = countWords(html);
+    updateReaderOutline();
     saveDraftLocal();
   }
 
@@ -749,6 +813,7 @@
   // 首次自动保存时插入，之后原地更新，避免每次都新建重复草稿。
   let autosaveId = null;
   let autosaveTimer = null;
+  let autosavePending = null;
   let initialEditorSnapshot = '';
   function editorSnapshot() {
     return JSON.stringify([$('edTitle').value, $('edSummary').value, $('edTags').value, $('edVisibility').value, getHtml()]);
@@ -764,47 +829,57 @@
     if (autosaveTimer) { clearInterval(autosaveTimer); autosaveTimer = null; }
   }
   async function stashAutosaveDraft() {
-    if (readOnly || !isAdmin()) return;
-    if (!window.DOMPurify) return;
-    // 正在编辑「已发布」笔记时不做后台草稿（避免产生一份重复的草稿副本）
-    if (editing && (editing.status || 'draft') !== 'draft') return;
-    const html = getHtml().trim();
-    if (!html) return;
-    const db = AN.getDb();
-    if (!db) return;
+    if (autosavePending) return autosavePending;
+    if (readOnly || !isAdmin() || saveInProgress) return true;
+    if (!window.DOMPurify) return false;
+    if (editing && (editing.status || 'draft') !== 'draft') return true;
+    const html = getHtml().trim(), db = AN.getDb();
+    if (!html && !$('edTitle').value.trim()) return true;
+    if (!db) return false;
+    const epoch = editorEpoch, targetId = autosaveId, snapshot = editorSnapshot();
     const rec = {
-      title: $('edTitle').value.trim() || '未命名草稿',
-      content: sanitizeHtml(getHtml()),
-      summary: $('edSummary').value.trim() || autoSummary(html),
-      tags: parseTags(),
-      category: (editing && editing.category) || '',
-      status: 'draft',
-      visibility: $('edVisibility').value || 'private',
-      updated_at: new Date().toISOString()
+      title: $('edTitle').value.trim() || '未命名草稿', content: sanitizeHtml(html),
+      summary: $('edSummary').value.trim() || autoSummary(html), tags: parseTags(),
+      category: (editing && editing.category) || '', status: 'draft',
+      visibility: $('edVisibility').value || 'private', updated_at: new Date().toISOString()
     };
-    try {
-      if (autosaveId) {
-        const { error } = await db.from('notes').update(rec).eq('id', autosaveId);
-        if (!error) {
-          const i = all.findIndex(function (n) { return String(n.id) === String(autosaveId); });
-          if (i >= 0) all[i] = Object.assign({}, all[i], rec);
-        }
-      } else {
-        const { data, error } = await db.from('notes').insert(rec).select();
-        if (!error && data && data[0]) {
-          autosaveId = data[0].id;
-          const i = all.findIndex(function (n) { return String(n.id) === String(autosaveId); });
-          if (i >= 0) all[i] = data[0]; else all.push(data[0]);
-        }
-      }
-    } catch (e) {}
+    $('editorSaveState').textContent = '正在保存草稿…';
+    autosavePending = (async function () {
+      try {
+        const result = targetId ? await db.from('notes').update(rec).eq('id', targetId) : await db.from('notes').insert(rec).select();
+        if (epoch !== editorEpoch || !isAdmin()) return;
+        if (result.error) throw new Error(result.error.message || '保存失败');
+        const stored = targetId ? Object.assign({}, all.find(function (n) { return String(n.id) === String(targetId); }) || {}, rec, { id: targetId }) : result.data && result.data[0];
+        if (!stored) throw new Error('未收到保存结果');
+        autosaveId = stored.id;
+        const index = all.findIndex(function (n) { return String(n.id) === String(stored.id); });
+        if (index >= 0) all[index] = stored; else all.push(stored);
+        NoteCache.set('notes', all);
+        initialEditorSnapshot = snapshot;
+        $('editorSaveState').textContent = '草稿已保存 · ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        return true;
+      } catch (e) {
+        if (epoch === editorEpoch) $('editorSaveState').textContent = '自动保存未成功，请点击“存草稿”重试';
+        return false;
+      } finally { autosavePending = null; }
+    })();
+    return autosavePending;
   }
 
   function openEditor(rec, opts) {
     opts = opts || {};
     if (!isAdmin() && (!rec || rec.status !== 'published' || rec.visibility !== 'public')) return;
+    editorEpoch++;
     editing = rec || null;
     readOnly = !isAdmin() || opts.readOnly === true;
+    ['readerEyebrow', 'readerMeta'].forEach(function (id) { $(id).hidden = !readOnly; });
+    $('readerEditBtn').hidden = !readOnly || !isAdmin();
+    $('readerSummary').hidden = !readOnly || !rec || !rec.summary;
+    $('readerSummary').textContent = rec ? rec.summary || '' : '';
+    $('readerEyebrow').textContent = rec ? rec.category || arr(rec.tags)[0] || 'FIELD NOTE' : 'FIELD NOTE';
+    $('readerMeta').innerHTML = rec ? '<time>' + esc(AN.fmtDate(rec.updated_at || rec.created_at)) + ' 更新</time><span>约 ' + readingMinutes(rec.content) + ' 分钟阅读</span><span>' + countWords(rec.content) + ' 字</span>' : '';
+    $('editorSaveState').hidden = readOnly;
+    $('editorSaveState').textContent = rec && rec.status === 'published' ? '正在编辑已发布笔记，完成后点击“发布”保存更新' : '草稿会每 15 秒自动保存';
 
     $('edTitle').value = rec ? (rec.title || '') : '';
     $('edTitle').hidden = readOnly;
@@ -862,12 +937,11 @@
     if (!rec && !readOnly) setTimeout(function () { edBody().focus(); }, 60);
   }
 
-  // 同一入口：管理员编辑，访客直接阅读当前公开笔记。
+  // 先阅读，再由管理员明确进入编辑，避免打开笔记就误改正文。
   let pendingNew = false;
   function openExisting(x) {
     if (!x) return;
-    openEditor(x, { readOnly: !isAdmin() });
-    if (isAdmin()) setMode('edit');
+    openEditor(x, { readOnly: true });
     history.replaceState(null, '', '#n' + encodeURIComponent(x.id));
   }
   function openHashNote() {
@@ -1267,6 +1341,9 @@
   /* ---------------- 保存 / 发布 ---------------- */
 
   async function saveNote(publish) {
+    if (saveInProgress) return;
+    if (autosavePending) await autosavePending;
+    if (saveInProgress) return;
     if (readOnly || !isAdmin()) { AN.toast('只读模式不能保存', true); return; }
     if (!window.DOMPurify) { AN.toast('编辑组件加载失败，请刷新后再保存', true); return; }
     const db = AN.getDb();
@@ -1280,7 +1357,8 @@
 
     const btn = publish ? $('publishBtn') : $('saveDraftBtn');
     const old = btn.textContent;
-    btn.disabled = true; btn.textContent = '保存中…';
+    saveInProgress = true; stopAutosave();
+    $('publishBtn').disabled = true; $('saveDraftBtn').disabled = true; btn.textContent = '保存中…';
 
     const rec = {
       title: title,
@@ -1321,10 +1399,13 @@
       document.querySelectorAll('#notesTabs .tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === listTab); });
       renderView();
       show('list');
+      history.replaceState(null, '', location.pathname + location.search);
     } catch (e) {
       AN.toast('保存失败：' + (e && e.message ? e.message : e), true);
     } finally {
-      btn.disabled = false; btn.textContent = old;
+      saveInProgress = false;
+      $('publishBtn').disabled = false; $('saveDraftBtn').disabled = false; btn.textContent = old;
+      if (!$('editView').hidden && !readOnly) startAutosave();
     }
   }
 
@@ -1338,6 +1419,7 @@
     const { error } = await db.from('notes').delete().eq('id', target.id);
     if (error) { AN.toast('删除失败：' + (error.message || ''), true); return; }
     all = all.filter(function (n) { return String(n.id) !== String(target.id); });
+    NoteCache.set('notes', all);
     AN.toast('已删除');
     editing = null;
     history.replaceState(null, '', 'notes.html');
@@ -1460,7 +1542,19 @@
   /* ---------------- 事件绑定 ---------------- */
 
   function bind() {
-    $('noteSearch').addEventListener('input', renderView);
+    $('noteSearch').addEventListener('input', function () { updateSearchUrl(); renderView(); });
+    $('noteTopics').addEventListener('click', function (e) {
+      const button = e.target.closest('[data-topic]');
+      if (!button) return;
+      activeTopic = button.dataset.topic; selected.clear(); updateSearchUrl(); renderView();
+      const current = Array.from($('noteTopics').querySelectorAll('button')).find(function (b) { return b.dataset.topic === activeTopic; });
+      if (current) current.focus();
+    });
+    $('clearNoteFilters').addEventListener('click', function () {
+      $('noteSearch').value = ''; activeTopic = ''; updateSearchUrl(); renderView(); $('noteSearch').focus();
+    });
+    $('readerEditBtn').addEventListener('click', function () { if (isAdmin() && editing) { openEditor(editing, { readOnly: false }); setMode('edit'); } });
+    $('readerTop').addEventListener('click', function () { $('readerTitle').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
 
     // 视图切换：方块 / 列表 / 分栏
     $('viewSeg').addEventListener('click', function (e) {
@@ -1572,8 +1666,10 @@
       $('edTags').value = problem ? '题目复盘' : '算法整理';
       renderTagPicker(); updatePreview();
     });
-    $('noteList').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && e.target.classList.contains('note-card')) e.target.click();
+    [$('noteList'), $('boardView')].forEach(function (list) {
+      list.addEventListener('keydown', function (e) {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('note-card')) { e.preventDefault(); e.target.click(); }
+      });
     });
     $('newNoteBtn').addEventListener('click', function () {
       // 访客/只读模式没有发布权限：先弹登录门升级为管理员，登录成功后再开空白编辑器
@@ -1612,13 +1708,15 @@
       renderView();
     });
 
-    $('edBack').addEventListener('click', function () {
-      if (!readOnly && getHtml().trim() && !editing) {
-        if (!confirm('还没发布，确定离开吗？（内容会留在草稿箱）')) return;
+    $('edBack').addEventListener('click', async function () {
+      if (saveInProgress) { AN.toast('正在保存，请稍候'); return; }
+      if (!readOnly && editing && editing.status === 'published' && editorSnapshot() !== initialEditorSnapshot) {
+        if (!confirm('这篇已发布笔记的修改尚未保存。确定返回吗？')) return;
       }
-      stashAutosaveDraft(); // 兜底：离开前把半途内容存进草稿箱
-      history.replaceState(null, '', 'notes.html');
-      show('list');
+      const saved = await stashAutosaveDraft();
+      if (saved === false && !confirm('草稿暂时未能保存。仍要离开吗？')) return;
+      history.replaceState(null, '', location.pathname + location.search);
+      renderView(); show('list');
     });
 
     $('publishBtn').addEventListener('click', function () { saveNote(true); });
@@ -1789,11 +1887,17 @@
   /* ---------------- 启动 ---------------- */
 
   function start() {
+    const query = new URLSearchParams(location.search);
+    $('noteSearch').value = query.get('q') || '';
+    activeTopic = query.get('tag') || '';
     bind();
     renderNotesCache();
     window.whenAuthed(loadAll);
     window.addEventListener('hashchange', openHashNote);
-    window.addEventListener('beforeunload', function () {
+    window.addEventListener('beforeunload', function (e) {
+      if (isAdmin() && !$('editView').hidden && !readOnly && editorSnapshot() !== initialEditorSnapshot) {
+        e.preventDefault(); e.returnValue = '';
+      }
       if (isAdmin() && !$('editView').hidden && getHtml().trim() && !readOnly) { saveDraftLocal(); stashAutosaveDraft(); }
       reportVisit(Date.now() - visitStart, visitNoteId, visitNoteTitle);
     });
@@ -1805,10 +1909,14 @@
     }
   });
   window.addEventListener('an:session-reset', function () {
-    stopAutosave(); all = []; selected.clear(); editing = null; autosaveId = null; readOnly = true;
+    editorEpoch++; stopAutosave(); stopReaderOutline(); all = []; selected.clear(); editing = null; autosaveId = null; readOnly = true;
+    activeTopic = ''; saveInProgress = false;
     listTab = 'published';
-    ['edBody', 'edPreview', 'readerTitle', 'noteList', 'boardView'].forEach(function (id) { $(id).replaceChildren(); });
+    ['edBody', 'edPreview', 'readerTitle', 'readerMeta', 'readerSummary', 'readerEyebrow', 'readerToc', 'noteTopics', 'tagPickerBody', 'noteList', 'boardView'].forEach(function (id) { $(id).replaceChildren(); });
     ['edTitle', 'edSummary', 'edTags'].forEach(function (id) { $(id).value = ''; });
+    $('readerOutline').hidden = true;
+    $('notesResult').textContent = '正在读取笔记…';
+    $('publishedCount').textContent = '0'; $('draftCount').textContent = '0';
     $('notesTabs').hidden = true;
     document.querySelectorAll('#notesTabs .tab-btn').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === 'published'); });
     document.body.classList.remove('read-only');
