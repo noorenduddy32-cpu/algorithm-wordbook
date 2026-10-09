@@ -1,6 +1,8 @@
 // Web-standard hosting adapter. Database access rules are shared with the Node API.
 import cloud from '../api/_lib/cloud.js';
+import competitive from '../api/_lib/competitive.js';
 const { handleDb, cloudRequest } = cloud;
+const { fetchCompetitive, cleanHandle } = competitive;
 const assets = typeof __STATIC_ASSETS__ === 'undefined' ? {} : __STATIC_ASSETS__;
 const encoder = new TextEncoder();
 const SESSION = 'an_sess', MAX_AGE = 604800;
@@ -83,13 +85,17 @@ export async function handleRequest(request, env = {}) {
     return new Response(request.method === 'HEAD' ? null : content, { headers: { ...securityHeaders, 'Content-Type': asset.type, 'Cache-Control': 'public, max-age=0, must-revalidate' } });
   }
   const name = pathname.slice(5);
-  if (!['me', 'login', 'logout', 'visitor', 'db', 'ai', 'visits'].includes(name)) return json(404, { error: 'Not Found' });
-  const method = name === 'me' || (name === 'visits' && request.method === 'GET') ? 'GET' : 'POST';
+  if (!['me', 'login', 'logout', 'visitor', 'db', 'ai', 'visits', 'competitive'].includes(name)) return json(404, { error: 'Not Found' });
+  const method = name === 'me' || name === 'competitive' || (name === 'visits' && request.method === 'GET') ? 'GET' : 'POST';
   const denied = guard(request, method); if (denied) return denied;
   const role = await roleOf(request, env);
   const config = { endpoint: (env.CLOUD_ENDPOINT || 'https://algorithm-wordbook.app.workbuddy.host').replace(/\/$/, ''), key: env.CLOUD_KEY || '' };
   try {
     if (name === 'me') return json(200, { role });
+    if (name === 'competitive') {
+      if (!role) return json(401, { error: '请先输入访问密码' });
+      return json(200, await fetchCompetitive({ cf: cleanHandle(url.searchParams.get('cf')), atcoder: cleanHandle(url.searchParams.get('atcoder')) }));
+    }
     if (name === 'logout') return json(200, { role: null }, { 'Set-Cookie': cookie('', 0) });
     if (name === 'visitor') {
       if (role !== 'admin') return json(401, { error: '请先以管理员身份登录' });

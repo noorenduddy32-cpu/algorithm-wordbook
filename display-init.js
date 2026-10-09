@@ -3,11 +3,11 @@
   'use strict';
   var root = document.documentElement;
   var choice = 'system', size = 16;
-  var legacy = { glass: 'dark', ink: 'dark', 'glass-light': 'light', 'eye-green': 'eye' };
+  var legacy = { glass: 'aurora', ink: 'aurora', dark: 'aurora', 'glass-light': 'paper', light: 'paper', 'eye-green': 'paper', eye: 'paper' };
   try {
     choice = localStorage.getItem('wb_theme_v2') || 'system';
     choice = legacy[choice] || choice;
-    if (['system', 'light', 'dark', 'eye'].indexOf(choice) < 0) choice = 'system';
+    if (['system', 'aurora', 'paper', 'sunset'].indexOf(choice) < 0) choice = 'system';
     var saved = localStorage.getItem('wb_reading_size');
     if (saved !== null) size = Number(saved);
     else {
@@ -17,10 +17,10 @@
   } catch (e) { /* Preferences are optional in private browsing. */ }
   if (!Number.isFinite(size)) size = 16;
   size = Math.max(14, Math.min(20, size));
-  var theme = choice === 'system' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : choice;
+  var theme = choice === 'system' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'aurora' : 'paper') : choice;
   root.dataset.theme = theme;
   root.dataset.themeChoice = choice;
   root.style.setProperty('--content-font-size', size + 'px');
   root.style.setProperty('--content-scale', String(size / 16));
-  root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+  root.style.colorScheme = theme === 'aurora' || theme === 'sunset' ? 'dark' : 'light';
 })();

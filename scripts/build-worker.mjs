@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = JSON.parse(await readFile(path.join(root, 'public-files.json'), 'utf8'));
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
 const assets = {};
 for (const file of files) {
   const contents = await readFile(path.join(root, file));

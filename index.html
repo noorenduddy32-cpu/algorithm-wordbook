@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light" data-auth="pending">
+<html lang="zh-CN" data-theme="aurora" data-auth="pending">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,12 +17,12 @@
   <header id="topbar" class="topbar"></header>
   <main id="mainContent" class="workspace">
     <div class="workspace-top"><span>学习工作台</span><time id="todayLabel"></time></div>
-    <section class="welcome" aria-labelledby="homeTitle">
+    <section class="welcome command-hero" aria-labelledby="homeTitle">
       <div class="welcome-copy">
-        <p class="section-kicker">A NOTEBOOK IN PROGRESS</p>
-        <h1 id="homeTitle">把问题想清楚，<br>把思路<span>留下来。</span></h1>
-        <p class="welcome-sub">题面里的词，解题时的转折，值得再读的证明。<br>整理每次思考，慢慢长成自己的算法地图。</p>
-        <div class="welcome-actions"><a class="btn primary" href="notes.html">翻开题解笔记 <span aria-hidden="true">↗</span></a><a href="wordbook.html" class="quiet-link">复习题面词汇 →</a></div>
+        <p class="section-kicker" data-i18n="home.kicker">ICPC PREP COMMAND CENTER</p>
+        <h1 id="homeTitle" data-i18n="home.title">今天，把哪一步练得更扎实？</h1>
+        <p class="welcome-sub" data-i18n="home.subtitle">词汇、题解、比赛和刷题记录，汇成一张持续更新的备赛地图。</p>
+        <div class="welcome-actions"><a class="btn primary" href="notes.html" data-i18n="home.notes">打开算法文章</a><a href="wordbook.html" class="quiet-link" data-i18n="home.words">复习题面词汇</a></div>
         <p id="homeScope" class="scope-note">正在加载笔记本…</p>
       </div>
       <section class="algorithm-lab" aria-labelledby="labTitle">
@@ -33,6 +33,16 @@
         <p id="labStatus" class="lab-status" role="status" aria-live="polite"></p>
         <div class="lab-controls"><label for="labTarget">查找<select id="labTarget"><option value="42">42</option><option value="14">14</option><option value="3">3</option><option value="25">25（不在数组中）</option></select></label><button type="button" id="labReset" class="lab-reset" aria-label="重新开始二分查找" title="重新开始">↺</button><button type="button" id="labNext" class="btn primary">下一步 →</button></div>
       </section>
+    </section>
+    <section class="prep-grid" aria-label="ICPC 备赛面板">
+      <article class="content-panel platform-panel">
+        <div class="section-head prep-head"><div><p class="section-kicker">LIVE PRACTICE</p><h2 data-i18n="home.platforms">训练平台</h2><p data-i18n="home.platformsSub">公开数据会自动汇总；账号只保存在当前设备。</p></div><div class="prep-actions"><button id="refreshPlatforms" class="icon-btn" type="button" data-i18n="home.refresh">刷新数据</button><button id="openProfileSettings" class="btn ghost" type="button" data-admin data-i18n="home.configure">配置账号</button></div></div>
+        <div id="platformCards" class="platform-cards" aria-live="polite"></div>
+      </article>
+      <article class="content-panel contest-panel">
+        <div class="section-head prep-head"><div><p class="section-kicker">UPCOMING ROUNDS</p><h2 data-i18n="home.contests">近期比赛</h2><p data-i18n="home.contestsSub">来自 Codeforces 的实时公开赛程。</p></div><a href="https://atcoder.jp/contests/" target="_blank" rel="noopener">AtCoder</a></div>
+        <div id="contestList" class="contest-list"><p class="empty-state">正在读取赛程…</p></div>
+      </article>
     </section>
     <section class="notebook-overview" aria-label="笔记本概况">
       <a class="overview-item" href="notes.html"><span class="overview-icon" aria-hidden="true">⌘</span><span class="overview-copy">题解笔记<small>证明、实现与复盘</small></span><b id="entryNotes">—</b><span class="overview-unit">篇 ↗</span></a>
@@ -59,8 +69,20 @@
     </section>
     <footer class="page-foot"><span>算法手记 <span aria-hidden="true">/</span> 每一次理解，都算数。</span><span id="footTip">正在同步…</span></footer>
   </main>
+  <div class="modal" id="profileSettings" hidden>
+    <form class="modal-box profile-settings" id="profileSettingsForm">
+      <button class="modal-x" type="button" data-close="profileSettings" aria-label="关闭">×</button>
+      <p class="section-kicker">PUBLIC HANDLES</p><h2 data-i18n="home.settingsTitle">训练平台账号</h2>
+      <p class="muted" data-i18n="home.settingsHint">填写公开用户名后，首页会读取平台公开接口。洛谷目前只提供主页入口。</p>
+      <label>Codeforces<input id="profileCodeforces" autocomplete="off" maxlength="40"></label>
+      <label>AtCoder<input id="profileAtcoder" autocomplete="off" maxlength="40"></label>
+      <label>洛谷<input id="profileLuogu" autocomplete="off" maxlength="40"></label>
+      <div class="modal-actions"><button class="btn ghost" type="button" data-close="profileSettings" data-i18n="home.cancel">取消</button><button class="btn primary" type="submit" data-i18n="home.saveProfiles">保存并刷新</button></div>
+    </form>
+  </div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <script src="config.example.js"></script>
+  <script src="i18n.js"></script>
   <script src="common.js"></script>
   <script src="data-client.js"></script>
 <script src="api.js"></script>

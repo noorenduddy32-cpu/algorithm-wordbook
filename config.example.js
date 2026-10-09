@@ -4,5 +4,12 @@ window.APP_CONFIG = {
   dictUrl: "https://dictionary.cambridge.org/zhs/搜索/英语-汉语-简体/direct/?q=",
 
   /* 导出 Word 时的标题 */
-  docTitle: "算法手记"
+  docTitle: "算法手记",
+
+  /* 公开训练平台用户名。留空时管理员可在首页临时配置当前设备。 */
+  platforms: {
+    codeforces: "",
+    atcoder: "",
+    luogu: ""
+  }
 };

@@ -4,8 +4,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const PUBLIC_FILES = new Set(require('./public-files.json'));
-const API_NAMES = new Set(['login', 'logout', 'me', 'visitor', 'db', 'ai', 'visits']);
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png' };
+const API_NAMES = new Set(['login', 'logout', 'me', 'visitor', 'db', 'ai', 'visits', 'competitive']);
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
 function createServer() {
   return http.createServer(async function (req, res) {

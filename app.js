@@ -393,7 +393,7 @@
         if (error) throw error;
         if (!data || !data.length) throw new Error('没有权限修改该词条');
         await db.from('words').delete().eq('id', rec.id);
-        return 'merged';
+        return { kind: 'merged', row: data[0], removedId: rec.id };
       }
       const { data, error } = await db.from('words').update({
         word: rec.word, pos: rec.pos, meaning: rec.meaning,
@@ -402,7 +402,7 @@
       }).eq('id', rec.id).select();
       if (error) throw error;
       if (!data || !data.length) throw new Error('没有权限修改该词条');
-      return 'updated';
+      return { kind: 'updated', row: data[0] };
     }
 
     // 新词：先查重，重复则合并例句
@@ -419,17 +419,17 @@
       }).eq('id', found.id).select();
       if (error) throw error;
       if (!data || !data.length) throw new Error('没有权限修改该词条');
-      return 'merged';
+      return { kind: 'merged', row: data[0] };
     }
-    const { error } = await db.from('words').insert({
+    const { data, error } = await db.from('words').insert({
       word: rec.word, pos: rec.pos, meaning: rec.meaning,
       examples: rec.examples, note: rec.note
-    });
+    }).select();
     if (error) {
-      if (error.code === '23505') return 'merged';
+      if (error.code === '23505') return { kind: 'merged', row: null };
       throw error;
     }
-    return 'created';
+    return { kind: 'created', row: data && data[0] };
   }
 
   /* ---------------- 单词详情：读音 / 音标 / 派生 / 词根 ---------------- */
@@ -1279,8 +1279,15 @@
     try {
       const r = await upsert(rec);
       $('wordModal').hidden = true;
-      await loadWords();
-      toast(r === 'merged' ? '已存在该单词，例句已合并' : (r === 'created' ? '已添加：' + word : '已保存'));
+      if (r.removedId != null) all = all.filter(function (item) { return item.id !== r.removedId; });
+      if (r.row) {
+        r.row._r = Math.random(); if (!Array.isArray(r.row.examples)) r.row.examples = [];
+        const index = all.findIndex(function (item) { return item.id === r.row.id; });
+        if (index >= 0) all[index] = r.row; else all.push(r.row);
+        NoteCache.set('words', all.map(function (item) { const copy = Object.assign({}, item); delete copy._r; return copy; }));
+        render(); setStatus('已同步 ' + all.length + ' 个单词');
+      } else loadWords();
+      toast(r.kind === 'merged' ? '已存在该单词，例句已合并' : (r.kind === 'created' ? '已添加：' + word : '已保存'));
     } catch (err) {
       toast('保存失败：' + (err && err.message ? err.message : err), true);
     } finally {
@@ -1296,7 +1303,9 @@
       const { data, error } = await db.from('words').delete().eq('id', id).select();
       if (error) throw error;
       if (!data || !data.length) throw new Error('没有权限或词条不存在');
-      await loadWords();
+      all = all.filter(function (item) { return item.id !== id; });
+      NoteCache.set('words', all.map(function (item) { const copy = Object.assign({}, item); delete copy._r; return copy; }));
+      render(); setStatus('已同步 ' + all.length + ' 个单词');
       toast('已删除：' + w.word);
     } catch (err) {
       toast('删除失败：' + (err && err.message ? err.message : err), true);

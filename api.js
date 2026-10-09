@@ -19,13 +19,13 @@
 
   window.NoteCache = {
     get: function (name) {
-      // 访客始终读取服务端当前公开数据，避免展示后来转为私密的旧缓存。
-      if (Auth.role !== 'admin') return null;
-      try { return JSON.parse(sessionStorage.getItem('an_cache:admin:' + name) || 'null'); } catch (e) { return null; }
+      // 词汇没有私密状态，可为访客缓存；笔记缓存仍仅限已验证管理员。
+      if (!Auth.role || (Auth.role !== 'admin' && name !== 'words')) return null;
+      try { return JSON.parse(sessionStorage.getItem('an_cache:' + Auth.role + ':' + name) || 'null'); } catch (e) { return null; }
     },
     set: function (name, data) {
-      if (Auth.role !== 'admin') return;
-      try { sessionStorage.setItem('an_cache:admin:' + name, JSON.stringify(data)); } catch (e) {}
+      if (!Auth.role || (Auth.role !== 'admin' && name !== 'words')) return;
+      try { sessionStorage.setItem('an_cache:' + Auth.role + ':' + name, JSON.stringify(data)); } catch (e) {}
     }
   };
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light" data-auth="pending">
+<html lang="zh-CN" data-theme="aurora" data-auth="pending">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
 <script src="display-init.js"></script>
 <title>题面词汇 · 算法竞赛笔记本</title>
 <meta name="description" content="从 Codeforces 与 ICPC 原题积累英文词汇，用例句理解，用自测记住。">
-<link rel="icon" href="assets/logo.png">
+<link rel="icon" href="assets/mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -21,32 +21,32 @@
 
 <!-- 会随滚动藏起来的顶部区域：统计栏 + 工具栏 -->
 <section class="page-intro">
-  <p class="section-kicker">VOCABULARY</p>
-  <h1>题面词汇</h1>
-  <p>记下题面中的陌生词，在原题语境中理解和复习。</p>
+  <p class="section-kicker" data-i18n="words.kicker">CONTEST VOCABULARY</p>
+  <h1 data-i18n="words.title">题面词汇</h1>
+  <p data-i18n="words.subtitle">记下题面中的陌生词，在原题语境中理解和复习。</p>
 </section>
 <div id="chrome" class="chrome">
 
 <section class="stats-bar">
-  <div class="stat"><b id="statWords">0</b><span>单词</span></div>
-  <div class="stat"><b id="statEx">0</b><span>例句</span></div>
-  <div class="stat"><b id="statNew">0</b><span>本月新增</span></div>
-  <div class="stat"><b id="statUpdate">-</b><span>最近更新</span></div>
+  <div class="stat"><b id="statWords">0</b><span data-i18n="words.total">单词</span></div>
+  <div class="stat"><b id="statEx">0</b><span data-i18n="words.examples">例句</span></div>
+  <div class="stat"><b id="statNew">0</b><span data-i18n="words.month">本月新增</span></div>
+  <div class="stat"><b id="statUpdate">-</b><span data-i18n="words.updated">最近更新</span></div>
   <div class="stat-hint" id="statusText">正在连接词库…</div>
 </section>
 
 <div class="toolbar">
 <div class="toolbar-main">
   <div class="search-wrap">
-    <input id="searchInput" type="search" aria-label="搜索词汇" placeholder="搜索单词 / 中文 / 例句" autocomplete="off">
+    <input id="searchInput" type="search" aria-label="搜索词汇" placeholder="搜索单词 / 中文 / 例句" data-i18n-placeholder="words.search" autocomplete="off">
   </div>
-  <label class="check"><input type="checkbox" id="onlyWeak"> 只看生词</label>
+  <label class="check"><input type="checkbox" id="onlyWeak"> <span data-i18n="words.onlyWeak">只看生词</span></label>
   <div class="tabs" id="viewTabs">
-    <button class="tab active" data-view="list">词汇列表</button>
-    <button class="tab" data-view="recite">词汇自测</button>
+    <button class="tab active" data-view="list" data-i18n="words.list">词汇列表</button>
+    <button class="tab" data-view="recite" data-i18n="words.quiz">词汇自测</button>
   </div>
   <div class="btn-split" id="addSplit" data-admin>
-    <button id="addBtn" class="btn primary split-main" type="button" title="添加单词">+ 添加单词</button>
+    <button id="addBtn" class="btn primary split-main" type="button" title="添加单词"><span aria-hidden="true">+</span> <span data-i18n="words.add">添加单词</span></button>
     <button id="addSplitToggle" class="btn primary split-arrow" type="button" title="选择添加方式" aria-haspopup="true" aria-expanded="false">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
     </button>
@@ -430,6 +430,7 @@
 
 <script src="vendor/jszip.min.js"></script>
 <script src="config.example.js"></script>
+<script src="i18n.js"></script>
 <script src="docx.js"></script>
 <script src="common.js"></script>
 <script src="data-client.js"></script>

@@ -14,7 +14,7 @@
     currentNotes = visibleNotes(notes);
     setText('entryWords', words.length);
     setText('entryNotes', currentNotes.length);
-    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '公开阅读 · 无需登录，随时翻阅。');
+    setText('homeScope', Auth.role === 'admin' ? '管理员视角 · 包含私密笔记与草稿' : '访客视角 · 已通过访问密码验证');
     setText('footTip', Auth.role === 'admin' ? '管理全部积累' : '公开分享 · 持续积累');
     renderRecent();
     renderYearOptions();
@@ -127,5 +127,85 @@
     $('homeQuery').value = $('homeQuery').value.trim();
     if (!$('homeQuery').value) { event.preventDefault(); $('homeQuery').focus(); }
   });
-  window.whenAuthed(loadStats);
+
+  const PROFILE_KEY = 'an_platform_profiles_v1', COMPETITIVE_CACHE = 'an_competitive_cache_v1';
+  let competitiveData = null;
+  function labels(key) { return window.ANI18n ? ANI18n.t(key) : key; }
+  function readProfiles() {
+    const base = Object.assign({ codeforces: '', atcoder: '', luogu: '' }, (AN.cfg && AN.cfg.platforms) || {});
+    try { return Object.assign(base, JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}')); } catch (e) { return base; }
+  }
+  function safeHandle(value) { value = String(value || '').trim(); return /^[A-Za-z0-9_.-]{1,40}$/.test(value) ? value : ''; }
+  function platformUrl(name, handle) {
+    if (name === 'codeforces') return handle ? 'https://codeforces.com/profile/' + encodeURIComponent(handle) : 'https://codeforces.com/';
+    if (name === 'atcoder') return handle ? 'https://atcoder.jp/users/' + encodeURIComponent(handle) : 'https://atcoder.jp/';
+    return handle ? 'https://www.luogu.com.cn/user/' + encodeURIComponent(handle) : 'https://www.luogu.com.cn/';
+  }
+  function renderPlatforms(data) {
+    const profiles = readProfiles();
+    const defs = [
+      { key: 'codeforces', name: 'Codeforces', color: '#4da6ff' },
+      { key: 'atcoder', name: 'AtCoder', color: '#e4a853' },
+      { key: 'luogu', name: '洛谷', color: '#34c58d' }
+    ];
+    $('platformCards').innerHTML = defs.map(function (def) {
+      const handle = safeHandle(profiles[def.key]);
+      const stats = data && data[def.key];
+      const today = stats ? stats.todayAccepted : '—';
+      const accuracy = stats ? stats.acceptance + '%' : '—';
+      const extra = stats && def.key === 'codeforces' && stats.rating ? ' · rating ' + stats.rating : '';
+      return '<article class="platform-card" style="--platform-color:' + def.color + '">' +
+        '<a class="platform-name" href="' + platformUrl(def.key, handle) + '" target="_blank" rel="noopener"><i></i><span>' + def.name + '<small class="platform-handle">' + esc(handle ? '@' + handle + extra : labels('home.unconfigured')) + '</small></span></a>' +
+        '<div class="platform-metrics"><div class="platform-metric"><b>' + today + '</b><span>' + labels('home.today') + '</span></div><div class="platform-metric"><b>' + accuracy + '</b><span>' + labels('home.accuracy') + '</span></div></div>' +
+        '<a class="platform-link" href="' + platformUrl(def.key, handle) + '" target="_blank" rel="noopener">' + (handle ? labels('home.live') : labels('home.configure')) + '</a></article>';
+    }).join('');
+  }
+  function renderContests(rows) {
+    rows = Array.isArray(rows) ? rows : [];
+    $('contestList').innerHTML = rows.length ? rows.slice(0, 5).map(function (contest) {
+      const date = new Date(contest.startTimeSeconds * 1000);
+      const md = new Intl.DateTimeFormat(ANI18n && ANI18n.language === 'en' ? 'en' : 'zh-CN', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' }).format(date);
+      const time = new Intl.DateTimeFormat(ANI18n && ANI18n.language === 'en' ? 'en' : 'zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(date);
+      const hours = Math.round(contest.durationSeconds / 360) / 10;
+      return '<a class="contest-item" href="' + esc(contest.url) + '" target="_blank" rel="noopener"><span class="contest-date">' + esc(md) + '<br>' + esc(time) + '</span><span class="contest-copy"><b>' + esc(contest.name) + '</b><span>Codeforces · UTC+8</span></span><span class="contest-duration">' + hours + 'h</span></a>';
+    }).join('') : '<p class="empty-state">' + labels('home.noContest') + '</p>';
+  }
+  async function loadCompetitive(force) {
+    if (!force) {
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(COMPETITIVE_CACHE) || 'null');
+        if (cached && Date.now() - cached.time < 600000) { competitiveData = cached.data; renderPlatforms(competitiveData); renderContests(competitiveData.contests); }
+      } catch (e) {}
+    }
+    const profiles = readProfiles();
+    try {
+      const query = new URLSearchParams({ cf: safeHandle(profiles.codeforces), atcoder: safeHandle(profiles.atcoder) });
+      const response = await ANRequest('/api/competitive?' + query.toString(), { credentials: 'include', cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      competitiveData = await response.json();
+      sessionStorage.setItem(COMPETITIVE_CACHE, JSON.stringify({ time: Date.now(), data: competitiveData }));
+      renderPlatforms(competitiveData); renderContests(competitiveData.contests);
+    } catch (e) {
+      if (!competitiveData) { renderPlatforms(null); renderContests([]); }
+    }
+  }
+  function openProfiles() {
+    const profiles = readProfiles();
+    $('profileCodeforces').value = profiles.codeforces || '';
+    $('profileAtcoder').value = profiles.atcoder || '';
+    $('profileLuogu').value = profiles.luogu || '';
+    $('profileSettings').hidden = false; $('profileCodeforces').focus();
+  }
+  $('openProfileSettings').addEventListener('click', openProfiles);
+  $('refreshPlatforms').addEventListener('click', function () { loadCompetitive(true); });
+  document.querySelectorAll('[data-close="profileSettings"]').forEach(function (button) { button.addEventListener('click', function () { $('profileSettings').hidden = true; }); });
+  $('profileSettingsForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const value = { codeforces: safeHandle($('profileCodeforces').value), atcoder: safeHandle($('profileAtcoder').value), luogu: safeHandle($('profileLuogu').value) };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(value));
+    sessionStorage.removeItem(COMPETITIVE_CACHE); $('profileSettings').hidden = true; loadCompetitive(true);
+  });
+  window.addEventListener('an:language', function () { renderPlatforms(competitiveData); renderContests(competitiveData && competitiveData.contests); });
+  renderPlatforms(null);
+  window.whenAuthed(function () { loadStats(); loadCompetitive(false); });
 })();
