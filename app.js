@@ -27,7 +27,8 @@
       navCollapsed: !!o.navCollapsed,
       sortDir: o.sortDir === 'asc' ? 'asc' : 'desc',
       cols: o.cols || 'auto',
-      autoHide: o.autoHide === false ? false : true
+      autoHide: o.autoHide === true,
+      density: o.density === 'compact' ? 'compact' : 'comfortable'
     };
   }
   let view = loadView();
@@ -35,6 +36,11 @@
 
   let all = [];
   let filtered = [];
+  const selectedWords = new Set();
+  let visibleLimit = 96;
+  let loadGeneration = 0;
+  let mutationGeneration = 0;
+  let wordsLoaded = false;
   let unlocked = false;
   let editingId = null;
   let addMode = (localStorage.getItem(LS_ADD_MODE) || 'pick');
@@ -325,7 +331,8 @@
     refreshEditUI();
     window.whenAuthed(function () { renderWordsCache(); loadWords(); });
     window.addEventListener('an:session-reset', function () {
-      unlocked = false; all = []; filtered = []; editingId = null;
+      unlocked = false; all = []; filtered = []; editingId = null; wordsLoaded = false;
+      selectedWords.clear(); loadGeneration++; mutationGeneration++;
       closeModals();
       $('cardGrid').replaceChildren();
       $('statWords').textContent = '—'; $('statEx').textContent = '—';
@@ -351,7 +358,9 @@
 
   async function loadWords() {
     const role = Auth.role;
-    setStatus('正在连接词库…');
+    const generation = ++loadGeneration;
+    const mutationAtStart = mutationGeneration;
+    setStatus(all.length ? '已显示缓存，正在同步…' : '正在连接词库…');
     if (!db) {
       setStatus('词库暂时不可用，请刷新重试');
       toast('云端未连接，无法加载词库（请检查网络后刷新）', true);
@@ -359,8 +368,10 @@
     }
     try {
       const { data, error } = await db.from('words').select('*').order('created_at', { ascending: true });
-      if (Auth.role !== role) return;
+      if (Auth.role !== role || generation !== loadGeneration) return;
       if (error) throw error;
+      if (mutationAtStart !== mutationGeneration) return;
+      wordsLoaded = true;
       all = (data || []).map(function (w) {
         w._r = Math.random();
         if (!Array.isArray(w.examples)) w.examples = [];
@@ -375,11 +386,33 @@
     }
   }
 
+  function rememberWord(result, repaint) {
+    if (result.removedId != null) all = all.filter(function (item) { return item.id !== result.removedId; });
+    if (result.row) {
+      const row = Object.assign({}, result.row, { _r: Math.random() });
+      if (!Array.isArray(row.examples)) row.examples = [];
+      const index = all.findIndex(function (item) { return item.id === row.id; });
+      if (index >= 0) all[index] = row; else all.push(row);
+    }
+    mutationGeneration++;
+    NoteCache.set('words', all.map(function (item) { const row = Object.assign({}, item); delete row._r; return row; }));
+    if (repaint !== false) { render(); setStatus('已同步 ' + all.length + ' 个单词'); }
+  }
+
   // 落盘到云端数据库；返回 'created' / 'updated' / 'merged'
   async function upsert(rec) {
+    const role = Auth.role;
+    if (role !== 'admin') throw new Error('管理员登录后才能保存单词');
+    // A successfully loaded library already has the duplicate index. New words
+    // need one write; an actual unique conflict is resolved against the server.
+    let found = all.find(function (item) { return normWord(item.word) === rec.word; }) || null;
+    if (!wordsLoaded || (found && (rec.id == null || found.id !== rec.id))) {
+      const checked = await db.from('words').select('*').eq('word', rec.word).maybeSingle();
+      if (checked.error) throw checked.error;
+      found = checked.data;
+    }
     // 编辑已有条目
     if (rec.id != null) {
-      const { data: found } = await db.from('words').select('*').eq('word', rec.word).maybeSingle();
       if (found && found.id !== rec.id) {
         // 改成的单词已存在：合并进已有词条，删掉旧行
         const merged = dedupe((found.examples || []).concat(rec.examples));
@@ -392,7 +425,9 @@
         }).eq('id', found.id).select();
         if (error) throw error;
         if (!data || !data.length) throw new Error('没有权限修改该词条');
-        await db.from('words').delete().eq('id', rec.id);
+        const deleted = await db.from('words').delete().eq('id', rec.id).select();
+        if (deleted.error) throw deleted.error;
+        if (!deleted.data || !deleted.data.length) throw new Error('已合并例句，但旧词条未能删除，请刷新后重试');
         return { kind: 'merged', row: data[0], removedId: rec.id };
       }
       const { data, error } = await db.from('words').update({
@@ -406,8 +441,6 @@
     }
 
     // 新词：先查重，重复则合并例句
-    const { data: found, error: e1 } = await db.from('words').select('*').eq('word', rec.word).maybeSingle();
-    if (e1) throw e1;
     if (found) {
       const merged = dedupe((found.examples || []).concat(rec.examples));
       const { data, error } = await db.from('words').update({
@@ -426,7 +459,13 @@
       examples: rec.examples, note: rec.note
     }).select();
     if (error) {
-      if (error.code === '23505') return { kind: 'merged', row: null };
+      if (/23505|duplicate|unique|重复|已存在/i.test(error.code + ' ' + error.message)) {
+        const latest = await db.from('words').select('*').eq('word', rec.word).maybeSingle();
+        if (latest.error) throw latest.error;
+        if (!latest.data) throw error;
+        rememberWord({ row: latest.data }, false);
+        return upsert(rec);
+      }
       throw error;
     }
     return { kind: 'created', row: data && data[0] };
@@ -949,7 +988,7 @@
     const s = dir === 'asc' ? -1 : 1;
     const arr = list.slice();
     if (mode === 'alpha') {
-      arr.sort(function (a, b) { return s * String(a.word).localeCompare(String(b.word), 'en'); });
+      arr.sort(function (a, b) { return -s * String(a.word).localeCompare(String(b.word), 'en'); });
     } else if (mode === 'freq') {
       arr.sort(function (a, b) {
         const d = freqOf(b) - freqOf(a);
@@ -973,6 +1012,9 @@
     document.body.classList.toggle('hide-examples', view.hideExamples);
     document.body.classList.toggle('nav-collapsed', view.navCollapsed);
     document.body.classList.toggle('auto-hide', view.autoHide);
+    document.body.dataset.wordDensity = view.density;
+    if ($('densitySelect')) $('densitySelect').value = view.density;
+    if ($('autoHideChrome')) $('autoHideChrome').checked = view.autoHide;
     const seg = $('layoutSeg');
     Array.prototype.forEach.call(seg.querySelectorAll('.seg-btn'), function (b) {
       b.classList.toggle('active', b.dataset.layout === view.layout);
@@ -1182,8 +1224,17 @@
 
   function renderCards() {
     const grid = $('cardGrid');
-    grid.innerHTML = filtered.map(cardHtml).join('');
+    grid.innerHTML = filtered.slice(0, visibleLimit).map(cardHtml).join('');
     $('emptyState').hidden = filtered.length > 0;
+    if ($('resultCount')) $('resultCount').textContent = filtered.length + ' 个单词' + (selectedWords.size ? ' · 已选 ' + selectedWords.size : '');
+    if ($('loadMoreWords')) { $('loadMoreWords').hidden = filtered.length <= visibleLimit; $('loadMoreWords').textContent = '继续显示 ' + Math.min(96, filtered.length - visibleLimit) + ' 个单词'; }
+    if ($('exportSelectedBtn')) $('exportSelectedBtn').hidden = !selectedWords.size;
+    if ($('clearSelectionBtn')) $('clearSelectionBtn').hidden = !selectedWords.size;
+    if ($('selectAllWords')) {
+      const count = filtered.filter(function (word) { return selectedWords.has(String(word.id)); }).length;
+      $('selectAllWords').checked = filtered.length > 0 && count === filtered.length;
+      $('selectAllWords').indeterminate = count > 0 && count < filtered.length;
+    }
   }
 
     // 方块模式下的行结构（配合 styles.css 里 body.layout-grid .card 的规则）：
@@ -1215,7 +1266,8 @@
       esc(w.word) + '</button>' +
       '<button class="mini-speak" data-say="' + esc(w.word) + '" title="朗读 ' + esc(w.word) + '">' + SPEAK_ICON + '</button>';
 
-    return '<article class="card" data-id="' + w.id + '">' +
+    return '<article class="card' + (selectedWords.has(String(w.id)) ? ' is-selected' : '') + '" data-id="' + w.id + '">' +
+      '<label class="word-select"><input type="checkbox" data-select-word="' + w.id + '" aria-label="选择 ' + esc(w.word) + '"' + (selectedWords.has(String(w.id)) ? ' checked' : '') + '></label>' +
       '<div class="card-head"><span class="word-wrap">' + head + '</span></div>' +
       '<div class="zh-line">' +
       (w.pos ? '<span class="pos">' + esc(w.pos) + '</span>' : '') +
@@ -1276,22 +1328,18 @@
     };
     const btn = $('wordForm').querySelector('button[type=submit]');
     btn.disabled = true;
+    const buttonText = btn.textContent;
+    btn.textContent = '正在保存…';
     try {
       const r = await upsert(rec);
       $('wordModal').hidden = true;
-      if (r.removedId != null) all = all.filter(function (item) { return item.id !== r.removedId; });
-      if (r.row) {
-        r.row._r = Math.random(); if (!Array.isArray(r.row.examples)) r.row.examples = [];
-        const index = all.findIndex(function (item) { return item.id === r.row.id; });
-        if (index >= 0) all[index] = r.row; else all.push(r.row);
-        NoteCache.set('words', all.map(function (item) { const copy = Object.assign({}, item); delete copy._r; return copy; }));
-        render(); setStatus('已同步 ' + all.length + ' 个单词');
-      } else loadWords();
+      if (r.row) rememberWord(r); else loadWords();
       toast(r.kind === 'merged' ? '已存在该单词，例句已合并' : (r.kind === 'created' ? '已添加：' + word : '已保存'));
     } catch (err) {
       toast('保存失败：' + (err && err.message ? err.message : err), true);
     } finally {
       btn.disabled = false;
+      btn.textContent = buttonText;
     }
   }
 
@@ -1304,6 +1352,7 @@
       if (error) throw error;
       if (!data || !data.length) throw new Error('没有权限或词条不存在');
       all = all.filter(function (item) { return item.id !== id; });
+      selectedWords.delete(String(id)); mutationGeneration++;
       NoteCache.set('words', all.map(function (item) { const copy = Object.assign({}, item); delete copy._r; return copy; }));
       render(); setStatus('已同步 ' + all.length + ' 个单词');
       toast('已删除：' + w.word);
@@ -1314,39 +1363,66 @@
 
   /* ---------------- 批量 / 导入导出 ---------------- */
 
+  async function saveRecords(records) {
+    const groups = new Map();
+    records.forEach(function (record) {
+      const word = normWord(record.word); if (!word) return;
+      const previous = groups.get(word);
+      groups.set(word, Object.assign({}, previous, record, {
+        word: word,
+        pos: record.pos || (previous && previous.pos) || '',
+        meaning: record.meaning || (previous && previous.meaning) || '',
+        note: record.note || (previous && previous.note) || '',
+        examples: dedupe((previous ? previous.examples : []).concat(record.examples || []))
+      }));
+    });
+    const queue = Array.from(groups.values());
+    const result = { created: 0, merged: 0, failed: [], completed: 0 };
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(3, queue.length) }, async function () {
+      while (next < queue.length) {
+        const record = queue[next++];
+        try {
+          const saved = await upsert(record);
+          rememberWord(saved, false);
+          result[saved.kind === 'created' ? 'created' : 'merged']++;
+        } catch (error) { result.failed.push({ record: record, error: error.message || String(error) }); }
+        result.completed++;
+        setStatus('正在保存 ' + result.completed + ' / ' + queue.length);
+      }
+    }));
+    render(); setStatus('已同步 ' + all.length + ' 个单词');
+    return result;
+  }
+
   async function onBatch() {
     if (!requireUnlock('批量添加')) return;
     const text = $('batchText').value;
     const lines = text.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
     if (!lines.length) { toast('没有内容', true); return; }
-    let created = 0, merged = 0, failed = 0;
+    const records = [];
     for (const line of lines) {
       const parts = line.split(/\s*\|\s*|\t+/).map(function (s) { return s.trim(); });
       const word = normWord(parts[0]);
-      if (!word) { failed++; continue; }
+      if (!word) continue;
       const exRaw = parts[3] || '';
       const examples = exRaw.split(/\\\\|\s*;\s*/).map(function (s) { return s.trim(); }).filter(Boolean);
-      try {
-        const r = await upsert({
-          word: word, pos: parts[1] || '', meaning: parts[2] || '', examples: examples,
-          note: parts[4] || ''
-        });
-        if (r === 'created') created++; else merged++;
-      } catch (err) { failed++; }
+      records.push({ word: word, pos: parts[1] || '', meaning: parts[2] || '', examples: examples, note: parts[4] || '' });
     }
-    $('batchModal').hidden = true;
+    $('batchGo').disabled = true; $('batchGo').textContent = '正在导入…';
     try {
-      await loadWords();
-      toast('新增 ' + created + ' 条，合并 ' + merged + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''));
+      const result = await saveRecords(records);
+      $('batchModal').hidden = !result.failed.length;
+      if (result.failed.length) $('batchText').value = result.failed.map(function (item) { const row = item.record; return [row.word, row.pos, row.meaning, row.examples.join(' \\\\ '), row.note].join(' | '); }).join('\n');
+      toast('新增 ' + result.created + ' 条，合并 ' + result.merged + ' 条' + (result.failed.length ? '；' + result.failed.length + ' 条未保存，已保留以便重试：' + result.failed[0].error : ''), !!result.failed.length);
     } catch (err) {
       toast('保存失败：' + (err && err.message ? err.message : err), true);
-    }
+    } finally { $('batchGo').disabled = false; $('batchGo').textContent = '导入'; }
   }
 
   function exportScopeList() {
     const scope = $('exScope').value;
-    let list = scope === 'all' ? all.slice() : (scope === 'weak' ? all.filter(isWeak) : filtered.slice());
-    if (!list.length) list = all.slice();
+    let list = scope === 'selected' ? all.filter(function (word) { return selectedWords.has(String(word.id)); }) : scope === 'all' ? all.slice() : (scope === 'weak' ? all.filter(isWeak) : filtered.slice());
     return sortList(list, $('exSort').value, $('exDir').value);
   }
 
@@ -1395,6 +1471,7 @@
     const btn = $('exportForm').querySelector('button[type=submit]');
     btn.disabled = true;
     try {
+      await loadZip();
       const blob = await window.DocxExport.exportDocx(list, opts);
       download(blob, fileName(opts.columns));
       $('exportModal').hidden = true;
@@ -1404,6 +1481,19 @@
     } finally {
       btn.disabled = false;
     }
+  }
+
+  let zipReady;
+  function loadZip() {
+    if (window.JSZip) return Promise.resolve();
+    if (zipReady) return zipReady;
+    zipReady = new Promise(function (resolve, reject) {
+      const script = document.createElement('script'); script.src = 'vendor/jszip.min.js';
+      script.onload = resolve;
+      script.onerror = function () { script.remove(); zipReady = null; reject(new Error('Word 导出组件加载失败，请重试')); };
+      document.head.appendChild(script);
+    });
+    return zipReady;
   }
 
   function nowStr() {
@@ -1437,24 +1527,23 @@
       data = JSON.parse(await file.text());
     } catch (err) { toast('JSON 解析失败', true); return; }
     if (!Array.isArray(data)) { toast('格式不对，应为数组', true); return; }
-    let created = 0, merged = 0, failed = 0;
+    const records = [];
     for (const it of data) {
+      if (!it || typeof it !== 'object') continue;
       const word = normWord(it.word || it.spelling);
-      if (!word) { failed++; continue; }
-      try {
-        const r = await upsert({
+      if (!word) continue;
+      records.push({
           word: word,
           pos: it.pos || '',
           meaning: it.meaning || it.cn || '',
           examples: Array.isArray(it.examples) ? it.examples : splitExamples(it.example || ''),
           note: it.note || ''
-        });
-        if (r === 'created') created++; else merged++;
-      } catch (err) { failed++; }
+      });
     }
     try {
-      await loadWords();
-      toast('导入完成：新增 ' + created + '，合并 ' + merged + (failed ? '，失败 ' + failed : ''));
+      const result = await saveRecords(records);
+      if (result.failed.length) download(new Blob([JSON.stringify(result.failed.map(function (item) { return item.record; }), null, 2)], { type: 'application/json' }), 'wordbook-import-retry.json');
+      toast('导入完成：新增 ' + result.created + '，合并 ' + result.merged + (result.failed.length ? '；失败 ' + result.failed.length + ' 条已下载，保留后可重新导入：' + result.failed[0].error : ''), !!result.failed.length);
     } catch (err) {
       toast('保存失败：' + (err && err.message ? err.message : err), true);
     }
@@ -1504,7 +1593,7 @@
     const box = $('pickTokens');
     box.innerHTML = pickTokens.map(function (t, i) {
       const cls = 'chip' + (t.on ? ' on' : '') + (t.known ? ' known' : '');
-      return '<span class="' + cls + '" data-i="' + i + '" title="' + (t.known ? '词库已收录，加入会合并例句' : '点击选中') + '">' + esc(t.w) + '</span>';
+      return '<button type="button" class="' + cls + '" data-i="' + i + '" aria-pressed="' + t.on + '" title="' + (t.known ? '词库已收录，加入会合并例句' : '点击选中') + '">' + esc(t.w) + '</button>';
     }).join('');
     const n = pickTokens.filter(function (t) { return t.on; }).length;
     $('pickCount').textContent = '已选 ' + n + ' 个';
@@ -1667,7 +1756,7 @@
       const warn = inflectionHint(r.word) ? ' warn' : '';
       return '<div class="preview-row" data-i="' + i + '">' +
         '<input type="checkbox"' + (r.on ? ' checked' : '') + ' data-f="on">' +
-        '<span class="base-label' + warn + '"' + (warn ? ' title="可能不是原形"' : '') + '>' + esc(r.word) + '</span>' +
+        '<input class="base-label' + warn + '" data-f="word" aria-label="单词原形" value="' + esc(r.word) + '"' + (warn ? ' title="可能不是原形，可修改"' : '') + '>' +
         '<input data-f="pos" value="' + esc(r.pos) + '" placeholder="n.">' +
         '<input data-f="meaning" value="' + esc(r.meaning) + '" placeholder="中文">' +
         '<input data-f="note" value="' + esc(r.note) + '" placeholder="可选">' +
@@ -1682,28 +1771,17 @@
     if (!unlocked) { requireUnlock('加入单词'); return; }
     const btn = $('pickSave');
     btn.disabled = true;
-    let created = 0, merged = 0, failed = 0;
-    for (const r of pickRows) {
-      if (!r.on) continue;
-      const w = normWord(r.word);
-      if (!w) continue;
-      try {
-        const res = await upsert({
-          word: w, pos: r.pos.trim(), meaning: r.meaning.trim(),
-          examples: r.example ? [r.example] : [], note: r.note.trim()
-        });
-        if (res === 'created') created++; else merged++;
-      } catch (err) { failed++; }
-    }
     try {
-      btn.disabled = false;
-      await loadWords();
-      toast('新增 ' + created + ' 条，合并 ' + merged + ' 条' + (failed ? '，失败 ' + failed + ' 条' : ''));
-      closeModals();
+      const records = pickRows.filter(function (row) { return row.on && normWord(row.word); }).map(function (row) { return { word: normWord(row.word), pos: row.pos.trim(), meaning: row.meaning.trim(), examples: row.example ? [row.example] : [], note: row.note.trim() }; });
+      const result = await saveRecords(records);
+      toast('新增 ' + result.created + ' 条，合并 ' + result.merged + ' 条' + (result.failed.length ? '；' + result.failed.length + ' 条未保存：' + result.failed[0].error : ''), !!result.failed.length);
+      if (result.failed.length) {
+        pickRows.forEach(function (row) { row.on = result.failed.some(function (item) { return item.record.word === normWord(row.word); }); });
+        renderPickPreview();
+      } else closeModals();
     } catch (err) {
-      btn.disabled = false;
       toast('保存失败：' + (err && err.message ? err.message : err), true);
-    }
+    } finally { btn.disabled = false; }
   }
 
   /* ---------------- 背诵 ---------------- */
@@ -1716,7 +1794,6 @@
     if (scope === 'filtered') list = filtered.slice();
     else if (scope === 'weak') list = all.filter(isWeak);
     else list = all.slice();
-    if (!list.length) list = all.slice();
     if ($('recOrder').value === 'random') {
       list.sort(function () { return Math.random() - 0.5; });
     }
@@ -1731,10 +1808,13 @@
     $('recBar').style.width = rec.queue.length ? (rec.i / rec.queue.length * 100) + '%' : '0%';
     $('recKnownCount').textContent = rec.k;
     $('recUnknownCount').textContent = rec.u;
+    const spelling = $('recDir').value === 'spell';
+    if ($('recSpelling')) $('recSpelling').hidden = !spelling || !w || rec.revealed;
+    if ($('recAnswer') && !rec.revealed) { $('recAnswer').value = ''; $('recAnswer').readOnly = false; $('recFeedback').textContent = ''; }
 
     if (!w) {
       $('recWord').textContent = '背完了';
-      $('recPos2').textContent = '点「重新开始」再来一轮';
+      $('recPos2').textContent = rec.queue.length ? '点「重新开始」再来一轮' : '当前范围没有单词，请换一个复习范围';
       $('recBack').hidden = true;
       $('recReveal').hidden = true;
       $('recJudge').hidden = true;
@@ -1778,6 +1858,18 @@
     if (!rec.revealed) { rec.revealed = true; renderRec(); }
   }
 
+  function checkSpelling() {
+    const word = rec.queue[rec.i]; if (!word) return;
+    const answer = normWord($('recAnswer').value);
+    if (!answer) { $('recFeedback').textContent = '先试着写出单词，再检查。'; return; }
+    const correct = answer === normWord(word.word);
+    $('recFeedback').textContent = correct ? '拼写正确，点击「认识」进入下一词。' : '正确拼写是 ' + word.word + '。可以按「不认识」加入重点复习。';
+    $('recFeedback').className = correct ? 'ok' : 'bad';
+    rec.revealed = true; renderRec();
+    $('recSpelling').hidden = false;
+    $('recAnswer').readOnly = true;
+  }
+
   function recJudge(known) {
     const w = rec.queue[rec.i];
     if (!w) return;
@@ -1797,6 +1889,16 @@
     const setupIcon = $('setupIcon');
     if (setupIcon) setupIcon.innerHTML = ICONS.gear;
     applyView();
+    if ($('densitySelect')) $('densitySelect').addEventListener('change', function () { view.density = this.value; saveView(); applyView(); });
+    if ($('autoHideChrome')) $('autoHideChrome').addEventListener('change', function () { view.autoHide = this.checked; document.body.classList.remove('chrome-hidden'); saveView(); applyView(); });
+    if ($('importJsonBtn')) $('importJsonBtn').addEventListener('click', function () { if (requireUnlock('导入 JSON')) $('fileInput').click(); });
+    if ($('loadMoreWords')) $('loadMoreWords').addEventListener('click', function () { visibleLimit += 96; renderCards(); });
+    if ($('selectAllWords')) $('selectAllWords').addEventListener('change', function () { const checked = this.checked; filtered.forEach(function (word) { if (checked) selectedWords.add(String(word.id)); else selectedWords.delete(String(word.id)); }); renderCards(); });
+    if ($('clearSelectionBtn')) $('clearSelectionBtn').addEventListener('click', function () { selectedWords.clear(); renderCards(); });
+    if ($('exportSelectedBtn')) $('exportSelectedBtn').addEventListener('click', function () { $('exScope').value = 'selected'; openExport(); });
+    $('cardGrid').addEventListener('change', function (event) { const input = event.target.closest('[data-select-word]'); if (!input) return; if (input.checked) selectedWords.add(input.dataset.selectWord); else selectedWords.delete(input.dataset.selectWord); renderCards(); });
+    if ($('recCheck')) $('recCheck').addEventListener('click', checkSpelling);
+    if ($('recAnswer')) $('recAnswer').addEventListener('keydown', function (event) { if (event.key === 'Enter') { event.preventDefault(); checkSpelling(); } });
 
     // 排序方向：每次点一下就翻转
     $('sortDir').addEventListener('click', function () {
@@ -1911,6 +2013,11 @@
       if (t) { t.on = !t.on; renderPickChips(); }
     });
     $('pickQuery').addEventListener('click', onPickQuery);
+    if ($('pickManual')) $('pickManual').addEventListener('click', function () {
+      pickRows = pickTokens.filter(function (token) { return token.on; }).map(function (token) { return { on: true, word: token.w, pos: '', meaning: '', note: '', example: lineFor(token.w) }; });
+      if (!pickRows.length) { toast('先点选想收集的单词', true); return; }
+      renderPickPreview();
+    });
     $('pickSave').addEventListener('click', onPickSave);
     $('pickPreview').addEventListener('input', function (e) {
       const row = e.target.closest('.preview-row');
@@ -2039,9 +2146,10 @@
       speak(b.dataset.say, $('dAccent').value);
     });
 
-    $('searchInput').addEventListener('input', render);
+    let searchFrame;
+    $('searchInput').addEventListener('input', function () { visibleLimit = 96; cancelAnimationFrame(searchFrame); searchFrame = requestAnimationFrame(render); });
     $('sortSelect').addEventListener('change', render);
-    $('onlyWeak').addEventListener('change', render);
+    $('onlyWeak').addEventListener('change', function () { visibleLimit = 96; render(); });
 
     $('viewTabs').addEventListener('click', function (e) {
       const tab = e.target.closest('.tab');

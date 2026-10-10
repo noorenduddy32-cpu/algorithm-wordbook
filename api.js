@@ -8,24 +8,52 @@
     // 清理旧版跨角色共用的持久缓存；私密正文只使用当前标签页会话缓存。
     try {
       ['wb_home_cache', 'wb_notes_cache', 'wb_words_cache', 'an_note_draft_v2', 'wb_edit_unlocked'].forEach(function (key) { localStorage.removeItem(key); });
-      Object.keys(sessionStorage).filter(function (key) { return key.indexOf('an_cache:') === 0; })
+      Object.keys(sessionStorage).filter(function (key) { return key.indexOf('an_cache:') === 0 || /^fieldbook_(?:cache_|fast_|note_draft_)/.test(key); })
         .forEach(function (key) { sessionStorage.removeItem(key); });
+      Object.keys(localStorage).filter(function (key) { return /^fieldbook_(?:cache_|fast_|note_draft_)/.test(key); })
+        .forEach(function (key) { localStorage.removeItem(key); });
     } catch (e) {}
   }
   // 只迁移旧缓存，不影响同一管理员标签页内的快速导航。
   try {
     ['wb_home_cache', 'wb_notes_cache', 'wb_words_cache', 'an_note_draft_v2', 'wb_edit_unlocked'].forEach(function (key) { localStorage.removeItem(key); });
+    // Discard obsolete SPA snapshots, which this frontend never reads.
+    [localStorage, sessionStorage].forEach(function (storage) {
+      Object.keys(storage).filter(key => /^fieldbook_(?:cache_|fast_)/.test(key)).forEach(key => storage.removeItem(key));
+    });
   } catch (e) {}
 
+  // Read only after /api/me has verified the current HttpOnly session. Role-specific
+  // entries let visitors navigate quickly without ever reusing administrator data.
+  function cacheAllowed(name) {
+    return Auth.role === 'admin' || (Auth.role === 'visitor' && ['words', 'notes', 'home'].includes(name));
+  }
+  function publicRecords(rows) {
+    return Array.isArray(rows) ? rows.filter(function (row) { return row.status === 'published' && row.visibility === 'public'; }) : [];
+  }
+  function roleData(name, data) {
+    if (Auth.role !== 'visitor' || !data) return data;
+    if (name === 'notes') return publicRecords(data);
+    if (name === 'home') return { words: Array.isArray(data.words) ? data.words : [], notes: publicRecords(data.notes) };
+    return data;
+  }
   window.NoteCache = {
     get: function (name) {
-      // 词汇没有私密状态，可为访客缓存；笔记缓存仍仅限已验证管理员。
-      if (!Auth.role || (Auth.role !== 'admin' && name !== 'words')) return null;
-      try { return JSON.parse(sessionStorage.getItem('an_cache:' + Auth.role + ':' + name) || 'null'); } catch (e) { return null; }
+      if (!cacheAllowed(name)) return null;
+      try { return roleData(name, JSON.parse(sessionStorage.getItem('an_cache:' + Auth.role + ':' + name) || 'null')); } catch (e) { return null; }
     },
     set: function (name, data) {
-      if (!Auth.role || (Auth.role !== 'admin' && name !== 'words')) return;
-      try { sessionStorage.setItem('an_cache:' + Auth.role + ':' + name, JSON.stringify(data)); } catch (e) {}
+      if (!cacheAllowed(name)) return;
+      try {
+        const prefix = 'an_cache:' + Auth.role + ':';
+        data = roleData(name, data);
+        sessionStorage.setItem(prefix + name, JSON.stringify(data));
+        // A successful edit updates the dashboard's next-page snapshot as well.
+        if (name === 'words' || name === 'notes') {
+          const home = JSON.parse(sessionStorage.getItem(prefix + 'home') || 'null');
+          if (home) { home[name] = data || []; sessionStorage.setItem(prefix + 'home', JSON.stringify(home)); }
+        }
+      } catch (e) {}
     }
   };
 
@@ -224,7 +252,11 @@
         buildGate('', 'visitor');
         return;
       }
-      if (role !== 'admin') resetSession();
+      // Do not clear the verified visitor's cache on every ordinary navigation.
+      // Login, logout, role switches and cross-tab session changes still clear it.
+      if (role !== 'admin') {
+        try { Object.keys(sessionStorage).filter(key => key.indexOf('an_cache:admin:') === 0 || key.indexOf('fieldbook_note_draft_') === 0).forEach(key => sessionStorage.removeItem(key)); } catch (e) {}
+      }
       onAuthed(role);
     } catch (e) {
       if (version !== sessionVersion) return;

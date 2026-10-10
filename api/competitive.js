@@ -7,6 +7,6 @@ module.exports = async function (req, res) {
   const url = new URL(req.url, 'http://localhost');
   const cf = cleanHandle(url.searchParams.get('cf'));
   const atcoder = cleanHandle(url.searchParams.get('atcoder'));
-  try { return sendJson(res, 200, await fetchCompetitive({ cf, atcoder })); }
+  try { return sendJson(res, 200, await fetchCompetitive({ cf, atcoder, only: url.searchParams.get('only') })); }
   catch (e) { return sendJson(res, 502, { error: '竞赛平台数据暂时不可用' }); }
 };

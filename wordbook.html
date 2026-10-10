@@ -1,1 +1,387 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/#/words"><script>location.replace('/#/words')</script>
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="aurora" data-auth="pending">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101b2a" media="(prefers-color-scheme: dark)">
+<script src="display-init.js"></script>
+<title>题面词汇 · 算法竞赛笔记本</title>
+<meta name="description" content="从 Codeforces 与 ICPC 原题积累英文词汇，用例句理解，用自测记住。">
+<link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="studio.css">
+</head>
+<body class="vocabulary-page">
+
+
+
+<header id="topbar" class="topbar"></header>
+
+<section class="library-heading page-intro">
+  <div><p class="section-kicker">CONTEST ENGLISH / 题面语言</p><h1 data-i18n="words.title">题面词汇</h1><p data-i18n="words.subtitle">在真实题意中收集，在下一次阅读中认出。</p></div>
+  <div class="library-heading-actions"><button id="exportDocxBtn" class="btn">导出 Word</button>
+  <div class="btn-split" id="addSplit" data-admin>
+    <button id="addBtn" class="btn primary split-main" type="button"><span aria-hidden="true">＋</span><span data-i18n="words.add">添加单词</span></button>
+    <button id="addSplitToggle" class="btn primary split-arrow" type="button" aria-label="选择添加方式" aria-haspopup="true" aria-expanded="false">⌄</button>
+    <div class="split-menu" id="addSplitMenu" hidden>
+      <button class="split-item active" data-mode="pick" type="button">从句中选词</button><button class="split-item" data-mode="batch" type="button">批量添加</button><button class="split-item" data-mode="import" type="button">导入 JSON</button><button class="split-item" data-mode="manual" type="button">手动添加</button>
+    </div>
+  </div></div>
+</section>
+<section class="library-overview" aria-label="词库概况">
+  <div class="stat"><span data-i18n="words.total">词库总量</span><b id="statWords">0</b><small>WORDS</small></div>
+  <div class="stat"><span data-i18n="words.examples">题面例句</span><b id="statEx">0</b><small>CONTEXTS</small></div>
+  <div class="stat"><span data-i18n="words.month">本月收集</span><b id="statNew">0</b><small>THIS MONTH</small></div>
+  <div class="stat stat-update"><span data-i18n="words.updated">最近更新</span><b id="statUpdate">—</b><small id="statusText" role="status">正在连接词库…</small></div>
+</section>
+<div id="chrome" class="chrome library-controls">
+  <div class="library-tabbar"><div class="tabs" id="viewTabs"><button class="tab active" data-view="list" data-i18n="words.list">我的词库</button><button class="tab" data-view="recite" data-i18n="words.quiz">词汇自测</button></div><span class="library-saving-note">释义 · 原题例句 · 复习记录</span></div>
+  <div class="toolbar">
+    <div class="toolbar-main">
+      <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" aria-label="搜索词汇" placeholder="搜索单词、中文释义或原题例句" data-i18n-placeholder="words.search" autocomplete="off"></div>
+      <label class="check"><input type="checkbox" id="onlyWeak"> <span data-i18n="words.onlyWeak">只看生词</span></label>
+      <div class="sort-wrap"><select id="sortSelect" title="排序"><option value="time">收录时间</option><option value="alpha">字典序</option><option value="freq">例句数量</option><option value="updated">最近编辑</option><option value="random">随机</option></select><button id="sortDir" class="icon-btn sort-dir" title="切换排序方向"><span id="sortDirIcon"></span></button></div>
+      <div class="seg" id="layoutSeg" aria-label="排列方式"><button class="seg-btn active" data-layout="grid" title="卡片排列">▦ <span class="btn-label">卡片</span></button><button class="seg-btn" data-layout="list" title="列表排列">☰ <span class="btn-label">列表</span></button></div>
+    </div>
+    <details class="toolbar-options"><summary>阅读设置与数据备份 <span aria-hidden="true">＋</span></summary><div class="toolbar-options-body">
+      <div class="seg" id="hideSeg" aria-label="临时隐藏答案"><button class="seg-btn" data-hide="meaning">隐藏中文</button><button class="seg-btn" data-hide="examples">隐藏例句</button></div>
+      <label class="check cols-check">每行 <select id="colCount" class="col-select"><option value="auto">自动</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select> 词</label>
+      <label class="check">密度 <select id="densitySelect"><option value="comfortable">舒适</option><option value="compact">紧凑</option></select></label>
+      <label class="check"><input id="autoHideChrome" type="checkbox">滚动时收起工具栏</label>
+      <button id="exportJsonBtn" class="btn ghost">导出 JSON</button><button id="importJsonBtn" class="btn ghost" data-admin>导入 JSON</button>
+    </div></details>
+  </div>
+</div>
+<main id="mainContent">
+  <section id="listView">
+    <div class="library-resultbar"><label class="check"><input id="selectAllWords" type="checkbox">选择当前结果</label><span id="resultCount">0 个单词</span><button id="exportSelectedBtn" class="link-btn" hidden>导出已选单词</button><button id="clearSelectionBtn" class="link-btn" hidden>清空选择</button></div>
+    <div id="cardGrid" class="card-grid"></div>
+    <button id="loadMoreWords" class="btn library-load-more" hidden>继续加载</button>
+    <div id="emptyState" class="empty" hidden>
+      <p>还没有单词</p>
+      <p class="muted" data-admin>点「添加单词」开始积累</p>
+    </div>
+  </section>
+
+  <section id="reciteView" hidden>
+    <div class="recite-wrap">
+      <div class="recite-toolbar">
+        <select id="recDir">
+          <option value="en2zh">英 → 中</option>
+          <option value="zh2en">中 → 英</option><option value="spell">拼写练习</option>
+        </select>
+        <select id="recOrder">
+          <option value="random">随机</option>
+          <option value="seq">顺序</option>
+        </select>
+        <select id="recScope">
+          <option value="all">全部单词</option>
+          <option value="filtered">当前筛选结果</option>
+          <option value="weak">只看生词</option>
+        </select>
+        <button id="recRestart" class="btn ghost">重新开始</button>
+        <div class="spacer"></div>
+        <div class="recite-counter"><span id="recPos">0 / 0</span></div>
+      </div>
+
+      <div class="progress"><div id="recBar" class="progress-inner"></div></div>
+
+      <div id="recCard" class="recite-card">
+        <div class="rec-front">
+          <div id="recWord" class="rec-word">—</div>
+          <div id="recPos2" class="rec-pos"></div>
+        </div>
+        <div id="recSpelling" class="rec-spelling" hidden><label for="recAnswer">写出对应的英文单词</label><div><input id="recAnswer" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the word…"><button id="recCheck" class="btn">检查拼写</button></div><p id="recFeedback" role="status"></p></div>
+        <div id="recBack" class="rec-back" hidden>
+          <div id="recMeaning" class="rec-meaning"></div>
+          <ul id="recExamples" class="rec-examples"></ul>
+          <div id="recNote" class="rec-note"></div>
+        </div>
+      </div>
+
+      <div class="recite-actions">
+        <button id="recReveal" class="btn big">显示答案</button>
+        <div id="recJudge" class="judge" hidden>
+          <button id="recUnknown" class="btn big danger">不认识</button>
+          <button id="recKnown" class="btn big success">认识</button>
+        </div>
+      </div>
+      <p class="hint">快捷键：空格 = 显示答案 / 下一张，1 = 不认识，2 = 认识</p>
+      <div class="recite-sum">
+        <span>本轮：<b id="recKnownCount" class="ok">0</b> 认识 · <b id="recUnknownCount" class="bad">0</b> 不认识</span>
+        <button id="recClearStats" class="link-btn">清空背诵记录</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>CONTEST ENGLISH · 每个词都带着它的上下文。</span>
+  <span>点单词看读音 / 音标 / 派生 / 词根，点小喇叭直接朗读；详情底部可跳剑桥词典。</span>
+</footer>
+
+<!-- 单词详情：截图版卡片页 -->
+<div class="modal" id="detailModal" hidden>
+  <div class="modal-box detail-box">
+    <button class="detail-close" data-close title="关闭">&times;</button>
+
+    <div class="detail-head">
+      <div class="detail-title-row">
+        <h2 id="dWord" class="detail-word mono">—</h2>
+        <button id="dSpeak" class="speak-btn" title="朗读">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12c0-1.8-1-3.3-2.5-4v8c1.5-.7 2.5-2.2 2.5-4z"/><path d="M14 3.2v2.1c2.9.9 5 3.5 5 6.7s-2.1 5.8-5 6.7v2.1c4-1 7-4.5 7-8.8s-3-7.8-7-8.8z"/></svg>
+        </button>
+      </div>
+      <div class="detail-phonetic">
+        <span id="dIpa" class="ipa mono">…</span>
+        <select id="dAccent" class="accent-sel">
+          <option value="en-US">美音</option>
+          <option value="en-GB">英音</option>
+        </select>
+      </div>
+      <div id="dPos" class="detail-pos"></div>
+    </div>
+
+    <div class="detail-body">
+      <section class="detail-block">
+        <h4 class="detail-section-title">释义</h4>
+        <div id="dMeaning" class="detail-meaning"></div>
+      </section>
+
+      <section id="dNoteBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">备注</h4>
+        <div class="detail-card">
+          <div id="dNote" class="detail-note"></div>
+        </div>
+      </section>
+
+      <section id="dExampleBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">例句</h4>
+        <div class="detail-card">
+          <ul id="dExamples" class="detail-examples"></ul>
+        </div>
+      </section>
+
+      <section id="dBreakBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">拼写拆分</h4>
+        <div class="detail-card">
+          <div id="dBreak" class="spell-break"></div>
+        </div>
+      </section>
+
+      <section id="dRootBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">词根词缀</h4>
+        <div class="detail-card root-card">
+          <div id="dRoot" class="root-line"></div>
+        </div>
+      </section>
+
+      <section id="dDerivBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">派生</h4>
+        <div class="detail-card">
+          <div id="dDeriv" class="deriv-list"></div>
+        </div>
+      </section>
+
+      <section id="dSynBlock" class="detail-block" hidden>
+        <h4 class="detail-section-title">近义 / 反义</h4>
+        <div class="detail-card">
+          <div id="dSyn" class="syn-list"></div>
+        </div>
+      </section>
+
+      <section class="detail-block">
+        <ul id="dEnDefs" class="en-defs"></ul>
+      </section>
+
+      <p class="detail-status" id="dStatus"></p>
+
+      <div class="detail-foot">
+        <a id="dDictLink" class="detail-dict-link" target="_blank" rel="noopener">
+          在剑桥词典查「<span class="dict-word">—</span>」
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 添加 / 编辑 单词 -->
+<div class="modal" id="wordModal" hidden>
+  <div class="modal-box">
+    <h2 id="wordModalTitle">添加单词</h2>
+    <form id="wordForm" autocomplete="off">
+      <label>拼写（只填原形：一般现在/单数/原形动词）
+        <input id="fWord" required placeholder="例：partition">
+        <span id="wordHint" class="field-hint"></span>
+        <a id="fDictLink" class="link-btn" target="_blank" rel="noopener" hidden>在剑桥词典查</a>
+      </label>
+      <label>词性
+        <input id="fPos" list="posList" placeholder="n. / v. / adj. / adv. / phr.">
+        <datalist id="posList">
+          <option value="n."></option><option value="v."></option><option value="adj."></option>
+          <option value="adv."></option><option value="prep."></option><option value="conj."></option>
+          <option value="num."></option><option value="pron."></option><option value="phr."></option>
+          <option value="n./v."></option><option value="v./adj."></option>
+        </datalist>
+      </label>
+      <label>中文释义
+        <button type="button" id="aiCnBtn" class="mini-btn" data-admin hidden style="float:right" title="用云端大模型自动查中文释义">AI 查中文</button>
+        <input id="fMeaning" placeholder="划分，分区">
+      </label>
+      <label>例句（一行一句，可留空；粘贴时会自动合并被折断的行）
+        <textarea id="fExamples" rows="4" placeholder="Given an array a, let f(a) be the number of ways to partition a into one or more subarrays."></textarea>
+      </label>
+      <label>备注（可选）
+        <input id="fNote" placeholder="如：复数 indices；常缩写 iff">
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>取消</button>
+        <button type="submit" class="btn primary">保存</button>
+      </div>
+    </form>
+    <p class="muted small">重复单词会自动合并：新例句追加到已有词条后面，不会覆盖。</p>
+  </div>
+</div>
+
+<!-- 批量添加 -->
+<div class="modal" id="batchModal" hidden>
+  <div class="modal-box wide">
+    <h2>批量添加</h2>
+    <p class="muted small">每行一个单词，用 <code>|</code> 或 Tab 分隔：<code>单词 | 词性 | 中文 | 例句 | 备注</code>（后两列可留空）。例句列里可以用 <code>\\</code> 分隔多句。</p>
+    <textarea id="batchText" rows="12" spellcheck="false" placeholder="submit | v. | 提交 | He submitted the code at 1:59. |&#10;greedy | adj. | 贪心的 | a greedy algorithm"></textarea>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-close>取消</button>
+      <button id="batchGo" class="btn primary">导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 从句中选词 -->
+<div class="modal" id="pickModal" hidden>
+  <div class="modal-box wide">
+    <h2>从句中选词</h2>
+    <p class="muted small">粘贴题面里的英文句子（复制带来的换行会自动去掉）→ 点「拆分」→ 点选想收集的词 → 点「识别」，自动给出原形 / 词性 / 中文释义，可改完再入库。</p>
+    <textarea id="pickText" rows="4" spellcheck="false" placeholder="Paste sentences here, e.g.&#10;You can hack only if you solved all versions of this problem."></textarea>
+    <div class="pick-actions">
+      <button id="pickSplit" class="btn primary">拆分</button>
+      <label class="check"><input type="checkbox" id="pickHideBasic" checked> 隐藏基础词</label>
+      <button id="pickAll" class="btn ghost">全选</button>
+      <button id="pickNone" class="btn ghost">清空</button>
+      <div class="spacer"></div>
+      <span id="pickCount" class="muted small">已选 0 个</span>
+    </div>
+    <div id="pickTokens" class="chips"></div>
+    <div id="pickPreviewArea" hidden>
+      <h3 class="pick-h3">识别结果（可改，再点「确认加入」）</h3>
+      <div id="pickPreview" class="preview"></div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-close>关闭</button>
+      <button id="pickQuery" class="btn primary">识别</button>
+      <button id="pickManual" class="btn ghost" type="button">手动填写选词</button>
+      <button id="pickSave" class="btn primary" hidden>确认加入</button>
+    </div>
+    <p id="pickStatus" class="field-hint"></p>
+  </div>
+</div>
+
+<!-- 设置 / 关于（无需任何配置） -->
+<div class="modal" id="setupModal" hidden>
+  <div class="modal-box">
+    <h2>关于</h2>
+    <p class="muted small">增删改单词已不需要任何 Token 或 API Key——解锁编辑模式即可直接操作。</p>
+    <p class="muted small">「从句中选词」的自动识别走<b>站点自带的云端大模型</b>，同样无需你配置任何接口，点「识别」就能直接出词性+中文释义。</p>
+    <p class="muted small">自动识别与保存通过站点服务处理；释义、例句和原形均可手动调整。</p>
+    <div class="modal-actions">
+      <button type="button" class="btn primary" data-close>知道了</button>
+    </div>
+  </div>
+</div>
+
+<!-- 导出 Word 选项 -->
+<div class="modal" id="exportModal" hidden>
+  <div class="modal-box">
+    <h2>导出 Word</h2>
+    <form id="exportForm" autocomplete="off">
+      <label>表头标题（印在左上角 Title: 后面）
+        <input id="exDocTitle" value="收藏的单词" placeholder="收藏的单词">
+      </label>
+      <label>导出范围
+        <select id="exScope">
+          <option value="filtered">当前列表（搜索/筛选结果）</option>
+          <option value="all">全部单词</option>
+          <option value="weak">只导出生词</option><option value="selected">已选单词</option>
+        </select>
+      </label>
+      <label>排序方式
+        <select id="exSort">
+          <option value="time">时间（配合下面的升降序）</option>
+          <option value="alpha">字典序 A→Z</option>
+          <option value="freq">频率（例句多的在前）</option>
+          <option value="random">随机</option>
+        </select>
+      </label>
+      <label>排序方向
+        <select id="exDir">
+          <option value="desc">降序（新 / 多 / 靠后的在前）</option>
+          <option value="asc">升序（旧 / 少 / 靠前的在前）</option>
+        </select>
+      </label>
+      <label>排版
+        <select id="exLayout">
+          <option value="two">经典词汇表（双栏 + 勾选框）</option>
+          <option value="one">单栏带例句（完整）</option>
+        </select>
+      </label>
+      <label id="exPerColWrap">每列单词数（每栏固定行数）
+        <select id="exPerCol">
+          <option value="10">10</option>
+          <option value="12">12</option>
+          <option value="15" selected>15</option>
+          <option value="18">18</option>
+          <option value="20">20</option>
+          <option value="25">25</option>
+          <option value="30">30</option>
+        </select>
+      </label>
+      <label id="exColsWrap">每页栏数（A4 横向并排栏数）
+        <select id="exCols">
+          <option value="1">1 栏</option>
+          <option value="2" selected>2 栏</option>
+          <option value="3">3 栏</option>
+          <option value="4">4 栏</option>
+        </select>
+      </label>
+      <div class="opt-row">
+        <label class="check"><input type="checkbox" id="exMeaning" checked> 中文释义</label>
+        <label class="check"><input type="checkbox" id="exPos" checked> 词性</label>
+        <label class="check"><input type="checkbox" id="exNote"> 备注</label>
+        <label class="check"><input type="checkbox" id="exExample"> 例句</label>
+        <label class="check"><input type="checkbox" id="exIndex" checked> 序号</label>
+      </div>
+      <p class="muted small" id="exHint"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>取消</button>
+        <button type="submit" class="btn primary">导出</button>
+      </div>
+    </form>
+    <p class="muted small">经典模式是多栏速记表（No./Word/Meaning/Example + ☐ 勾选框），可自定义每栏行数和栏数；页脚居中显示页码。栏数多或带例句时建议少放一点词，避免太挤。</p>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".json,application/json" hidden>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+
+<script src="config.example.js"></script>
+<script src="i18n.js"></script>
+<script src="docx.js"></script>
+<script src="common.js"></script>
+<script src="data-client.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

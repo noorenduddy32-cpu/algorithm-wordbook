@@ -2,14 +2,29 @@
 (function () {
   'use strict';
   let sessionVersion = 0;
-  window.addEventListener('an:session-reset', function () { sessionVersion++; });
+  const requests = new Set(), reads = new Map();
+  window.addEventListener('an:session-reset', function () {
+    sessionVersion++;
+    requests.forEach(controller => controller.abort());
+    reads.clear();
+  });
   async function timedFetch(url, options) {
+    options = options || {};
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    try { return await fetch(url, Object.assign({}, options, { signal: controller.signal })); }
+    const suppliedSignal = options.signal;
+    const cancel = () => controller.abort();
+    if (suppliedSignal) { if (suppliedSignal.aborted) cancel(); else suppliedSignal.addEventListener('abort', cancel, { once: true }); }
+    const timeout = setTimeout(cancel, options.timeoutMs || 10000);
+    const fetchOptions = Object.assign({}, options, { signal: controller.signal });
+    delete fetchOptions.timeoutMs;
+    requests.add(controller);
+    try { return await fetch(url, fetchOptions); }
     catch (error) {
       throw new Error(error.name === 'AbortError' ? '连接超时，请重试' : '无法连接，请检查网络后重试');
-    } finally { clearTimeout(timeout); }
+    } finally {
+      clearTimeout(timeout); requests.delete(controller);
+      if (suppliedSignal) suppliedSignal.removeEventListener('abort', cancel);
+    }
   }
   window.ANRequest = timedFetch;
   const DB = (function () {
@@ -35,7 +50,17 @@
         limit: function (n) { op.limit = n; return a; },
         maybeSingle: function () { op.single = true; return a; },
         single: function () { op.single = true; return a; },
-        then: function (res, rej) { return call(op).then(res, rej); }
+        then: function (res, rej) {
+          // Identical concurrent reads share one round trip; mutations always run.
+          const snapshot = Object.assign({}, op, { filters: Object.assign({}, op.filters) });
+          const key = sessionVersion + ':' + JSON.stringify(snapshot);
+          if (op.action !== 'select') return call(snapshot).then(res, rej);
+          if (!reads.has(key)) {
+            const pending = call(snapshot).finally(() => { if (reads.get(key) === pending) reads.delete(key); });
+            reads.set(key, pending);
+          }
+          return reads.get(key).then(res, rej);
+        }
       };
       return a;
     }
@@ -47,9 +72,12 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
+          cache: 'no-store',
+          timeoutMs: op.action === 'select' ? 9000 : 15000,
           body: JSON.stringify(op)
         });
       } catch (e) {
+        if (version !== sessionVersion) return { data: null, error: { message: '登录身份已改变，请重新加载' } };
         return { data: null, error: { message: '网络错误：' + (e && e.message ? e.message : e) } };
       }
       let json = {};

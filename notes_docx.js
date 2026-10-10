@@ -29,7 +29,7 @@
     if (o.color) rPr += '<w:color w:val="' + o.color + '"/>';
     rPr += '<w:sz w:val="' + (o.sz || 21) + '"/></w:rPr>';
 
-    let pPr = '<w:pPr>';
+    let pPr = '<w:pPr>' + (o.style ? '<w:pStyle w:val="' + o.style + '"/>' : '');
     if (o.align) pPr += '<w:jc w:val="' + o.align + '"/>';
     if (o.indent) pPr += '<w:ind w:left="' + o.indent + '"' + (o.hanging != null ? ' w:hanging="' + o.hanging + '"' : '') + '/>';
     if (o.shd) pPr += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
@@ -39,10 +39,10 @@
         (o.after ? 'w:after="' + o.after + '"' : '') +
         (o.line ? ' w:line="' + o.line + '" w:lineRule="auto"' : '') + '/>';
     }
-    if (o.style) pPr += '<w:pStyle w:val="' + o.style + '"/>';
     pPr += '</w:pPr>';
 
-    return '<w:p>' + pPr + '<w:r>' + rPr + '<w:t xml:space="preserve">' + esc(text) + '</w:t></w:r></w:p>';
+    const textXml = String(text).split('\n').map(function (line) { return '<w:t xml:space="preserve">' + esc(line) + '</w:t>'; }).join('<w:br/>');
+    return '<w:p>' + pPr + '<w:r>' + rPr + textXml + '</w:r></w:p>';
   }
 
   /* ---------- 行内样式收集（bold / italic / code / u） ---------- */
@@ -62,7 +62,13 @@
           else if (t === 'em' || t === 'i') s2.italic = true;
           else if (t === 'code') s2.mono = true;
           else if (t === 'u') s2.underline = true;
-          else if (t === 'span' || t === 'font' || t === 'sub' || t === 'sup' || t === 'a') s2.color = s2.color; // 链接/嵌套：保留子样式
+          else if (t === 's' || t === 'strike' || t === 'del') s2.strike = true;
+          const color = n.style && n.style.color || n.getAttribute('color');
+          if (color) {
+            const rgb = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+            if (rgb) s2.color = rgb.slice(1).map(function (v) { return Number(v).toString(16).padStart(2, '0'); }).join('');
+            else if (/^#[a-f0-9]{6}$/i.test(color)) s2.color = color.slice(1);
+          }
           collectRuns(n, s2, arr);
         }
       }
@@ -77,6 +83,7 @@
     if (s.bold) rPr += '<w:b/>';
     if (s.italic) rPr += '<w:i/>';
     if (s.underline) rPr += '<w:u w:val="single"/>';
+    if (s.strike) rPr += '<w:strike/>';
     if (s.color) rPr += '<w:color w:val="' + s.color + '"/>';
     rPr += '<w:sz w:val="' + (s.sz || 21) + '"/></w:rPr>';
     return '<w:r>' + rPr + '<w:t xml:space="preserve">' + esc(r.text) + '</w:t></w:r>';
@@ -90,7 +97,9 @@
 
   function paraRuns(arr, o) {
     o = o || {};
-    let pPr = '<w:pPr>';
+    let pPr = '<w:pPr>' + (o.style ? '<w:pStyle w:val="' + o.style + '"/>' : '');
+    if (o.numId) pPr += '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="' + o.numId + '"/></w:numPr>';
+    if (o.align) pPr += '<w:jc w:val="' + o.align + '"/>';
     if (o.indent) pPr += '<w:ind w:left="' + o.indent + '"' + (o.hanging != null ? ' w:hanging="' + o.hanging + '"' : '') + '/>';
     if (o.before || o.after || o.line) {
       pPr += '<w:spacing ' +
@@ -105,7 +114,8 @@
   function paraFromNode(node, o) {
     o = o || {};
     const arr = [];
-    collectRuns(node, {}, arr);
+    collectRuns(node, o, arr);
+    if (node.style && node.style.textAlign) o.align = node.style.textAlign === 'justify' ? 'both' : node.style.textAlign;
     return paraRuns(arr, o);
   }
 
@@ -115,10 +125,9 @@
     const items = ul.querySelectorAll(':scope > li');
     let out = '';
     items.forEach(function (li, i) {
-      const prefix = ordered ? (i + 1) + '. ' : '· ';
-      const arr = [{ text: prefix, style: {} }];
+      const arr = [];
       collectRuns(li, {}, arr);
-      out += paraRuns(arr, { sz: 21, after: 60, indent: 360, hanging: 240 });
+      out += paraRuns(arr, { sz: 21, after: 60, numId: ordered ? 2 : 1 });
     });
     return out;
   }
@@ -136,8 +145,9 @@
     if (!maxCols) return '';
     const FULL = 9638;
     const cw = Math.floor(FULL / maxCols);
+    const widths = Array.from({ length: maxCols }, function (_, i) { return cw + (i === maxCols - 1 ? FULL % maxCols : 0); });
     const gridXml = [];
-    for (let i = 0; i < maxCols; i++) gridXml.push('<w:gridCol w:w="' + cw + '"/>');
+    for (let i = 0; i < maxCols; i++) gridXml.push('<w:gridCol w:w="' + widths[i] + '"/>');
     const borders = '<w:tblBorders>' +
       ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(function (k) {
         return '<w:' + k + ' w:val="single" w:sz="4" w:space="0" w:color="B0B0B0"/>';
@@ -149,9 +159,9 @@
         const cell = cells[ci];
         const isHead = cell && cell.tagName.toLowerCase() === 'th';
         const arr = [];
-        if (cell) collectRuns(cell, {}, arr);
+        if (cell) collectRuns(cell, { bold: isHead }, arr);
         const pPr = '<w:pPr><w:spacing w:before="20" w:after="20"/></w:pPr>';
-        const tcPr = '<w:tcPr><w:tcW w:w="' + cw + '" w:type="dxa"/>' +
+        const tcPr = '<w:tcPr><w:tcW w:w="' + widths[ci] + '" w:type="dxa"/>' +
           '<w:tcMar><w:top w:w="40" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/>' +
           '<w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>' +
           (isHead ? '<w:shd w:val="clear" w:color="auto" w:fill="DCE5F2"/>' : '') + '</w:tcPr>';
@@ -181,9 +191,10 @@
 
   function blockToXml(node) {
     const t = node.tagName.toLowerCase();
-    if (t === 'h1') return paraFromNode(node, { sz: 32, bold: true, color: '1F3864', before: 240, after: 120 });
-    if (t === 'h2') return paraFromNode(node, { sz: 27, bold: true, color: '1F3864', before: 200, after: 100 });
-    if (t === 'h3') return paraFromNode(node, { sz: 23, bold: true, before: 160, after: 80 });
+    if (t === 'h1') return paraFromNode(node, { style: 'Heading1', sz: 32, bold: true, color: '1F3864', before: 240, after: 120 });
+    if (t === 'h2') return paraFromNode(node, { style: 'Heading2', sz: 27, bold: true, color: '1F3864', before: 200, after: 100 });
+    if (t === 'h3') return paraFromNode(node, { style: 'Heading3', sz: 23, bold: true, before: 160, after: 80 });
+    if (t === 'h4' || t === 'h5') return paraFromNode(node, { style: t === 'h4' ? 'Heading4' : 'Heading5', sz: 22, bold: true, before: 140, after: 80 });
     if (t === 'p') return paraFromNode(node, { sz: 21, after: 120, line: 312 });
     if (t === 'blockquote') return paraFromNode(node, { sz: 21, after: 120, indent: 360, color: '595959', line: 312 });
     if (t === 'pre' || t === 'code') {
@@ -254,6 +265,8 @@
     '<Default Extension="xml" ContentType="application/xml"/>' +
     '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
     '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' +
+    '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+    '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
     '</Types>';
 
   const ROOT_RELS =
@@ -266,7 +279,19 @@
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rIdFtr" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' +
+    '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '<Relationship Id="rIdNumbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>' +
     '</Relationships>';
+
+  const STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ' + W + '>' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr>' + font('Microsoft YaHei') + '<w:sz w:val="21"/></w:rPr></w:style>' +
+    [1, 2, 3, 4, 5].map(function (n) {
+      return '<w:style w:type="paragraph" w:styleId="Heading' + n + '"><w:name w:val="heading ' + n + '"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="' + (n - 1) + '"/></w:pPr><w:rPr><w:b/></w:rPr></w:style>';
+    }).join('') + '</w:styles>';
+  const NUMBERING = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering ' + W + '>' +
+    [1, 2].map(function (n) {
+      return '<w:abstractNum w:abstractNumId="' + n + '"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="' + (n === 1 ? 'bullet' : 'decimal') + '"/><w:lvlText w:val="' + (n === 1 ? '•' : '%1.') + '"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="360" w:hanging="240"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="' + n + '"><w:abstractNumId w:val="' + n + '"/></w:num>';
+    }).join('') + '</w:numbering>';
 
   async function exportNotesDocx(notes, opts) {
     if (typeof JSZip === 'undefined') throw new Error('JSZip 未加载');
@@ -286,6 +311,8 @@
     zip.file('_rels/.rels', ROOT_RELS);
     zip.file('word/document.xml', docXml);
     zip.file('word/footer1.xml', FOOTER);
+    zip.file('word/styles.xml', STYLES);
+    zip.file('word/numbering.xml', NUMBERING);
     zip.file('word/_rels/document.xml.rels', DOC_RELS);
     return zip.generateAsync({
       type: 'blob',
