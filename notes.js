@@ -37,7 +37,7 @@
   let saveInProgress = false;
 
   // 分栏（看板）状态
-  let viewMode = localStorage.getItem('an_note_view') || 'grid';    // grid | list | board
+  let viewMode = localStorage.getItem('an_note_view') || 'list';    // grid | list | board
   let colOrder = [];   // 自定义栏顺序（localStorage）
   let listCols = localStorage.getItem('an_note_cols') || 'auto';    // 方块模式每行个数
   let sortMode = localStorage.getItem('an_note_sort') || 'updated';    // time(创建) | updated(修改) | views(浏览)
@@ -334,14 +334,14 @@
       const wrapOnIcon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14"/><path d="M20 5v14"/><path d="M16 9H9.5a2.5 2.5 0 0 0 0 5H16"/><path d="M12 7l-3 3 3 3"/></svg>';
       const chevronDown = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
       const chevronUp = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>';
-      const bar = '<div class="code-bar"><span class="code-lang">' + esc(lang) + '</span>' +
+      const bar = '<div class="code-bar" contenteditable="false"><span class="code-lang">' + esc(lang) + '</span>' +
         '<span class="code-btns">' +
         '<button type="button" class="code-wrap" title="打开自动换行" aria-label="打开自动换行" contenteditable="false">' + wrapOffIcon + '</button>' +
         '<button type="button" class="code-copy" title="复制代码" aria-label="复制代码" contenteditable="false">' + copyIcon + '<span>复制</span></button>' +
         '</span></div>';
       const bottomBar = lines.length > 10 ? '<div class="code-bottom-bar"><button type="button" class="code-toggle" contenteditable="false">' +
         '<span>展开</span>' + chevronDown + '</button></div>' : '';
-      const area = '<div class="code-area"><div class="ln-gutter">' + gutter + '</div><code class="' + esc(codeClass) + '">' + codeLines + '</code></div>';
+      const area = '<div class="code-area"><div class="ln-gutter" contenteditable="false" aria-hidden="true">' + gutter + '</div><code class="' + esc(codeClass) + '">' + codeLines + '</code></div>';
       pre.className = (pre.className + ' code-enh').trim();
       pre.innerHTML = bar + area + bottomBar;
       if (lines.length > 10) pre.classList.add('collapsed');
@@ -367,7 +367,7 @@
       });
       pre.querySelectorAll('.code-copy').forEach(function (b) {
         b.addEventListener('click', function () {
-          const text = codeText(code).replace(/\n+$/, '').replace(/^\n+/, '');
+          const text = codeText(pre.querySelector('.code-area > code')).replace(/\n+$/, '').replace(/^\n+/, '');
           copyToClipboard(text, b);
         });
       });
@@ -386,6 +386,7 @@
         const tab = $('notesTabs'); if (tab) tab.hidden = !isAdmin();
         if (!isAdmin()) listTab = 'published';
         renderView();
+        openHashNote();
       }
     } catch (e) {}
   }
@@ -429,7 +430,7 @@
   }
 
   function updateSub() {
-    $('notesSub').textContent = isAdmin() ? '题解、模板与复盘，记录属于你的思考过程。' : '公开分享的题解与算法，留住每一次思考的线索。';
+    $('notesSub').textContent = '题解、算法与比赛复盘，随时查阅。';
     $('publishedCount').textContent = all.filter(function (n) { return n.status === 'published'; }).length;
     $('draftCount').textContent = all.filter(function (n) { return (n.status || 'draft') === 'draft'; }).length;
     $('notesResult').textContent = getFiltered().length + ' 篇' + (activeTopic ? ' · ' + activeTopic : '笔记');
@@ -548,6 +549,26 @@
     updateSelCount();
   }
 
+  // Word packaging is loaded on demand; it never delays library navigation.
+  let exportModules;
+  function loadExportModules() {
+    if (window.DocxExport && window.DocxExport.exportNotesDocx) return Promise.resolve();
+    if (exportModules) return exportModules;
+    function script(src) {
+      return new Promise(function (resolve, reject) {
+        const el = document.createElement('script'); el.src = src;
+        el.onload = resolve;
+        el.onerror = function () { el.remove(); reject(new Error('导出模块加载失败，请重试')); };
+        document.head.appendChild(el);
+      });
+    }
+    exportModules = (async function () {
+      if (!window.JSZip) await script('vendor/jszip.min.js');
+      await script('notes_docx.js');
+    })().catch(function (error) { exportModules = null; throw error; });
+    return exportModules;
+  }
+
   // 导出选中的笔记为 Word；未勾选则导出当前视图全部
   async function exportSelected() {
     let list = getFiltered();
@@ -557,11 +578,13 @@
       list = list.filter(function (x) { return ids.has(String(x.id)); });
     }
     if (!list.length) { AN.toast('没有可导出的笔记', true); return; }
-    if (typeof DocxExport === 'undefined' || !DocxExport.exportNotesDocx) {
-      AN.toast('导出模块未加载', true); return;
-    }
+    await exportWordRecords(list);
+  }
+
+  async function exportWordRecords(list) {
     try {
       AN.toast('正在生成 Word…');
+      await loadExportModules();
       const blob = await DocxExport.exportNotesDocx(list, {
         title: '算法手记 · 笔记导出',
         count: list.length,
@@ -792,20 +815,29 @@
   }
 
   function setMode(m) {
-    mode = m;
-    $('edPanes').className = 'ed-panes mode-' + m;
+    mode = ['edit', 'split', 'preview'].includes(m) ? m : 'edit';
+    $('edPanes').className = 'ed-panes mode-' + mode;
     const btns = document.querySelectorAll('#edMode .seg-btn');
-    for (let i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.mode === m);
-    try { localStorage.setItem(LS_MODE, m); } catch (e) {}
+    for (let i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.mode === mode);
+    if (!readOnly) try { localStorage.setItem(LS_MODE, mode); } catch (e) {}
+    updatePreview();
   }
 
+  let previewTimer;
   function updatePreview() {
+    clearTimeout(previewTimer);
     const html = getHtml();
-    $('edPreview').innerHTML = renderContent(html);
-    enhanceCodeBlocks($('edPreview'));
+    if (mode !== 'edit') {
+      $('edPreview').innerHTML = renderContent(html);
+      enhanceCodeBlocks($('edPreview'));
+    }
     $('edWords').textContent = countWords(html);
     updateReaderOutline();
     saveDraftLocal();
+  }
+  function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(updatePreview, 140);
   }
 
   /* ---------------- 自动存草稿（写一半退出也进草稿箱） ---------------- */
@@ -871,6 +903,7 @@
     if (!isAdmin() && (!rec || rec.status !== 'published' || rec.visibility !== 'public')) return;
     editorEpoch++;
     editing = rec || null;
+    editorSelection = null;
     readOnly = !isAdmin() || opts.readOnly === true;
     ['readerEyebrow', 'readerMeta'].forEach(function (id) { $(id).hidden = !readOnly; });
     $('readerEditBtn').hidden = !readOnly || !isAdmin();
@@ -907,6 +940,7 @@
     });
     edBody().contentEditable = editable ? 'true' : 'false';
     $('edToolbar').hidden = readOnly;
+    $('editorResources').hidden = readOnly;
     $('saveDraftBtn').hidden = readOnly;
     $('publishBtn').hidden = readOnly;
     $('delNoteBtn').hidden = readOnly || !(rec && rec.id);
@@ -1017,27 +1051,47 @@
 
   /* ---------------- 富文本插入 ---------------- */
 
-  function exec(cmd, val) {
+  let editorSelection = null;
+  function rememberSelection() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && edBody().contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      editorSelection = sel.getRangeAt(0).cloneRange();
+    }
+  }
+  function restoreEditorSelection() {
     edBody().focus();
+    const sel = window.getSelection();
+    if (!sel) return null;
+    if (!editorSelection || !edBody().contains(editorSelection.commonAncestorContainer)) {
+      editorSelection = document.createRange();
+      editorSelection.selectNodeContents(edBody()); editorSelection.collapse(false);
+    }
+    sel.removeAllRanges(); sel.addRange(editorSelection.cloneRange());
+    return sel;
+  }
+  function exec(cmd, val) {
+    restoreEditorSelection();
     try { document.execCommand(cmd, false, val); } catch (e) {}
+    rememberSelection();
     updatePreview();
   }
   function getSelText() {
-    const s = window.getSelection();
-    return s ? s.toString() : '';
+    rememberSelection();
+    return editorSelection ? editorSelection.toString() : '';
   }
   function insertHTML(html) {
-    edBody().focus();
-    const sel = window.getSelection();
+    const sel = restoreEditorSelection();
     if (sel && sel.rangeCount) {
       const range = sel.getRangeAt(0);
       range.deleteContents();
-      const frag = document.createRange().createContextualFragment(html);
+      const frag = document.createRange().createContextualFragment(sanitizeHtml(html));
+      const last = frag.lastChild;
       range.insertNode(frag);
-      sel.collapseToEnd();
+      if (last) { range.setStartAfter(last); range.collapse(true); sel.removeAllRanges(); sel.addRange(range); }
     } else {
-      edBody().insertAdjacentHTML('beforeend', html);
+      edBody().insertAdjacentHTML('beforeend', sanitizeHtml(html));
     }
+    rememberSelection();
     updatePreview();
   }
 
@@ -1052,12 +1106,15 @@
   }
   // 在当前光标处逐个插入原图；图片以 data URI 形式写入正文 HTML，保存后持久可见、可复制
   async function embedImages(files) {
+    const requestEpoch = editorEpoch;
+    if (!isAdmin() || readOnly) return;
     edBody().focus();
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       if (!/^image\//.test(f.type)) continue;
       try {
         const url = await readFileAsDataUrl(f);
+        if (requestEpoch !== editorEpoch || !isAdmin() || readOnly) return;
         insertHTML('<img src="' + url + '" alt="' + esc(f.name || '图片') + '" style="max-width:100%">');
       } catch (err) {
         AN.toast('图片读取失败', true);
@@ -1093,6 +1150,7 @@
     strike: function () { exec('strikeThrough'); closeAllPickers(); },
     clear: function () { exec('removeFormat'); closeAllPickers(); },
     codeOpen: function () { openCodeModal(); },
+    code: function () { insertHTML('<code>' + esc(getSelText() || 'code') + '</code>'); },
     ul: function () { exec('insertUnorderedList'); closeAllPickers(); },
     ol: function () { exec('insertOrderedList'); closeAllPickers(); },
     quote: function () { exec('formatBlock', 'BLOCKQUOTE'); closeAllPickers(); },
@@ -1120,15 +1178,7 @@
   }
 
   function insertNodes(html) {
-    edBody().focus();
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    const frag = document.createRange().createContextualFragment(html);
-    range.insertNode(frag);
-    sel.collapseToEnd();
-    updatePreview();
+    insertHTML(html);
   }
 
   // 任意元素对齐：文字用 text-align，图片/表格/媒体用 margin:auto（块级才能居中）
@@ -1167,7 +1217,7 @@
   }
   function applyAlign(value) {
     const root = edBody();
-    const sel = window.getSelection();
+    const sel = restoreEditorSelection();
     if (!sel.rangeCount) return;
     const range = sel.getRangeAt(0);
     const els = new Set();
@@ -1201,7 +1251,9 @@
     grid.innerHTML = '';
     for (let r = 1; r <= TABLE_PICKER_ROWS; r++) {
       for (let c = 1; c <= TABLE_PICKER_COLS; c++) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.setAttribute('aria-label', r + ' 行 ' + c + ' 列');
         cell.className = 'table-picker-cell';
         cell.dataset.r = r; cell.dataset.c = c;
         grid.appendChild(cell);
@@ -1310,6 +1362,7 @@
     const s = (text != null) ? text : (getSelText() || '// 在这里写代码');
     const ph = (s && s.length) ? s : '// 在这里写代码';
     insertHTML('<pre><code class="language-' + lang + '">' + esc(ph) + '</code></pre><p><br></p>');
+    enhanceCodeBlocks(edBody());
     updatePreview();
   }
   function confirmCodeInsert() {
@@ -1330,6 +1383,7 @@
     const kind = $('linkModal').dataset.kind || 'link';
     const url = $('linkUrl').value.trim();
     if (!url) { AN.toast('地址不能为空', true); return; }
+    if (!/^(https?:\/\/|mailto:|#|\/)/i.test(url)) { AN.toast('请使用 https:// 或 http:// 开头的地址', true); return; }
     const text = $('linkText').value.trim();
     const html = kind === 'image'
       ? '<img src="' + esc(url) + '" alt="' + esc(text || '图片') + '">'
@@ -1441,6 +1495,8 @@
   };
 
   async function runAI() {
+    if (!isAdmin() || readOnly || !AI_PROMPTS[aiAct]) return;
+    const requestEpoch = editorEpoch;
     const btn = $('aiRun');
     btn.disabled = true; btn.textContent = '生成中…';
     $('aiHint').textContent = ''; $('aiHint').classList.remove('err');
@@ -1483,6 +1539,9 @@
       return;
     }
 
+    if (requestEpoch !== editorEpoch || !isAdmin() || readOnly) {
+      btn.disabled = false; btn.textContent = '开始'; return;
+    }
     applyAI(out.trim());
     btn.disabled = false; btn.textContent = '开始';
   }
@@ -1512,13 +1571,17 @@
   /* ---------------- 导入 / 导出 ---------------- */
 
   function doImport(file) {
+    const requestEpoch = editorEpoch;
     const reader = new FileReader();
     reader.onload = function () {
+      if (requestEpoch !== editorEpoch || !isAdmin() || readOnly) return;
       const text = String(reader.result || '');
       let html;
       if (/\.(md|markdown)$/i.test(file.name)) html = md ? md.parse(text) : '<p>' + esc(text) + '</p>';
-      else html = sanitizeHtml(text);
-      edBody().innerHTML = html;
+      else html = text;
+      edBody().innerHTML = sanitizeHtml(html);
+      editorSelection = null;
+      enhanceCodeBlocks(edBody());
       updatePreview();
       AN.toast('已导入：' + file.name);
     };
@@ -1542,7 +1605,11 @@
   /* ---------------- 事件绑定 ---------------- */
 
   function bind() {
-    $('noteSearch').addEventListener('input', function () { updateSearchUrl(); renderView(); });
+    let searchTimer;
+    $('noteSearch').addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () { updateSearchUrl(); renderView(); }, 100);
+    });
     $('noteTopics').addEventListener('click', function (e) {
       const button = e.target.closest('[data-topic]');
       if (!button) return;
@@ -1594,6 +1661,14 @@
     });
     // 导出 Word
     $('exportDocxBtn').addEventListener('click', exportSelected);
+    $('exportCurrentDocx').addEventListener('click', function () {
+      if (readOnly && editing) return exportWordRecords([editing]);
+      if (!isAdmin()) return;
+      return exportWordRecords([{
+        title: $('edTitle').value || '未命名笔记', content: sanitizeHtml(getHtml()),
+        tags: parseTags(), updated_at: new Date().toISOString()
+      }]);
+    });
 
     // 管理分栏
     $('manageColBtn').addEventListener('click', openColModal);
@@ -1752,6 +1827,11 @@
       closeAllPickers();
       e.stopPropagation();
     });
+    document.addEventListener('selectionchange', rememberSelection);
+    $('edToolbar').addEventListener('pointerdown', function (e) {
+      rememberSelection();
+      if (e.target.closest('button')) e.preventDefault();
+    });
 
     // 表格选择器：hover 高亮，点击插入
     $('tablePickerGrid').addEventListener('mouseover', function (e) {
@@ -1847,7 +1927,7 @@
     });
 
     // 编辑联动
-    edBody().addEventListener('input', updatePreview);
+    edBody().addEventListener('input', schedulePreview);
     edBody().addEventListener('scroll', function () {
       if (mode !== 'split') return;
       const pv = $('edPreview');
@@ -1855,6 +1935,9 @@
       pv.scrollTop = ratio * Math.max(0, pv.scrollHeight - pv.clientHeight);
     });
     $('edTitle').addEventListener('input', saveDraftLocal);
+    $('edSummary').addEventListener('input', saveDraftLocal);
+    $('edTags').addEventListener('input', saveDraftLocal);
+    $('edVisibility').addEventListener('change', saveDraftLocal);
 
     // 标签库选择器（默认收起，点「常用标签库」展开）
     $('tagPickerToggle').addEventListener('click', function () {
@@ -1881,7 +1964,43 @@
     $('linkOk').addEventListener('click', doLinkInsert);
     $('linkUrl').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLinkInsert(); });
 
-    // (AI / 模板 / 导入 / 导出 已从工具栏移除，如需恢复请重新加回)
+    $('aiOpenBtn').addEventListener('click', function () {
+      if (!isAdmin() || readOnly) return;
+      rememberSelection(); aiAct = null;
+      $('aiHint').textContent = ''; $('aiRun').disabled = true;
+      $('aiModal').querySelectorAll('[data-ai]').forEach(function (b) { b.classList.remove('active'); });
+      $('aiModal').hidden = false;
+    });
+    $('aiModal').addEventListener('click', function (e) {
+      const button = e.target.closest('[data-ai]');
+      if (!button) return;
+      aiAct = button.dataset.ai;
+      $('aiModal').querySelectorAll('[data-ai]').forEach(function (b) { b.classList.toggle('active', b === button); });
+      $('aiRun').disabled = false;
+    });
+    $('aiRun').addEventListener('click', runAI);
+    $('insertTplBtn').addEventListener('click', function () {
+      if (!isAdmin() || readOnly) return;
+      insertHTML(TPL); enhanceCodeBlocks(edBody()); updatePreview();
+    });
+    $('importNoteBtn').addEventListener('click', function () {
+      if (!isAdmin() || readOnly) return;
+      if (getHtml().trim() && !confirm('导入文件将替换当前正文。确定继续吗？')) return;
+      $('importNoteFile').click();
+    });
+    $('importNoteFile').addEventListener('change', function (e) {
+      if (isAdmin() && !readOnly && e.target.files[0]) doImport(e.target.files[0]);
+      e.target.value = '';
+    });
+    $('exportHtmlBtn').addEventListener('click', doExport);
+    $('uploadImageBtn').addEventListener('click', function () {
+      if (!isAdmin() || readOnly) return;
+      rememberSelection(); $('noteImageFile').click();
+    });
+    $('noteImageFile').addEventListener('change', function (e) {
+      if (isAdmin() && !readOnly) embedImages(Array.from(e.target.files || []));
+      e.target.value = '';
+    });
   }
 
   /* ---------------- 启动 ---------------- */

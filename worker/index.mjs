@@ -94,7 +94,7 @@ export async function handleRequest(request, env = {}) {
     if (name === 'me') return json(200, { role });
     if (name === 'competitive') {
       if (!role) return json(401, { error: '请先输入访问密码' });
-      return json(200, await fetchCompetitive({ cf: cleanHandle(url.searchParams.get('cf')), atcoder: cleanHandle(url.searchParams.get('atcoder')) }));
+      return json(200, await fetchCompetitive({ cf: cleanHandle(url.searchParams.get('cf')), atcoder: cleanHandle(url.searchParams.get('atcoder')), only: url.searchParams.get('only') }));
     }
     if (name === 'logout') return json(200, { role: null }, { 'Set-Cookie': cookie('', 0) });
     if (name === 'visitor') {

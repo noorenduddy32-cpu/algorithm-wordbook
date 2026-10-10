@@ -1,0 +1,19 @@
+/* Eight atmosphere choices share one stable type and spacing system. */
+[data-theme=paper] { --bg:#eff3f9; --panel:#fff; --panel2:#f5f7fc; --panel3:#e9eef8; --text:#273249; --muted:#78849b; --border:#e2e8f1; --rule:#cdd7e8; --accent:#4a67d6; --accent-soft:#edf1ff; --accent-ink:#fff; --wash1:#d4dffa; --wash2:#e2f1eb; --wash3:#e9def6; }
+[data-theme=aurora] { color-scheme:dark; --bg:#14202d; --panel:#1e2b39; --panel2:#263545; --panel3:#34495a; --text:#e3ecf5; --muted:#9cabbc; --border:#354554; --rule:#495f76; --accent:#81b4ed; --accent-soft:#2c425a; --accent-ink:#14202d; --wash1:#27547b; --wash2:#24504d; --wash3:#38466b; --ok:#8ac2b2; --bad:#f4a1b5; }
+[data-theme=sunset] { color-scheme:dark; --bg:#291f2c; --panel:#332a38; --panel2:#403343; --panel3:#514355; --text:#f4e5e3; --muted:#bba5b2; --border:#51424e; --rule:#725864; --accent:#efa596; --accent-soft:#553c42; --accent-ink:#2d202d; --wash1:#694454; --wash2:#49354e; --wash3:#704c3b; --ok:#a1c4a0; --bad:#f9a0af; }
+[data-theme=forest] { --bg:#eaf0eb; --panel:#fbfdfb; --panel2:#edf4ee; --panel3:#e0eae0; --text:#2d4236; --muted:#768b7b; --border:#dce6dd; --rule:#c2d2c4; --accent:#4b7d62; --accent-soft:#e6f0e8; --accent-ink:#fff; --wash1:#cddfcb; --wash2:#dfe8d2; --wash3:#d3e7e0; }
+[data-theme=sakura] { --bg:#f6eff4; --panel:#fffafd; --panel2:#f9f1f6; --panel3:#efdeeb; --text:#503949; --muted:#9c8194; --border:#ebdeea; --rule:#dbc3d5; --accent:#a96691; --accent-soft:#f7eaf3; --accent-ink:#fff; --wash1:#f1d6e7; --wash2:#e8e0f4; --wash3:#f6dee5; }
+[data-theme=ocean] { --bg:#eaf3f6; --panel:#fcfeff; --panel2:#eff7f9; --panel3:#d8ebf0; --text:#234453; --muted:#6f909f; --border:#d7e7ed; --rule:#b7d3df; --accent:#2f839f; --accent-soft:#e0f0f6; --accent-ink:#fff; --wash1:#c2e6ef; --wash2:#d9efeb; --wash3:#cfddf4; }
+[data-theme=sand] { --bg:#f3f0e9; --panel:#fffdf7; --panel2:#f7f3e9; --panel3:#ece5d6; --text:#514536; --muted:#998977; --border:#e8e1d3; --rule:#d6c7b2; --accent:#9a7947; --accent-soft:#f4ecdc; --accent-ink:#fff; --wash1:#eadebd; --wash2:#e9e7d6; --wash3:#edddcf; }
+[data-theme=obsidian] { color-scheme:dark; --bg:#1c2027; --panel:#272c35; --panel2:#303641; --panel3:#3d4552; --text:#e3e7ef; --muted:#a0a9ba; --border:#3b424d; --rule:#515c70; --accent:#bbc4e6; --accent-soft:#3a4055; --accent-ink:#232732; --wash1:#323c54; --wash2:#303f41; --wash3:#403e54; --ok:#9cc9b0; --bad:#eaa5b5; }
+.content-panel,.editor-sheet,.card,.note-card,.stats-bar,.toolbar,.modal-box { box-shadow:var(--shadow); }
+.topbar { backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+.page-foot,.foot { font-size:11px; color:var(--muted); }
+/* Repaint only the compact decorative glass; text surfaces remain still. */
+.glass-ribbon::after { content:""; position:absolute; inset:-50% -20%; background:linear-gradient(120deg,transparent 30%,color-mix(in srgb,var(--wash1) 85%,transparent) 50%,transparent 70%); transform:rotate(-15deg); animation:ribbon-drift 16s ease-in-out infinite alternate; pointer-events:none; opacity:.55; }
+@keyframes ribbon-drift { to { transform:translateX(15%) rotate(5deg); } }
+.visits-wrap { max-width:var(--page-width); margin:35px auto; padding:0 28px; }
+.visits-head h1 { font-size:32px; font-weight:600; }
+.visits-list { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:22px; }
+@media(max-width:760px) { .visits-wrap { padding:0 18px; margin-top:22px; } }

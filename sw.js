@@ -1,5 +1,17 @@
-const CACHE='icpc-fieldbook-v5';
-const SHELL=['/index.html','/site.css','/site-extras.css','/sentence-picker.css','/theme-pack.css','/site.js','/site-extras.js','/sentence-picker.js','/config.example.js','/assets/mark.svg','/vendor/marked.min.js','/vendor/purify.min.js','/vendor/highlight.min.js'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin||u.pathname.startsWith('/api/'))return;if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put('/index.html',r.clone()));return r}).catch(()=>caches.match('/index.html')));return}e.respondWith(caches.match(e.request).then(cached=>{const fresh=fetch(e.request).then(r=>{if(r.ok)caches.open(CACHE).then(c=>c.put(e.request,r.clone()));return r}).catch(()=>cached);return cached||fresh}))});
+const CACHE = 'icpc-studio-v6';
+const SHELL = ['/index.html','/wordbook.html','/notes.html','/base.css','/studio.css','/home.css','/styles.css','/notes.css','/display-init.js','/common.js','/i18n.js','/data-client.js','/api.js','/home.js','/app.js','/notes.js','/config.example.js','/assets/mark.svg','/vendor/marked.min.js','/vendor/purify.min.js'];
+self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
+self.addEventListener('fetch',event=>{
+  const url=new URL(event.request.url);
+  if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/'))return;
+  // Never store user records. Cache only the public application shell.
+  if(event.request.mode==='navigate'){
+    event.respondWith(fetch(event.request).then(async response=>{if(response.ok){const cache=await caches.open(CACHE);await cache.put(url.pathname==='/'?'/index.html':url.pathname,response.clone());}return response;}).catch(()=>caches.match(url.pathname==='/'?'/index.html':url.pathname)));
+    return;
+  }
+  if(!/\.(?:js|css|svg)$/.test(url.pathname))return;
+  const refresh=fetch(event.request).then(async response=>{if(response.ok){const cache=await caches.open(CACHE);await cache.put(event.request,response.clone());}return response;});
+  event.waitUntil(refresh.catch(()=>{}));
+  event.respondWith(caches.match(event.request).then(cached=>cached||refresh));
+});

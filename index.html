@@ -1,8 +1,53 @@
-<!doctype html>
-<html lang="zh-CN" data-theme="aurora"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071019"><meta name="description" content="ICPC 词汇、题解、比赛与训练数据工作台。"><title>ICPC Fieldbook</title><link rel="icon" href="assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="vendor/highlight.min.css"><link rel="stylesheet" href="site.css"><link rel="stylesheet" href="site-extras.css"><link rel="stylesheet" href="sentence-picker.css"><link rel="stylesheet" href="theme-pack.css"><style>.gate[hidden]{display:none!important}</style></head>
-<body>
-<div class="ambient" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
-<div id="gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle"><div class="gate-visual" aria-hidden="true"><div class="gate-orbit"><span>ICPC</span></div><p>READ · SOLVE · REVIEW</p></div><form id="gateForm" class="gate-card"><div class="brand"><img src="assets/mark.svg" alt=""><span>ICPC FIELD<strong>BOOK</strong></span></div><p class="eyebrow">PRIVATE TRAINING SPACE</p><h1 id="gateTitle">进入算法训练档案</h1><p id="gateCopy">输入访客密码，查看公开词汇、文章和备赛数据。</p><label class="field"><span id="passwordLabel">访客密码</span><input id="passwordInput" type="password" autocomplete="current-password" required placeholder="输入密码"></label><button id="gateSubmit" class="action primary" type="submit">进入工作台 <span>↗</span></button><button id="roleSwitch" class="text-button" type="button">管理员登录</button><p id="gateError" class="form-error" role="alert" hidden></p><small>访客只读 · 管理员可维护全部内容</small></form></div>
-<div id="app" class="app" hidden><header class="topbar"><a class="brand" href="#/home" aria-label="ICPC Fieldbook 首页"><img src="assets/mark.svg" alt=""><span>ICPC FIELD<strong>BOOK</strong></span></a><nav id="mainNav" aria-label="主导航"><a href="#/home" data-route="home">总览</a><a href="#/words" data-route="words">词汇库</a><a href="#/notes" data-route="notes">文章库</a></nav><div class="top-actions"><button id="quickSearch" class="round" type="button" aria-label="搜索">⌕</button><button id="themeButton" class="round" type="button" aria-label="切换主题">◐</button><button id="languageButton" class="chip" type="button">EN</button><button id="roleButton" class="profile-chip" type="button"><span class="status-dot"></span><b id="roleLabel">访客</b></button></div></header><main id="view" tabindex="-1"></main><footer><span>ICPC Fieldbook · YTU_YangQingXi</span><span id="syncStatus">数据已连接</span></footer></div>
-<div id="modal" class="modal" hidden><div class="modal-backdrop" data-close></div><div id="modalPanel" class="modal-panel" role="dialog" aria-modal="true"></div></div><div id="toast" class="toast" role="status" hidden></div>
-<script src="config.example.js"></script><script src="vendor/marked.min.js"></script><script src="vendor/purify.min.js"></script><script src="vendor/highlight.min.js"></script><script src="vendor/jszip.min.js"></script><script src="docx.js"></script><script src="notes_docx.js"></script><script src="site.js"></script><script src="site-extras.js"></script><script src="sentence-picker.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="paper" data-auth="pending">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#eff3f9"><meta name="description" content="面向 ICPC 的算法学习手记：在题面中积累词汇，在复盘中沉淀方法。">
+  <title>学习工作台 · ICPC 算法手记</title>
+  <script src="display-init.js"></script>
+<script>if (/^#\/(words|notes)(?:\?|$)/.test(location.hash)) { var oldRoute=location.hash.slice(2).split('?'); location.replace((oldRoute[0]==='words'?'wordbook.html':'notes.html')+(oldRoute[1]?'?'+oldRoute[1]:'')); }</script>
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="base.css"><link rel="stylesheet" href="home.css"><link rel="stylesheet" href="studio.css">
+</head>
+<body class="home-page">
+  <header id="topbar" class="topbar"></header>
+  <main id="mainContent" class="workspace">
+    <div class="workspace-heading">
+      <div><p class="section-kicker">YOUR LEARNING SPACE</p><h1 data-i18n="home.dashboard">学习工作台</h1><p class="workspace-sub" data-i18n="home.dashboardSub">读懂题意，整理思路。让积累成为下一场比赛的底气。</p></div>
+      <div class="workspace-date"><span class="live-dot"></span><time id="todayLabel"></time><small id="homeScope">正在验证访问权限</small></div>
+    </div>
+    <div class="desk-layout">
+      <div class="desk-main">
+        <section class="study-banner glass-ribbon">
+          <div class="banner-copy"><p class="section-kicker">ICPC · ALGORITHM FIELDNOTES</p><h2 data-i18n="home.banner">思考有迹可循。</h2><p data-i18n="home.bannerSub">把一个陌生词、一段证明、一次突破，留在这里。</p><div class="welcome-actions"><a class="btn primary" href="notes.html" data-i18n="home.notes">打开算法文章</a><a class="banner-word-link" href="wordbook.html"><span data-i18n="home.words">复习题面词汇</span> ↗</a></div></div>
+          <div class="graph-art" aria-hidden="true"><svg viewBox="0 0 260 210"><g fill="none" stroke="currentColor" stroke-width="1.2"><path d="M34 113 102 49 181 71 224 132 138 167 34 113M102 49 138 167 181 71M34 113 181 71"/></g><g><circle cx="34" cy="113" r="13"/><circle cx="102" cy="49" r="18"/><circle cx="181" cy="71" r="13"/><circle cx="224" cy="132" r="11"/><circle cx="138" cy="167" r="16"/></g><g fill="currentColor" font-family="monospace" font-size="9" text-anchor="middle"><text x="34" y="116">s</text><text x="102" y="52">u</text><text x="181" y="74">v</text><text x="224" y="135">t</text><text x="138" y="170">w</text></g></svg><span>connect the ideas.</span></div>
+        </section>
+        <section class="notebook-overview" aria-label="笔记本概览">
+          <a class="overview-item" href="wordbook.html"><span class="overview-glyph">Aa</span><div><span data-i18n="words.title">题面词汇</span><small data-i18n="home.wordsHint">在语境里理解</small></div><b id="entryWords">—</b><span class="entry-arrow">↗</span></a>
+          <a class="overview-item" href="notes.html"><span class="overview-glyph">⌘</span><div><span data-i18n="nav.notes">算法文章</span><small data-i18n="home.notesHint">在复盘里沉淀</small></div><b id="entryNotes">—</b><span class="entry-arrow">↗</span></a>
+        </section>
+        <section class="content-panel notes-panel">
+          <div class="section-head"><div><p class="section-kicker">RECENT NOTES</p><h2 data-i18n="home.recent">最近的思考</h2></div><a href="notes.html" data-i18n="home.allNotes">全部文章 ↗</a></div>
+          <form id="homeSearch" class="home-search" action="notes.html"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg><input id="homeQuery" name="q" placeholder="搜索题目、算法或标签" aria-label="搜索算法文章" data-i18n-placeholder="home.search"><button type="submit" aria-label="搜索">↵</button></form>
+          <div id="recentNotes" class="recent-notes"><p class="empty-state">正在同步文章…</p></div>
+          <div class="topic-section"><span data-i18n="home.explore">继续探索</span><div id="topicLinks" class="topic-links"></div></div>
+        </section>
+        <section class="activity content-panel" id="activityWrap">
+          <div class="activity-head"><div><p class="section-kicker">A LITTLE, EVERY DAY</p><h2 data-i18n="home.activity">积累的痕迹</h2></div><span class="activity-sum" id="activitySum">正在加载…</span><select id="activityYear" class="activity-year" aria-label="活动年份"></select></div>
+          <div class="activity-calendar" tabindex="0" aria-label="全年积累日历"><div class="activity-calendar-inner"><div class="activity-months" id="activityMonths"></div><div class="activity-body"><div class="activity-weekdays"><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span></div><div class="activity-grid" id="activityGrid"></div></div></div></div>
+          <div class="activity-bottom"><p data-i18n="home.activityHint">按词汇与文章的创建、更新时间记录。</p><div class="activity-scale"><span>少</span><i class="act-cell l0"></i><i class="act-cell l1"></i><i class="act-cell l2"></i><i class="act-cell l3"></i><i class="act-cell l4"></i><span>多</span></div></div>
+          <div class="activity-foot"><span><b id="actDays">0</b> 天有积累</span><span><b id="actTotal">0</b> 条记录</span><span><b id="actStreak">0</b> 天最长连续</span></div>
+        </section>
+      </div>
+      <aside class="desk-aside">
+        <section class="content-panel words-panel"><div class="section-head"><div><p class="section-kicker">WORDS IN CONTEXT</p><h2 data-i18n="home.wordShelf">你的词汇书签</h2></div><a href="wordbook.html" aria-label="打开词汇库">↗</a></div><div id="recentWords" class="recent-words"><p class="empty-state">正在同步词汇…</p></div><a class="review-link" href="wordbook.html"><span data-i18n="home.review">开始一轮自测</span><span>→</span></a></section>
+        <section class="content-panel platform-panel"><div class="section-head"><div><p class="section-kicker">CONNECTED ACCOUNTS</p><h2 data-i18n="home.platforms">训练平台</h2></div><div class="prep-actions"><button id="refreshPlatforms" class="icon-btn" type="button" aria-label="刷新训练数据">↻</button><button id="openProfileSettings" class="icon-btn" type="button" data-admin aria-label="配置平台账号">⚙</button></div></div><div id="platformCards" class="platform-cards"></div></section>
+        <section class="content-panel contest-panel"><div class="section-head"><div><p class="section-kicker">ON YOUR CALENDAR</p><h2 data-i18n="home.contests">近期比赛</h2></div><a href="https://atcoder.jp/contests/" target="_blank" rel="noopener">AtCoder ↗</a></div><div id="contestList" class="contest-list"><p class="empty-state">正在读取公开赛程…</p></div><p class="calendar-zone">UTC+8 · Asia / Shanghai</p></section>
+      </aside>
+    </div>
+    <footer class="page-foot"><span>ICPC 算法手记 <span class="foot-dot">·</span> Read. Think. Solve.</span><span id="footTip">正在同步…</span><a href="https://github.com/noorenduddy32-cpu/algorithm-wordbook" target="_blank" rel="noopener">GitHub ↗</a></footer>
+  </main>
+  <div class="modal" id="profileSettings" hidden><form class="modal-box" id="profileSettingsForm"><p class="section-kicker">PUBLIC HANDLES</p><h2 data-i18n="home.settingsTitle">训练平台账号</h2><p class="muted" data-i18n="home.settingsHint">公开数据由平台接口读取。修改设置保存在当前设备。</p><label>Codeforces<input id="profileCodeforces" maxlength="40"></label><label>AtCoder<input id="profileAtcoder" maxlength="40"></label><label>牛客<input id="profileNowcoder" maxlength="40"></label><label>洛谷<input id="profileLuogu" maxlength="40"></label><div class="modal-actions"><button class="btn ghost" type="button" data-close="profileSettings" data-i18n="home.cancel">取消</button><button class="btn primary" type="submit" data-i18n="home.saveProfiles">保存并刷新</button></div></form></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="config.example.js"></script><script src="i18n.js"></script><script src="common.js"></script><script src="data-client.js"></script><script src="api.js"></script><script src="home.js"></script>
+</body></html>

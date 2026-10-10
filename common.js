@@ -16,10 +16,15 @@
     { id: 'system', name: '跟随系统', swatch: 'linear-gradient(90deg,#edf5ff 50%,#07111f 50%)' },
     { id: 'aurora', name: '极光赛场', swatch: 'linear-gradient(135deg,#07111f,#24d1c1 55%,#8b6cff)' },
     { id: 'paper', name: '纸上推演', swatch: 'linear-gradient(135deg,#f5f8ff,#c9dcff 55%,#ffffff)' },
-    { id: 'sunset', name: '终场余晖', swatch: 'linear-gradient(135deg,#17112b,#ff8a4c 55%,#7c63ff)' }
+    { id: 'sunset', name: '终场余晖', swatch: 'linear-gradient(135deg,#291f2c,#efa596)' },
+    { id: 'forest', name: '雨后森林', swatch: 'linear-gradient(135deg,#eaf0eb,#4b7d62)' },
+    { id: 'sakura', name: '浅樱手札', swatch: 'linear-gradient(135deg,#f6eff4,#a96691)' },
+    { id: 'ocean', name: '海盐微光', swatch: 'linear-gradient(135deg,#eaf3f6,#2f839f)' },
+    { id: 'sand', name: '沙丘纸页', swatch: 'linear-gradient(135deg,#f3f0e9,#9a7947)' },
+    { id: 'obsidian', name: '曜石夜读', swatch: 'linear-gradient(135deg,#1c2027,#bbc4e6)' }
   ];
   const systemTheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  let themeChoice = 'system';
+  let themeChoice = 'paper';
 
   const $ = function (id) { return document.getElementById(id); };
 
@@ -36,18 +41,18 @@
   /* ---------------- 主题与设置浮层 ---------------- */
 
   function normalizeTheme(value) {
-    const aliases = { glass: 'aurora', ink: 'aurora', dark: 'aurora', 'glass-light': 'paper', light: 'paper', 'eye-green': 'paper', eye: 'paper' };
+    const aliases = { blueprint: 'paper', glass: 'aurora', ink: 'obsidian', dark: 'obsidian', 'glass-light': 'paper', light: 'paper', 'eye-green': 'forest', eye: 'forest' };
     value = aliases[value] || value;
-    return THEMES.some(function (x) { return x.id === value; }) ? value : 'system';
+    return THEMES.some(function (x) { return x.id === value; }) ? value : 'paper';
   }
   function readTheme() {
-    try { return normalizeTheme(localStorage.getItem(LS_THEME)); } catch (e) { return 'system'; }
+    try { return normalizeTheme(localStorage.getItem(LS_THEME) || localStorage.getItem('fieldbook_theme')); } catch (e) { return 'paper'; }
   }
   function applyTheme(name, persist) {
     themeChoice = normalizeTheme(name);
     const resolved = themeChoice === 'system' ? (systemTheme && systemTheme.matches ? 'aurora' : 'paper') : themeChoice;
     document.documentElement.dataset.theme = resolved;
-    document.documentElement.style.colorScheme = resolved === 'aurora' || resolved === 'sunset' ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = ['aurora','sunset','obsidian'].includes(resolved) ? 'dark' : 'light';
     document.documentElement.dataset.themeChoice = themeChoice;
     document.querySelectorAll('meta[name="theme-color"]').forEach(function (meta) {
       meta.content = resolved === 'aurora' ? '#07111f' : resolved === 'sunset' ? '#17112b' : '#eef4ff';
@@ -237,9 +242,9 @@
 
     host.innerHTML =
       '<a class="brand" href="index.html">' +
-        '<span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 5-5 7 5 7m8-14 5 7-5 7m-3-16-2 20"/></svg></span>' +
+        '<span class="logo" aria-hidden="true"><img src="assets/mark.svg" alt="" width="38" height="38"></span>' +
         '<span class="brand-text"><span class="brand-name">' + (o.title || '算法手记') + '</span>' +
-        '<p>ALGORITHM FIELDNOTES</p></span>' +
+        '<p>ICPC FIELDNOTES</p></span>' +
       '</a>' +
       '<p class="nav-caption">NOTEBOOK / 笔记本</p>' +
       '<nav class="top-nav" aria-label="主导航">' + links + '</nav>' +
@@ -251,7 +256,7 @@
         '</button>' +
         '<button id="languageBtn" class="icon-btn language-btn" type="button" aria-label="切换界面语言" title="界面语言"><span>中</span></button>' +
         '<div class="theme-wrap">' +
-          '<button id="themeBtn" class="icon-btn" type="button" title="笔记本外观" aria-label="笔记本外观" aria-controls="themeMenu" aria-expanded="false"><span id="themeIcon"></span></button>' +
+          '<button id="themeBtn" class="icon-btn" type="button" title="笔记本外观" aria-label="笔记本外观" aria-controls="themeMenu" aria-expanded="false"><span id="themeIcon"></span><span class="btn-label" data-i18n="ui.theme">主题</span></button>' +
           '<div id="themeMenu" class="theme-menu" role="group" aria-label="笔记本外观" hidden></div>' +
         '</div>' +
         '<div class="fs-wrap">' +

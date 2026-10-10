@@ -2,12 +2,12 @@
 (function () {
   'use strict';
   var root = document.documentElement;
-  var choice = 'system', size = 16;
-  var legacy = { glass: 'aurora', ink: 'aurora', dark: 'aurora', 'glass-light': 'paper', light: 'paper', 'eye-green': 'paper', eye: 'paper' };
+  var choice = 'paper', size = 16;
+  var legacy = { blueprint: 'paper', glass: 'aurora', ink: 'obsidian', dark: 'obsidian', 'glass-light': 'paper', light: 'paper', 'eye-green': 'forest', eye: 'forest' };
   try {
-    choice = localStorage.getItem('wb_theme_v2') || 'system';
+    choice = localStorage.getItem('wb_theme_v2') || localStorage.getItem('fieldbook_theme') || 'paper';
     choice = legacy[choice] || choice;
-    if (['system', 'aurora', 'paper', 'sunset'].indexOf(choice) < 0) choice = 'system';
+    if (['system', 'aurora', 'paper', 'sunset','forest','sakura','ocean','sand','obsidian'].indexOf(choice) < 0) choice = 'paper';
     var saved = localStorage.getItem('wb_reading_size');
     if (saved !== null) size = Number(saved);
     else {
@@ -22,5 +22,5 @@
   root.dataset.themeChoice = choice;
   root.style.setProperty('--content-font-size', size + 'px');
   root.style.setProperty('--content-scale', String(size / 16));
-  root.style.colorScheme = theme === 'aurora' || theme === 'sunset' ? 'dark' : 'light';
+  root.style.colorScheme = ['aurora','sunset','obsidian'].includes(theme) ? 'dark' : 'light';
 })();
